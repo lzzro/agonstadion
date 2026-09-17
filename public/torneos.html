@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
+  <title>Torneos · Stadion</title>
+  <link rel="icon" href="img/stadion.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="pagina">
+<header>
+  <a class="marca" href="index.html"><img src="img/stadion.png" alt="Símbolo de Stadion"><span>STADION</span></a>
+  <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+</header>
+<nav><a href="index.html">Inicio</a><a href="torneos.html" class="activo">Torneos</a><a href="torneo.html">Calendario</a><a href="torneo.html">Posiciones</a><a href="crear.html">Organizadores</a></nav>
+<main>
+<section>
+  <p class="epigrafe">ἀγῶνες</p>
+  <h1>Torneos</h1>
+  <p class="intro">312 competencias públicas · 27 en vivo ahora mismo</p>
+  <form action="#" method="get" style="flex-direction:row;flex-wrap:wrap;">
+    <input type="search" name="q" placeholder="Buscar torneo, equipo u organizador" aria-label="Buscar" style="flex:1;min-width:220px;">
+    <select name="disciplina" aria-label="Disciplina"><option>Todas las disciplinas</option><option>Esports</option><option>Ajedrez</option><option>Tenis de mesa</option><option>Fútbol</option><option>Cartas</option></select>
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+  <div class="chips"><span class="chip activo">Todos</span><span class="chip">En vivo</span><span class="chip">Inscripción abierta</span><span class="chip">Finalizados</span></div>
+</section>
+<section>
+  <div class="grilla">
+  <article class="tarjeta">
+    <span class="en-vivo">En vivo</span>
+    <h3>Liga Valorant Otoño</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Comunidad Vórtice · 12 equipos · Ronda 7 de 11</p>
+    <div class="barra"><span style="width:64%"></span></div>
+    <a href="torneo.html">Ver torneo →</a>
+  </article>
+  <article class="tarjeta">
+    <span class="etiqueta">Eliminación · Ajedrez</span>
+    <h3>Copa Interliceal de Ajedrez</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Liceo N.º 3 · 32 participantes · Octavos</p>
+    <div class="barra"><span style="width:40%"></span></div>
+    <a href="torneo.html">Ver torneo →</a>
+  </article>
+  <article class="tarjeta">
+    <span class="en-vivo">En vivo</span>
+    <h3>Abierto de Tenis de Mesa</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Club Sur · 24 jugadores · Ronda 3 de 5</p>
+    <div class="barra"><span style="width:60%"></span></div>
+    <a href="torneo.html">Ver torneo →</a>
+  </article>
+  <article class="tarjeta">
+    <span class="etiqueta">Liga · Fútbol 5</span>
+    <h3>Liga Barrial del Cerro</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Centro Juvenil Cerro · 10 equipos · Fecha 4 de 9</p>
+    <div class="barra"><span style="width:44%"></span></div>
+    <a href="torneo.html">Ver torneo →</a>
+  </article>
+  <article class="tarjeta">
+    <span class="en-vivo">En vivo</span>
+    <h3>Torneo LoL Clasificatorio</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Agón Comunidad · 16 equipos · Cuartos</p>
+    <div class="barra"><span style="width:70%"></span></div>
+    <a href="torneo.html">Ver torneo →</a>
+  </article>
+  <article class="tarjeta">
+    <span class="etiqueta">Suizo · Cartas</span>
+    <h3>Abierto de Magic Commander</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Tienda El Dado · 40 jugadores · Ronda 1 de 6</p>
+    <div class="barra"><span style="width:12%"></span></div>
+    <a href="torneo.html">Ver torneo →</a>
+  </article>
+  </div>
+</section>
+</main>
+<aside>
+<div class="tarjeta">
+  <span class="etiqueta">Próximos cierres</span>
+  <table><tr><td>Liga Valorant · R7<br><small>cierra el domingo</small></td><td class="num">2 d</td></tr><tr><td>Tenis de Mesa · R3<br><small>cierra el martes</small></td><td class="num">4 d</td></tr><tr><td>Copa Interliceal · Octavos<br><small>cierra el jueves</small></td><td class="num">6 d</td></tr></table>
+</div>
+<div class="tarjeta" style="background:var(--ink);color:var(--pario)">
+  <span class="etiqueta" style="color:#B9975C">Para organizadores</span>
+  <h3 style="color:var(--pario)">Abrí tu propio estadio</h3>
+  <p>Creá el torneo, elegí el formato, inscribí participantes. Las llaves y la tabla se arman solas.</p>
+  <a class="btn" href="crear.html" style="background:var(--pario);color:var(--ink);border-color:var(--pario);align-self:flex-start">Crear torneo</a>
+</div>
+</aside>
+<footer>
+  <div class="marca-agon"><img src="img/agon.png" alt="Símbolo de Agón"><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
+  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+</footer>
+</div>
+</body>
+</html>

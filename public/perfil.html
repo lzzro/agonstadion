@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
+  <title>Perfil · Stadion</title>
+  <link rel="icon" href="img/stadion.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="pagina">
+<header>
+  <a class="marca" href="index.html"><img src="img/stadion.png" alt="Símbolo de Stadion"><span>STADION</span></a>
+  <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+</header>
+<nav><a href="index.html">Inicio</a><a href="torneos.html">Torneos</a><a href="torneo.html">Calendario</a><a href="torneo.html">Posiciones</a><a href="crear.html">Organizadores</a></nav>
+<main>
+<section class="perfil-cabecera">
+  <div class="avatar" role="img" aria-label="Foto de perfil"></div>
+  <div>
+    <p class="epigrafe">ἀθλητής</p>
+    <h1 style="font-size:36px">Lucas Martiarena</h1>
+    <p class="intro">Titanes CS · Montevideo · miembro desde marzo de 2026</p>
+  </div>
+</section>
+<div class="datos"><div><strong>14</strong><span class="etiqueta">Torneos</span></div><div><strong>3</strong><span class="etiqueta">Finales</span></div><div><strong style="color:var(--olivo)">2</strong><span class="etiqueta">Kotinos · victorias</span></div></div>
+<div class="pestanas"><a href="#" class="activo">Datos</a><a href="#">Mis torneos</a><a href="#">Historial</a><a href="#">Seguridad</a></div>
+<section class="tarjeta">
+  <h2>Datos del perfil</h2>
+  <form action="#" method="post">
+    <div class="grilla">
+      <label>Nombre<input type="text" name="nombre" value="Lucas" required minlength="2" maxlength="40"></label>
+      <label>Apellido<input type="text" name="apellido" value="Martiarena" required minlength="2" maxlength="40"></label>
+      <label>Correo<input type="email" name="correo" value="lucas@correo.uy" required></label>
+      <label>Alias en juego<input type="text" name="alias" value="titan_lm" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo"></label>
+    </div>
+    <label>Equipo<input type="text" name="equipo" value="Titanes CS" maxlength="40"></label>
+    <label>Presentación<textarea name="bio" rows="3" maxlength="300">Capitán de Titanes CS. Juego Valorant desde 2021 y ajedrez desde antes.</textarea></label>
+    <div class="fila" style="justify-content:flex-end"><button class="btn" type="reset">Descartar</button><button class="btn btn-primario" type="submit">Guardar cambios</button></div>
+  </form>
+</section>
+</main>
+<aside>
+<div class="tarjeta">
+  <span class="etiqueta">Últimos resultados</span>
+  <table><tr><td>vs Nova Esports<br><small>Liga Valorant · R6</small></td><td class="num" style="color:var(--olivo)">2 – 0</td></tr><tr><td>vs Aurora FC<br><small>Liga Valorant · R5</small></td><td class="num">1 – 1</td></tr><tr><td>vs M. Ferreira<br><small>Copa Interliceal · R16</small></td><td class="num">0 – 1</td></tr></table>
+</div>
+<div class="tarjeta" style="background:var(--olivoT)">
+  <span class="etiqueta" style="color:var(--olivo)">Último kotinos</span>
+  <h3>Liga Escolar de Ajedrez</h3>
+  <p>Campeón · invierno 2026</p>
+</div>
+</aside>
+<footer>
+  <div class="marca-agon"><img src="img/agon.png" alt="Símbolo de Agón"><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
+  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+</footer>
+</div>
+</body>
+</html>
