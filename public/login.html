@@ -23,15 +23,25 @@
     <span class="etiqueta">Un producto de Agón</span>
   </section>
   <section class="panel panel-form">
-    <form action="#" method="post">
+    <form action="../apps/controllers/loginController.php" method="post">
       <span class="etiqueta">Bienvenido de vuelta</span>
       <h2>Iniciar sesión</h2>
       <label>Correo<input type="email" name="correo" placeholder="tu@correo.com" required autocomplete="email"></label>
       <label>Contraseña<input type="password" name="password" placeholder="mínimo 10 caracteres" required minlength="10" autocomplete="current-password"></label>
       <div class="fila" style="justify-content:space-between"><label class="opcion" style="border:none;padding:0"><input type="checkbox" name="recordar"> Recordarme</label><a href="#">Recuperar contraseña</a></div>
       <button class="btn btn-primario" type="submit">Entrar</button>
-      <a class="btn" href="#" style="text-align:center">Crear una cuenta</a>
+      <a class="btn" href="#crear" style="text-align:center">Crear una cuenta</a>
       <span class="etiqueta" style="text-transform:none;letter-spacing:.04em;text-align:center">¿Organizás torneos? <a href="#" style="color:var(--olivo)">Pedí acceso de organizador</a></span>
+    </form>
+    <form action="../apps/controllers/registroController.php" method="post" id="crear">
+      <span class="etiqueta">Primera vez</span>
+      <h2>Crear una cuenta</h2>
+      <label>Nombre<input type="text" name="nombre" placeholder="Ana" required minlength="2" maxlength="40" autocomplete="given-name"></label>
+      <label>Apellido<input type="text" name="apellido" placeholder="Pereira" required minlength="2" maxlength="40" autocomplete="family-name"></label>
+      <label>Correo<input type="email" name="correo" placeholder="tu@correo.com" required maxlength="120" autocomplete="email"></label>
+      <label>Contraseña<input type="password" name="password" placeholder="mínimo 10 caracteres" required minlength="10" autocomplete="new-password"></label>
+      <label>Alias en juego · opcional<input type="text" name="alias" placeholder="ana_p" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo"></label>
+      <button class="btn btn-primario" type="submit">Crear una cuenta</button>
     </form>
   </section>
 </div>

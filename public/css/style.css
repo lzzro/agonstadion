@@ -177,6 +177,9 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .pasos .hecho { color: var(--olivo); }
 .pasos .activo { color: var(--ink); }
 
+/* ---------- Avisos de los controladores ---------- */
+.avisos { margin: 0; padding-left: 18px; color: var(--cinabrio); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+
 /* ---------- Interruptor de modo noche ----------
    Los dos discos viven en el HTML y el CSS muestra el que corresponde,
    así el JavaScript solo tiene que cambiar el atributo data-theme. */
