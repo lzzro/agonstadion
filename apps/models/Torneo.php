@@ -110,11 +110,73 @@ class Torneo
         return $this->estado === 'cancelado';
     }
 
+    # --- Transiciones de estado ---
+    # Las reglas de que estado puede pasar a cual son del dominio, asi
+    # que viven en el modelo y no en el controlador. Cada una devuelve
+    # un arreglo de errores, vacio si la transicion se pudo hacer.
+    # El recorrido normal es:
+    #   borrador -> inscripcion -> en_curso -> finalizado
+    # y desde cualquier punto se puede cancelar.
+
     # Baja logica del torneo, la alternativa al borrado que la base no
     # permite cuando ya hay inscriptos.
     public function cancelar()
     {
         $this->estado = 'cancelado';
+    }
+
+    # De 'borrador' a 'inscripcion': publica el torneo para que se
+    # puedan anotar. Pide la configuracion asignada, porque sin los
+    # puntajes no hay con que armar la tabla de posiciones.
+    public function publicar()
+    {
+        $errores = array();
+
+        if ($this->estado !== 'borrador') {
+            $errores[] = 'Solo se puede publicar un torneo que este en borrador.';
+        }
+        if ($this->configuracion === null) {
+            $errores[] = 'El torneo necesita su configuracion antes de publicarse.';
+        }
+
+        if (empty($errores)) {
+            $this->estado = 'inscripcion';
+        }
+        return $errores;
+    }
+
+    # De 'inscripcion' a 'en_curso': cierra las altas y arranca la
+    # competencia. Con menos de dos participantes no hay torneo.
+    public function comenzar()
+    {
+        $errores = array();
+
+        if ($this->estado !== 'inscripcion') {
+            $errores[] = 'Solo se puede comenzar un torneo que este en inscripcion.';
+        }
+        if ($this->getCantidadParticipantes() < 2) {
+            $errores[] = 'El torneo necesita al menos 2 participantes para comenzar.';
+        }
+
+        if (empty($errores)) {
+            $this->estado = 'en_curso';
+        }
+        return $errores;
+    }
+
+    # De 'en_curso' a 'finalizado'.
+    public function finalizar()
+    {
+        $errores = array();
+
+        if ($this->estado !== 'en_curso') {
+            $errores[] = 'Solo se puede finalizar un torneo que este en curso.';
+        }
+
+        if (empty($errores)) {
+            $this->estado = 'finalizado';
+        }
+        return $errores;
     }
 
     public function asignarConfiguracion(ConfiguracionTorneo $configuracion)
