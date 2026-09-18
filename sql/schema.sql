@@ -82,6 +82,12 @@
 -- lo que guarda historia deportiva se retiene con RESTRICT (no se borra
 -- un participante que ya jugo, ni un torneo con inscriptos). La
 -- auditoria nunca se pierde: al borrarse un usuario su id queda en NULL.
+--
+-- Procedencia de la sintaxis: las restricciones CHECK y las acciones
+-- referenciales ON DELETE y ON UPDATE se vieron en la materia Base de
+-- Datos, cursada el ano anterior y que ya no esta en el plan actual; el
+-- resto de la sintaxis DDL corresponde al material de Programacion de
+-- este ano.
 -- =====================================================================
 
 
