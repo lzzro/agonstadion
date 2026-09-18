@@ -40,6 +40,14 @@ class Equipo
     }
 
     public function getIdEquipo()    { return $this->id_equipo; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdEquipo($id_equipo)
+    {
+        $this->id_equipo = (int)$id_equipo;
+    }
+
     public function getNombre()      { return $this->nombre; }
     public function getCiudad()      { return $this->ciudad; }
     public function getCapitan()     { return $this->capitan; }
@@ -93,10 +101,10 @@ class Equipo
         $errores = array();
         if (empty($this->nombre)) {
             $errores[] = 'El equipo necesita un nombre.';
-        } elseif (strlen($this->nombre) > 40) {
+        } elseif (mb_strlen($this->nombre) > 40) {
             $errores[] = 'El nombre del equipo no puede pasar de 40 caracteres.';
         }
-        if (!empty($this->ciudad) && strlen($this->ciudad) > 40) {
+        if (!empty($this->ciudad) && mb_strlen($this->ciudad) > 40) {
             $errores[] = 'La ciudad no puede pasar de 40 caracteres.';
         }
         if ($this->capitan !== null && !($this->capitan instanceof Usuario)) {

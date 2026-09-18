@@ -67,6 +67,14 @@ class Torneo
     }
 
     public function getIdTorneo()         { return $this->id_torneo; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdTorneo($id_torneo)
+    {
+        $this->id_torneo = (int)$id_torneo;
+    }
+
     public function getNombre()           { return $this->nombre; }
     public function getDisciplina()       { return $this->disciplina; }
     public function getTipoTorneo()       { return $this->tipo_torneo; }
@@ -114,9 +122,11 @@ class Torneo
         $this->configuracion = $configuracion;
     }
 
+    # Solo el estado 'inscripcion' admite altas: un torneo en borrador
+    # todavia no se publico.
     public function admiteInscripciones()
     {
-        return ($this->estado === 'borrador' || $this->estado === 'inscripcion')
+        return $this->estado === 'inscripcion'
                && $this->getCantidadParticipantes() < $this->max_participantes;
     }
 
@@ -191,7 +201,7 @@ class Torneo
     {
         $errores = array();
 
-        if (empty($this->nombre) || strlen($this->nombre) < 4 || strlen($this->nombre) > 80) {
+        if (empty($this->nombre) || mb_strlen($this->nombre) < 4 || mb_strlen($this->nombre) > 80) {
             $errores[] = 'El nombre del torneo tiene que tener entre 4 y 80 caracteres.';
         }
 
@@ -214,7 +224,7 @@ class Torneo
             $errores[] = 'El estado del torneo no es uno de los previstos.';
         }
 
-        if (!empty($this->sede) && strlen($this->sede) > 80) {
+        if (!empty($this->sede) && mb_strlen($this->sede) > 80) {
             $errores[] = 'La sede no puede pasar de 80 caracteres.';
         }
 

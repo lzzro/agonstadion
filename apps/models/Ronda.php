@@ -37,6 +37,14 @@ class Ronda
     }
 
     public function getIdRonda()         { return $this->id_ronda; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdRonda($id_ronda)
+    {
+        $this->id_ronda = (int)$id_ronda;
+    }
+
     public function getNumero()          { return $this->numero; }
     public function getNombre()          { return $this->nombre; }
     public function getFechaInicio()     { return $this->fecha_inicio; }
@@ -111,7 +119,7 @@ class Ronda
         if ($this->numero < 1) {
             $errores[] = 'El numero de ronda arranca en 1.';
         }
-        if (!empty($this->nombre) && strlen($this->nombre) > 40) {
+        if (!empty($this->nombre) && mb_strlen($this->nombre) > 40) {
             $errores[] = 'El nombre de la ronda no puede pasar de 40 caracteres.';
         }
         if (!empty($this->fecha_inicio) && !empty($this->fecha_fin)

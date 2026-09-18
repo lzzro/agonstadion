@@ -84,7 +84,7 @@ class Resultado
         if ($this->usuario_carga !== null && !($this->usuario_carga instanceof Usuario)) {
             $errores[] = 'Quien carga el resultado tiene que ser un objeto Usuario.';
         }
-        if (!empty($this->observaciones) && strlen($this->observaciones) > 200) {
+        if (!empty($this->observaciones) && mb_strlen($this->observaciones) > 200) {
             $errores[] = 'Las observaciones no pueden pasar de 200 caracteres.';
         }
 

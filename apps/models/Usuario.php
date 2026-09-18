@@ -50,6 +50,14 @@ class Usuario
     }
 
     public function getIdUsuario()   { return $this->id_usuario; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdUsuario($id_usuario)
+    {
+        $this->id_usuario = (int)$id_usuario;
+    }
+
     public function getCorreo()      { return $this->correo; }
     public function getHashPassword(){ return $this->hash_password; }
     public function getNombre()      { return $this->nombre; }
@@ -85,7 +93,7 @@ class Usuario
         $errores = array();
         if (empty($clave_en_claro)) {
             $errores[] = 'La contrasena no puede quedar vacia.';
-        } elseif (strlen($clave_en_claro) < 10) {
+        } elseif (mb_strlen($clave_en_claro) < 10) {
             $errores[] = 'La contrasena necesita al menos 10 caracteres.';
         }
         if (empty($errores)) {
@@ -128,31 +136,31 @@ class Usuario
 
         if (empty($this->correo)) {
             $errores[] = 'El correo es obligatorio.';
-        } elseif (strlen($this->correo) > 120) {
+        } elseif (mb_strlen($this->correo) > 120) {
             $errores[] = 'El correo no puede pasar de 120 caracteres.';
         } elseif (!filter_var($this->correo, FILTER_VALIDATE_EMAIL)) {
             $errores[] = 'El correo no tiene un formato valido.';
         }
 
-        if (empty($this->nombre) || strlen($this->nombre) < 2 || strlen($this->nombre) > 40) {
+        if (empty($this->nombre) || mb_strlen($this->nombre) < 2 || mb_strlen($this->nombre) > 40) {
             $errores[] = 'El nombre tiene que tener entre 2 y 40 caracteres.';
         }
 
-        if (empty($this->apellido) || strlen($this->apellido) < 2 || strlen($this->apellido) > 40) {
+        if (empty($this->apellido) || mb_strlen($this->apellido) < 2 || mb_strlen($this->apellido) > 40) {
             $errores[] = 'El apellido tiene que tener entre 2 y 40 caracteres.';
         }
 
         # El alias es opcional, pero si viene tiene el mismo formato que
         # el pattern del formulario de perfil: letras, numeros y guion bajo.
         if (!empty($this->alias)) {
-            if (strlen($this->alias) > 20) {
+            if (mb_strlen($this->alias) > 20) {
                 $errores[] = 'El alias no puede pasar de 20 caracteres.';
             } elseif (!preg_match('/^[A-Za-z0-9_]+$/', $this->alias)) {
                 $errores[] = 'El alias solo admite letras, numeros y guion bajo.';
             }
         }
 
-        if (!empty($this->presentacion) && strlen($this->presentacion) > 300) {
+        if (!empty($this->presentacion) && mb_strlen($this->presentacion) > 300) {
             $errores[] = 'La presentacion no puede pasar de 300 caracteres.';
         }
 

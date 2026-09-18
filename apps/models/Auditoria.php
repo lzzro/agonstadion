@@ -46,6 +46,14 @@ class Auditoria
     }
 
     public function getIdAuditoria()  { return $this->id_auditoria; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdAuditoria($id_auditoria)
+    {
+        $this->id_auditoria = (int)$id_auditoria;
+    }
+
     public function getUsuario()      { return $this->usuario; }
     public function getTablaAfectada(){ return $this->tabla_afectada; }
     public function getIdRegistro()   { return $this->id_registro; }
@@ -74,7 +82,7 @@ class Auditoria
 
         if (empty($this->tabla_afectada)) {
             $errores[] = 'Hay que indicar la tabla afectada.';
-        } elseif (strlen($this->tabla_afectada) > 40) {
+        } elseif (mb_strlen($this->tabla_afectada) > 40) {
             $errores[] = 'El nombre de la tabla afectada no puede pasar de 40 caracteres.';
         }
 
@@ -88,12 +96,12 @@ class Auditoria
             $errores[] = 'El responsable tiene que ser un objeto Usuario o quedar vacio.';
         }
 
-        if (!empty($this->detalle) && strlen($this->detalle) > 255) {
+        if (!empty($this->detalle) && mb_strlen($this->detalle) > 255) {
             $errores[] = 'El detalle no puede pasar de 255 caracteres.';
         }
 
         # 45 caracteres es el largo maximo de una IPv6.
-        if (!empty($this->direccion_ip) && strlen($this->direccion_ip) > 45) {
+        if (!empty($this->direccion_ip) && mb_strlen($this->direccion_ip) > 45) {
             $errores[] = 'La direccion IP no tiene un largo valido.';
         }
 

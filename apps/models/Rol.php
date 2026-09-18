@@ -27,6 +27,14 @@ class Rol
     }
 
     public function getIdRol()      { return $this->id_rol; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdRol($id_rol)
+    {
+        $this->id_rol = (int)$id_rol;
+    }
+
     public function getNombre()     { return $this->nombre; }
     public function getDescripcion(){ return $this->descripcion; }
 
@@ -36,7 +44,7 @@ class Rol
         $errores = array();
         if (empty($this->nombre)) {
             $errores[] = 'El rol necesita un nombre.';
-        } elseif (strlen($this->nombre) > 30) {
+        } elseif (mb_strlen($this->nombre) > 30) {
             $errores[] = 'El nombre del rol no puede pasar de 30 caracteres.';
         }
         return $errores;

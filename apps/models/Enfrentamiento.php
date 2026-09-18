@@ -44,6 +44,14 @@ class Enfrentamiento
     }
 
     public function getIdEnfrentamiento() { return $this->id_enfrentamiento; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdEnfrentamiento($id_enfrentamiento)
+    {
+        $this->id_enfrentamiento = (int)$id_enfrentamiento;
+    }
+
     public function getNumero()           { return $this->numero; }
     public function getLocal()            { return $this->local; }
     public function getVisitante()        { return $this->visitante; }
@@ -133,7 +141,7 @@ class Enfrentamiento
             $errores[] = 'El estado del enfrentamiento no es uno de los previstos.';
         }
 
-        if (!empty($this->lugar) && strlen($this->lugar) > 80) {
+        if (!empty($this->lugar) && mb_strlen($this->lugar) > 80) {
             $errores[] = 'El lugar no puede pasar de 80 caracteres.';
         }
 

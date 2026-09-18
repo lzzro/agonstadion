@@ -45,6 +45,14 @@ class ConfiguracionTorneo
     }
 
     public function getIdTorneo()          { return $this->id_torneo; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdTorneo($id_torneo)
+    {
+        $this->id_torneo = (int)$id_torneo;
+    }
+
     public function getPuntosVictoria()    { return $this->puntos_victoria; }
     public function getPuntosEmpate()      { return $this->puntos_empate; }
     public function getPuntosDerrota()     { return $this->puntos_derrota; }

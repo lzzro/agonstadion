@@ -26,6 +26,14 @@ class ModuloCompetencia
     }
 
     public function getIdModulo()   { return $this->id_modulo; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdModulo($id_modulo)
+    {
+        $this->id_modulo = (int)$id_modulo;
+    }
+
     public function getNombre()     { return $this->nombre; }
     public function getDescripcion(){ return $this->descripcion; }
 

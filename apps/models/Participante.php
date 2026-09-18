@@ -39,6 +39,14 @@ class Participante
     }
 
     public function getIdParticipante()   { return $this->id_participante; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdParticipante($id_participante)
+    {
+        $this->id_participante = (int)$id_participante;
+    }
+
     public function getUsuario()          { return $this->usuario; }
     public function getEquipo()           { return $this->equipo; }
     public function getEstado()           { return $this->estado; }

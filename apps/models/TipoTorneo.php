@@ -28,6 +28,14 @@ class TipoTorneo
     }
 
     public function getIdTipoTorneo() { return $this->id_tipo_torneo; }
+
+    # Unico setter de la clase: sirve para guardar el id que genera
+    # el AUTO_INCREMENT de la tabla despues de un INSERT.
+    public function setIdTipoTorneo($id_tipo_torneo)
+    {
+        $this->id_tipo_torneo = (int)$id_tipo_torneo;
+    }
+
     public function getNombre()       { return $this->nombre; }
     public function getCompiteEquipo(){ return $this->compite_equipo; }
     public function getDescripcion()  { return $this->descripcion; }
