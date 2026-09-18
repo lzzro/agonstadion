@@ -114,8 +114,12 @@ nav a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
 /* Tarjeta de contraste: lleva colores fijos, no variables, así que es la
    única pieza que no cambia con el tema. Su fuerza viene de ser lo
    contrario del papel, y de noche, al darse vuelta con el resto, perdía
-   justamente eso. El dorado de la etiqueta da 6,19:1 sobre este fondo. */
-.tarjeta-contraste { background: #1E1C18; color: #FBF9F4; border-color: #1E1C18; }
+   justamente eso. El dorado de la etiqueta da 6,19:1 sobre este fondo.
+   El borde también es fijo: de noche el fondo de la tarjeta y el de la
+   página quedan casi al mismo tono, así que sin canto el bloque se
+   perdía. El tono es el mismo que el ícono de noche usa en su círculo
+   exterior. */
+.tarjeta-contraste { background: #1E1C18; color: #FBF9F4; border-color: #3A362E; }
 .tarjeta-contraste h3 { color: #FBF9F4; }
 .tarjeta-contraste .etiqueta { color: #B9975C; }
 .tarjeta-contraste .btn { background: #FBF9F4; color: #1E1C18; border-color: #FBF9F4; align-self: flex-start; }
