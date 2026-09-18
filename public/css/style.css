@@ -13,8 +13,39 @@
   --olivo2: #75865A;
   --olivoT: #E6EAD9;
   --cinabrio: #A63A2B; /* solo "en vivo" */
+  --olivoB: #E3DDD0;   /* borde de la fila destacada */
+  --enjuego: #B9975C;  /* estado "en juego" */
+  --vencedor: #3F4A2C; /* estado "vencedor" */
+  --cerrado: #8A8478;  /* estado "cerrado" */
   --serif: 'Cormorant Garamond', Georgia, serif;
   --sans: 'Jost', 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+
+/* ---------- Modo noche ----------
+   Solo se redefinen los colores: la tipografía, las medidas y la
+   retícula son las mismas. Cada valor sale de los bocetos; los cuatro
+   marcados como "derivado" se sacaron conservando el matiz y el croma
+   del color de día y subiendo la claridad, que es lo que hacen los
+   pares ya confirmados (el matiz de olivo y cinabrio no se mueve ni un
+   grado entre los dos modos). */
+[data-theme="noche"] {
+  --pent: #14130F;     /* basalto: fondo */
+  --pario: #1A1814;    /* basalto claro: superficies */
+  --veta: #3A362E;     /* del círculo exterior del ícono de noche */
+  --hair: #2A2822;
+  --ink: #EDE7DA;      /* cal */
+  --ink2: #C9C1B0;
+  --ink3: #A79F8C;
+  --olivo: #8CA368;    /* kotinos de noche */
+  --olivo2: #B9CB9C;   /* derivado: mantiene la distancia con --olivo */
+  --olivoT: #232A1B;
+  --olivoB: #3A4430;
+  --cinabrio: #D4614E; /* brasa */
+  --enjuego: #AD8B50;  /* derivado */
+  --vencedor: #A7B593; /* derivado */
+  --cerrado: #A79F8C;  /* igual que --ink3: de día son el mismo color */
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -60,8 +91,25 @@ nav a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
 .btn-primario:hover { background: var(--olivo2); color: var(--pario); }
 .etiqueta { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink3); }
 .epigrafe { font-family: var(--serif); font-size: 14px; letter-spacing: .28em; color: var(--ink3); }
-.en-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--cinabrio); }
-.en-vivo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cinabrio); }
+
+/* ---------- Estado del torneo: color Y forma juntos ----------
+   Nunca solo el color: quien no distingue el rojo del verde reconoce
+   igual el estado por la figura. La figura sale de ::before salvo en
+   "vencedor", que lleva la rama de olivo en SVG. Todas toman el color
+   de currentColor, así que basta cambiar la variante. */
+.estado { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; }
+.estado::before { content: ""; display: block; flex: none; }
+.estado-en-vivo     { color: var(--cinabrio); }
+.estado-en-vivo::before     { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.estado-inscripcion { color: var(--olivo); }
+.estado-inscripcion::before { width: 9px; height: 9px; border-radius: 50%; border: 2px solid currentColor; }
+.estado-en-juego    { color: var(--enjuego); }
+.estado-en-juego::before    { width: 9px; height: 9px; background: currentColor; }
+.estado-vencedor    { color: var(--vencedor); }
+.estado-vencedor::before    { display: none; }  /* lleva la rama, no el punto */
+.estado-vencedor svg        { flex: none; }
+.estado-cerrado     { color: var(--cerrado); }
+.estado-cerrado::before     { width: 12px; height: 2px; background: currentColor; }
 .tarjeta { background: var(--pario); border: 1px solid var(--hair); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
 .tarjeta h3 { margin: 0; font-family: var(--serif); font-size: 22px; font-weight: 500; }
 .barra { height: 2px; background: var(--hair); }
@@ -84,6 +132,7 @@ th { text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: u
 td { padding: 10px 8px; border-bottom: 1px solid var(--hair); }
 td.num { text-align: right; font-family: var(--serif); font-size: 18px; }
 tr.clasifica { background: var(--olivoT); }
+tr.clasifica td { border-bottom-color: var(--olivoB); }
 .tabla-scroll { overflow-x: auto; }
 
 /* ---------- Formularios ---------- */
@@ -116,8 +165,23 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .pasos .hecho { color: var(--olivo); }
 .pasos .activo { color: var(--ink); }
 
+/* ---------- Interruptor de modo noche ----------
+   Los dos discos viven en el HTML y el CSS muestra el que corresponde,
+   así el JavaScript solo tiene que cambiar el atributo data-theme. */
+.interruptor-tema {
+  position: fixed; bottom: 24px; right: 24px; z-index: 20;
+  width: 66px; height: 66px; padding: 0; line-height: 0;
+  border: none; border-radius: 50%; background: transparent; cursor: pointer;
+}
+.interruptor-tema svg:last-of-type { display: none; }
+[data-theme="noche"] .interruptor-tema svg:first-of-type { display: none; }
+[data-theme="noche"] .interruptor-tema svg:last-of-type { display: block; }
+.interruptor-tema:focus-visible { outline: 2px solid var(--olivo); outline-offset: 3px; }
+
 /* ---------- Footer ---------- */
-footer { display: flex; flex-direction: column; gap: 8px; padding: 20px; background: var(--pario); border-top: 1px solid var(--hair); font-size: 12px; color: var(--ink3); }
+/* El pie deja lugar abajo para que el interruptor no tape los enlaces
+   en pantalla angosta, donde queda encima. */
+footer { display: flex; flex-direction: column; gap: 8px; padding: 20px 20px 104px; background: var(--pario); border-top: 1px solid var(--hair); font-size: 12px; color: var(--ink3); }
 footer .marca-agon { display: flex; align-items: center; gap: 8px; }
 footer .marca-agon img { width: 22px; height: 22px; }
 
