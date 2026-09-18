@@ -11,11 +11,18 @@
 #
 # La contrasena entra por asignarClave(), que la pasa por
 # password_hash(). En claro no se guarda ni se muestra nunca.
+#
+# El alta queda registrada en la tabla auditoria, igual que los inicios
+# de sesion. No lleva detalle: con el id de la cuenta recien creada ya
+# se sabe todo lo que hace falta, y el correo esta en la propia fila de
+# usuario.
 # =====================================================================
 
 require_once '../config/database.php';
 require_once '../models/Usuario.php';
 require_once '../models/UsuarioRepositorio.php';
+require_once '../models/Auditoria.php';
+require_once '../models/AuditoriaRepositorio.php';
 
 $titulo  = 'Alta de cuenta';
 $mensaje = '';
@@ -52,6 +59,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 $errores = $repositorio->insertar($usuario);
 
                 if (empty($errores)) {
+                    $auditorias = new AuditoriaRepositorio($conexion);
+                    $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+                    $auditorias->registrar(new Auditoria(
+                        null, $usuario, 'usuario', 'alta',
+                        $usuario->getIdUsuario(), null, $ip));
+                    # Si la auditoria fallara no se le avisa a quien se
+                    # dio de alta: la cuenta ya quedo abierta y el aviso
+                    # lo confundiria.
+
                     $mensaje = 'La cuenta queda abierta a nombre de '
                              . $usuario->getNombreCompleto()
                              . ', con el numero ' . $usuario->getIdUsuario() . '.';
