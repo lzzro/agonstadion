@@ -108,10 +108,10 @@ class Equipo
             $errores[] = 'La ciudad no puede pasar de 40 caracteres.';
         }
         if ($this->capitan !== null && !($this->capitan instanceof Usuario)) {
-            $errores[] = 'El capitan tiene que ser un objeto Usuario o quedar vacio.';
+            $errores[] = 'El capitan no es un usuario valido.';
         }
         if ($this->activo !== 0 && $this->activo !== 1) {
-            $errores[] = 'El campo activo solo admite 0 o 1.';
+            $errores[] = 'El estado de alta solo admite si o no.';
         }
         return $errores;
     }

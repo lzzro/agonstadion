@@ -125,7 +125,7 @@ class Enfrentamiento
             $errores[] = 'Un participante no puede enfrentarse a si mismo.';
         }
         if ($this->visitante !== null && !($this->visitante instanceof Participante)) {
-            $errores[] = 'El visitante tiene que ser un objeto Participante o quedar vacio.';
+            $errores[] = 'El visitante no es un participante valido.';
         }
 
         # Los dos tienen que estar en competencia, no dados de baja.

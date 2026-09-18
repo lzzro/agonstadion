@@ -99,10 +99,10 @@ class Participante
             $errores[] = 'El participante no puede ser un usuario y un equipo a la vez.';
         }
         if ($this->usuario !== null && !($this->usuario instanceof Usuario)) {
-            $errores[] = 'El competidor individual tiene que ser un objeto Usuario.';
+            $errores[] = 'El competidor individual no es un usuario valido.';
         }
         if ($this->equipo !== null && !($this->equipo instanceof Equipo)) {
-            $errores[] = 'El competidor colectivo tiene que ser un objeto Equipo.';
+            $errores[] = 'El competidor colectivo no es un equipo valido.';
         }
 
         $estados = array('inscripto', 'confirmado', 'baja', 'descalificado');

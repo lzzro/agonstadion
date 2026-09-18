@@ -76,13 +76,13 @@ class Resultado
             $errores[] = 'Los puntajes no pueden ser negativos.';
         }
         if ($this->walkover !== 0 && $this->walkover !== 1) {
-            $errores[] = 'El campo walkover solo admite 0 o 1.';
+            $errores[] = 'La opcion de walkover solo admite si o no.';
         }
         if ($this->ganador !== null && !($this->ganador instanceof Participante)) {
-            $errores[] = 'El ganador tiene que ser un objeto Participante o quedar vacio.';
+            $errores[] = 'El ganador no es un participante valido.';
         }
         if ($this->usuario_carga !== null && !($this->usuario_carga instanceof Usuario)) {
-            $errores[] = 'Quien carga el resultado tiene que ser un objeto Usuario.';
+            $errores[] = 'Quien carga el resultado no es un usuario valido.';
         }
         if (!empty($this->observaciones) && mb_strlen($this->observaciones) > 200) {
             $errores[] = 'Las observaciones no pueden pasar de 200 caracteres.';

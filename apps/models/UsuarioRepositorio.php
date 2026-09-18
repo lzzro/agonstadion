@@ -14,6 +14,7 @@
 # =====================================================================
 
 require_once __DIR__ . '/Usuario.php';
+require_once __DIR__ . '/Rol.php';
 
 class UsuarioRepositorio
 {
@@ -48,7 +49,7 @@ class UsuarioRepositorio
                 VALUES (?, ?, ?, ?, ?, ?, ?)';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
-            return array('El alta no se puede preparar.');
+            return array('El alta no se completa.');
         }
 
         $correo       = $usuario->getCorreo();
@@ -72,11 +73,59 @@ class UsuarioRepositorio
                 return array('Ya hay una cuenta con ese correo.');
             }
             $sentencia->close();
-            return array('El alta no se completa.');
+            return array('El alta no queda guardada.');
         }
 
         $usuario->setIdUsuario($this->conexion->insert_id);
         $sentencia->close();
+
+        # Toda cuenta nueva nace como jugador. Los demas roles
+        # (organizador, arbitro, administrador) se asignan aparte.
+        return $this->asignarRolPorNombre($usuario, 'jugador');
+    }
+
+    # Agrega una fila en usuario_rol y tambien el Rol al objeto, para que
+    # el usuario en memoria quede igual que el de la base. El id del rol
+    # sale del catalogo por su nombre: no hay numeros fijos en el codigo.
+    public function asignarRolPorNombre(Usuario $usuario, $nombre_rol)
+    {
+        if ($usuario->getIdUsuario() === null) {
+            return array('Falta saber a que cuenta asignarle el rol.');
+        }
+
+        $sql = 'SELECT id_rol, nombre, descripcion FROM rol WHERE nombre = ?';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return array('La asignacion del rol no se completa.');
+        }
+        $sentencia->bind_param('s', $nombre_rol);
+        $sentencia->execute();
+        $fila = $sentencia->get_result()->fetch_assoc();
+        $sentencia->close();
+
+        if ($fila === null) {
+            return array('El rol ' . $nombre_rol . ' no figura en el catalogo.');
+        }
+
+        $sql = 'INSERT INTO usuario_rol (id_usuario, id_rol) VALUES (?, ?)';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return array('La asignacion del rol no se completa.');
+        }
+        $id_usuario = $usuario->getIdUsuario();
+        $id_rol     = (int)$fila['id_rol'];
+        $sentencia->bind_param('ii', $id_usuario, $id_rol);
+
+        if (!$sentencia->execute()) {
+            # 1062: el usuario ya tenia ese rol. No es un error.
+            if ($sentencia->errno !== 1062) {
+                $sentencia->close();
+                return array('El rol no queda asignado.');
+            }
+        }
+        $sentencia->close();
+
+        $usuario->agregarRol(new Rol($fila['id_rol'], $fila['nombre'], $fila['descripcion']));
         return array();
     }
 
@@ -155,7 +204,7 @@ class UsuarioRepositorio
             return $errores;
         }
         if ($usuario->getIdUsuario() === null) {
-            return array('El usuario no tiene id: no se sabe cual actualizar.');
+            return array('Falta saber que cuenta se actualiza.');
         }
 
         $sql = 'UPDATE usuario
@@ -163,7 +212,7 @@ class UsuarioRepositorio
                 WHERE id_usuario = ?';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
-            return array('La modificacion no se puede preparar.');
+            return array('La modificacion no se completa.');
         }
 
         $nombre       = $usuario->getNombre();

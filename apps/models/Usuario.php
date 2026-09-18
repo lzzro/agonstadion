@@ -169,7 +169,7 @@ class Usuario
         }
 
         if ($this->activo !== 0 && $this->activo !== 1) {
-            $errores[] = 'El campo activo solo admite 0 o 1.';
+            $errores[] = 'El estado de alta solo admite si o no.';
         }
 
         return $errores;

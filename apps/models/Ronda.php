@@ -91,7 +91,7 @@ class Ronda
             $this->estado = 'cerrada';
             return array();
         }
-        return array('Todavia hay enfrentamientos sin resultado en esta ronda.');
+        return array('Quedan enfrentamientos sin resultado en esta ronda.');
     }
 
     public function agregarEnfrentamiento(Enfrentamiento $enfrentamiento)

@@ -154,10 +154,10 @@ class ConfiguracionTorneo
             $errores[] = 'Los puntos por empate tienen que estar entre 0 y 10.';
         }
         if ($this->admite_empate !== 0 && $this->admite_empate !== 1) {
-            $errores[] = 'El campo admite_empate solo admite 0 o 1.';
+            $errores[] = 'La opcion de empate solo admite si o no.';
         }
         if ($this->ida_y_vuelta !== 0 && $this->ida_y_vuelta !== 1) {
-            $errores[] = 'El campo ida_y_vuelta solo admite 0 o 1.';
+            $errores[] = 'La opcion de ida y vuelta solo admite si o no.';
         }
         if ($this->clasifican_playoffs < 0) {
             $errores[] = 'La cantidad que clasifica a playoffs no puede ser negativa.';

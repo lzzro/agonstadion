@@ -93,7 +93,7 @@ class Auditoria
         }
 
         if ($this->usuario !== null && !($this->usuario instanceof Usuario)) {
-            $errores[] = 'El responsable tiene que ser un objeto Usuario o quedar vacio.';
+            $errores[] = 'El responsable del registro no es un usuario valido.';
         }
 
         if (!empty($this->detalle) && mb_strlen($this->detalle) > 255) {
