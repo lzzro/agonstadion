@@ -12,6 +12,9 @@
 # La contrasena entra por asignarClave(), que la pasa por
 # password_hash(). En claro no se guarda ni se muestra nunca.
 #
+# La conformidad con los terminos se comprueba aca tambien, no solo con
+# el required del formulario: el navegador se puede saltear.
+#
 # El alta queda registrada en la tabla auditoria, igual que los inicios
 # de sesion. No lleva detalle: con el id de la cuenta recien creada ya
 # se sabe todo lo que hace falta, y el correo esta en la propia fila de
@@ -41,6 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
     if (empty($nombre) || empty($apellido) || empty($correo) || empty($clave)) {
         $errores[] = 'Nombre, apellido, correo y contrasena son obligatorios.';
+    }
+
+    # Una casilla sin marcar no se envia, asi que alcanza con isset. El
+    # required del formulario no sirve de garantia: el POST puede llegar
+    # de cualquier lado, no solo del formulario.
+    if (!isset($_POST['terminos'])) {
+        $errores[] = 'Falta la conformidad con los terminos.';
     }
 
     if (empty($errores)) {
