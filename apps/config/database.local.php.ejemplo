@@ -1,0 +1,26 @@
+<?php
+# =====================================================================
+# Configuracion local de la base de datos - ARCHIVO DE EJEMPLO
+# Proyecto SGDM - Stadion (Agon)
+# ---------------------------------------------------------------------
+# Este archivo SI va al repositorio, porque no tiene nada secreto.
+#
+# Para poner en marcha una copia del proyecto:
+#   1. copiar este archivo en la misma carpeta con el nombre
+#      database.local.php  (sin el .ejemplo)
+#   2. reemplazar el valor de 'clave' por la contrasena real que tenga
+#      el usuario sgdm_app en esa maquina
+#   3. no agregarlo al repositorio: el .gitignore ya lo excluye
+#
+# La contrasena se le pone al usuario de base de datos con:
+#   ALTER USER 'sgdm_app'@'localhost' IDENTIFIED BY 'la-que-elijas';
+# Ese ALTER USER se ejecuta a mano en phpMyAdmin o en la consola de
+# MariaDB, y no se guarda en sql/schema.sql por el mismo motivo.
+#
+# Solo hacen falta las claves que cambien respecto de database.php. En
+# la mayoria de las maquinas alcanza con la contrasena.
+# =====================================================================
+
+return array(
+    'clave' => 'LA-CONTRASENA-REAL-DE-sgdm_app'
+);

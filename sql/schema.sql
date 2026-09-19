@@ -509,8 +509,15 @@ INSERT INTO modulo_competencia (nombre, descripcion) VALUES
 -- =====================================================================
 -- 12. DCL - USUARIOS DE BASE DE DATOS Y PERMISOS
 -- =====================================================================
--- IMPORTANTE: las contrasenas de abajo son marcadores. Hay que
--- cambiarlas al instalar y no versionar las reales en el repositorio.
+-- IMPORTANTE: las contrasenas de abajo son marcadores y tienen que
+-- quedar asi en el repositorio. La real se le pone al usuario aparte,
+-- a mano, despues de correr este script:
+--
+--   ALTER USER 'sgdm_app'@'localhost' IDENTIFIED BY 'la-que-elijas';
+--
+-- y esa misma clave va en apps/config/database.local.php, que el
+-- .gitignore excluye. Asi la contrasena real no esta en ningun archivo
+-- versionado.
 --
 -- Tres usuarios, por nivel de privilegio:
 --   sgdm_app     -> el que usa la aplicacion PHP. Solo DML sobre sgdm:

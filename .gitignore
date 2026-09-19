@@ -1,0 +1,22 @@
+# ---------------------------------------------------------------------
+# Lo que NUNCA va al repositorio
+# ---------------------------------------------------------------------
+
+# Configuracion local con las credenciales reales de la base de datos.
+# Cada maquina tiene la suya; el repositorio solo lleva el ejemplo.
+apps/config/database.local.php
+
+# Por si alguna vez se usan otros nombres para lo mismo
+*.local.php
+.env
+
+# ---------------------------------------------------------------------
+# Basura del sistema y de los editores
+# ---------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~

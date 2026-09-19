@@ -3,11 +3,18 @@
 # Conexion a la base de datos
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
-# SEGURIDAD - pendiente para produccion: estas credenciales tendrian
-# que venir de variables de entorno y no estar escritas en el codigo,
-# que ademas va al repositorio. Se dejan aca porque esa practica
-# tampoco se dio en clase. Si el proyecto sale del entorno local, lo
-# primero que hay que cambiar es esto.
+# LA CONTRASENA NO ESTA EN ESTE ARCHIVO. Vive en database.local.php,
+# que el .gitignore excluye, asi que nunca llega al repositorio. Este
+# archivo solo trae los valores que si se pueden publicar y, si existe
+# el archivo local, lo carga encima.
+#
+# Para poner en marcha una copia nueva:
+#   1. copiar database.local.php.ejemplo como database.local.php
+#   2. escribir ahi la contrasena real de sgdm_app
+#   3. no agregarlo al repositorio: el .gitignore ya se encarga
+#
+# La contrasena real se le da al usuario de base de datos con un
+# ALTER USER, que se ejecuta a mano y tampoco queda en sql/schema.sql.
 #
 # El usuario es sgdm_app, el de la seccion 12 de sql/schema.sql: solo
 # tiene permisos de lectura y escritura sobre la base sgdm, nada de
@@ -15,13 +22,24 @@
 # acotado a los datos, sin poder tocar la estructura.
 # =====================================================================
 
+# Valores publicables. La clave queda vacia a proposito.
 $configuracion_bd = array(
     'servidor' => 'localhost',
     'usuario'  => 'sgdm_app',
-    'clave'    => 'CAMBIAR_CLAVE_APP',  # la misma que se puso en el GRANT
+    'clave'    => '',
     'base'     => 'sgdm',
     'juego'    => 'utf8mb4'
 );
+
+# Si hay configuracion local, pisa lo de arriba. El archivo devuelve un
+# arreglo con solo las claves que quiera cambiar.
+$archivo_local = __DIR__ . '/database.local.php';
+if (file_exists($archivo_local)) {
+    $configuracion_local = require $archivo_local;
+    if (is_array($configuracion_local)) {
+        $configuracion_bd = array_merge($configuracion_bd, $configuracion_local);
+    }
+}
 
 # Abre la conexion y la devuelve. Si algo falla devuelve null y deja el
 # motivo en $error_bd, para que el controlador lo muestre sin que la
@@ -33,6 +51,14 @@ function conectarBD()
     # Por defecto mysqli lanza excepciones. Se apaga para poder
     # comprobar los errores con if, que es como se trabaja en el resto
     # del proyecto.
+    # Sin configuracion local no hay clave, y conviene decirlo con
+    # claridad en vez de dejar que falle como si el servidor no
+    # estuviera.
+    if ($configuracion_bd['clave'] === '') {
+        $error_bd = 'Falta la configuracion local de la base de datos.';
+        return null;
+    }
+
     mysqli_report(MYSQLI_REPORT_OFF);
 
     $conexion = @new mysqli(
