@@ -163,14 +163,34 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .chip.activo { background: var(--ink); color: var(--pario); border-color: var(--ink); }
 
 /* ---------- Login / registro ---------- */
-.acceso { display: grid; grid-template-columns: 1fr; min-height: 100vh; }
-.acceso .panel { padding: 32px 20px; display: flex; flex-direction: column; gap: 18px; justify-content: center; }
-.acceso .panel-marmol { background: var(--pent); border-bottom: 1px solid var(--hair); }
+.acceso { display: grid; grid-template-columns: 1fr; min-height: 100vh; position: relative; }
+.acceso .panel { padding: 24px 20px; display: flex; flex-direction: column; gap: 18px; justify-content: center; }
+.acceso .panel-marmol { background: var(--pent); }
 .acceso .panel-form { background: var(--pario); }
-/* Las páginas de acceso no tienen pie, así que el interruptor de tema
-   quedaba encima del botón de envío en pantalla angosta. Este espacio
-   lo deja libre; desde 768px la regla de .acceso .panel lo repone. */
-.acceso .panel-form { padding-bottom: 104px; }
+
+/* ---------- Acceso en pantalla angosta ----------
+   En un teléfono, el epígrafe, el título y el párrafo del panel de
+   mármol empujaban el formulario fuera de la primera pantalla: había
+   que bajar con el dedo para llegar a los campos. Acá el formulario
+   pasa primero y ese texto baja debajo.
+
+   La marca no puede irse con el texto: tiene que seguir siendo lo
+   primero que se ve. Como vive dentro del panel de mármol, se la saca
+   del flujo y se la fija arriba de todo, contra .acceso. El formulario
+   reserva ese alto con su padding superior.
+
+   Nada de esto toca la maqueta de dos columnas: desde 768px la marca
+   vuelve al flujo del panel y los paneles recuperan su orden. */
+.acceso .panel-form { order: -1; padding-top: 62px; }
+/* En pantalla angosta el formulario de alta es largo: cinco campos, la
+   casilla y el botón. Se aprieta un poco el espaciado para que entre
+   entero incluso en las pantallas más bajas. Desde 768px vuelve al
+   espaciado normal. */
+.acceso form { gap: 12px; }
+.acceso label { gap: 4px; }
+.acceso input, .acceso select { padding: 10px 12px; }
+.acceso .panel-marmol { border-top: 1px solid var(--hair); }
+.acceso .marca { position: absolute; top: 18px; left: 20px; }
 .acceso form { max-width: 400px; width: 100%; margin: 0 auto; }
 .perfil-cabecera { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .avatar { width: 96px; height: 96px; border-radius: 50%; background: var(--veta); border: 3px solid var(--olivo2); }
@@ -223,7 +243,14 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
   .opciones { grid-template-columns: repeat(3, 1fr); }
   .acceso { grid-template-columns: 1fr 1fr; }
   .acceso .panel { padding: 48px 40px; }
-  .acceso .panel-marmol { border-bottom: none; border-right: 1px solid var(--hair); }
+  /* Se deshace lo de pantalla angosta: la marca vuelve al flujo del
+     panel de mármol y el formulario a su columna de la derecha. */
+  .acceso .marca { position: static; }
+  .acceso .panel-form { order: 0; padding-top: 48px; }
+  .acceso form { gap: 16px; }
+  .acceso label { gap: 6px; }
+  .acceso input, .acceso select { padding: 12px; }
+  .acceso .panel-marmol { border-top: none; border-bottom: none; border-right: 1px solid var(--hair); }
   .perfil-cabecera { flex-direction: row; align-items: center; gap: 24px; }
   footer { flex-direction: row; justify-content: space-between; align-items: center; padding: 22px 40px; }
 }
