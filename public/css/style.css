@@ -167,6 +167,10 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .acceso .panel { padding: 32px 20px; display: flex; flex-direction: column; gap: 18px; justify-content: center; }
 .acceso .panel-marmol { background: var(--pent); border-bottom: 1px solid var(--hair); }
 .acceso .panel-form { background: var(--pario); }
+/* Las páginas de acceso no tienen pie, así que el interruptor de tema
+   quedaba encima del botón de envío en pantalla angosta. Este espacio
+   lo deja libre; desde 768px la regla de .acceso .panel lo repone. */
+.acceso .panel-form { padding-bottom: 104px; }
 .acceso form { max-width: 400px; width: 100%; margin: 0 auto; }
 .perfil-cabecera { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .avatar { width: 96px; height: 96px; border-radius: 50%; background: var(--veta); border: 3px solid var(--olivo2); }
