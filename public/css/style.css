@@ -156,7 +156,7 @@ input:invalid:not(:placeholder-shown) { border-color: var(--cinabrio); }
 fieldset { border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .opciones { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.opcion { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--hair); background: var(--pario); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.opcion { display: flex; flex-direction: row; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--hair); background: var(--pario); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); }
 .opcion input { width: 16px; height: 16px; accent-color: var(--olivo); margin-top: 2px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 7px 12px; border: 1px solid var(--hair); background: var(--pario); color: var(--ink2); }
