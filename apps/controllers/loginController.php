@@ -20,6 +20,9 @@
 # Cada intento, salga bien o mal, queda en la tabla auditoria. Los que
 # fallan van sin id de usuario: en el detalle queda el correo que se
 # intento, que es lo unico que se sabe con certeza.
+#
+# Al entrar se guarda ademas la hora de la ultima actividad. Con ella,
+# config/sesion.php cierra la sesion que queda media hora sin uso.
 # =====================================================================
 
 session_start();
@@ -77,6 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
                 $_SESSION['id_usuario'] = $usuario->getIdUsuario();
                 $_SESSION['nombre']     = $usuario->getNombre();
+
+                # Marca de actividad: desde aca cuenta la media hora de
+                # inactividad que cierra la sesion (ver config/sesion.php).
+                $_SESSION['ultima_actividad'] = time();
 
                 $auditorias->registrar(new Auditoria(
                     null, $usuario, 'usuario', 'login_ok',
