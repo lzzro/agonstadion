@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
+  <title>Rendimiento físico · Stadion</title>
+  <link rel="icon" href="img/stadion.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/tema.js"></script>
+</head>
+<body>
+<div class="pagina">
+<header>
+  <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
+  <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
+  <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
+</svg><span>STADION</span></a>
+  <div class="acciones"><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+</header>
+<nav><a href="index.html">Inicio</a><a href="torneos.html">Torneos</a><a href="calendario.html">Calendario</a><a href="torneo.html#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<main>
+<section>
+  <div class="portada"><a class="btn" href="#">Cambiar portada</a></div>
+  <div class="perfil-cabecera">
+    <div class="avatar" role="img" aria-label="Foto de perfil"></div>
+    <div>
+      <p class="epigrafe">ῥώμη</p>
+      <h1 style="font-size:36px">Lucas Martiarena</h1>
+      <p class="intro">Titanes CS · Montevideo · miembro desde marzo de 2026</p>
+    </div>
+  </div>
+  <div class="pestanas"><a href="#">Mediciones</a><a href="#">Datos</a><a href="#">Mis torneos</a><a href="#" class="activo">Rendimiento</a><a href="#">Seguridad</a></div>
+</section>
+<section>
+  <h2>Rendimiento físico</h2>
+  <div class="grilla">
+<div class="tarjeta"><span class="etiqueta">Cinemática · caída libre</span><h3>Tiempo de reacción</h3><p class="medida"><span class="valor">187</span><span class="unidad">milisegundos</span></p></div>
+<div class="tarjeta"><span class="etiqueta">Dinámica · fuerza neta</span><h3>Aceleración de salida</h3><p class="medida"><span class="valor">3.8</span><span class="unidad">metros / s²</span></p></div>
+<div class="tarjeta"><span class="etiqueta">Trabajo y energía</span><h3>Potencia de salto</h3><p class="medida"><span class="valor">612</span><span class="unidad">watts</span></p></div>
+  </div>
+</section>
+<section class="tarjeta">
+  <h3>Tiempo de reacción</h3>
+  <span class="etiqueta">Seis mediciones · milisegundos</span>
+    <svg class="grafico" viewBox="0 0 560 212" role="img" aria-label="Tiempo de reacción de marzo a septiembre: baja de 230 a 187 milisegundos en seis mediciones.">
+      <line class="reja" x1="52" y1="30" x2="530" y2="30"/>
+      <text class="rotulo" x="44" y="34" text-anchor="end">240</text>
+      <line class="reja" x1="52" y1="80" x2="530" y2="80"/>
+      <text class="rotulo" x="44" y="84" text-anchor="end">220</text>
+      <line class="reja" x1="52" y1="130" x2="530" y2="130"/>
+      <text class="rotulo" x="44" y="134" text-anchor="end">200</text>
+      <line class="reja" x1="52" y1="180" x2="530" y2="180"/>
+      <text class="rotulo" x="44" y="184" text-anchor="end">180</text>
+      <polyline class="trazo" points="60,55.0 152,77.5 244,100.0 336,117.5 428,145.0 520,162.5"/>
+      <circle class="punto" cx="60" cy="55.0" r="4"><title>Mar: 230 ms</title></circle>
+      <circle class="punto" cx="152" cy="77.5" r="4"><title>Abr: 221 ms</title></circle>
+      <circle class="punto" cx="244" cy="100.0" r="4"><title>May: 212 ms</title></circle>
+      <circle class="punto" cx="336" cy="117.5" r="4"><title>Jun: 205 ms</title></circle>
+      <circle class="punto" cx="428" cy="145.0" r="4"><title>Ago: 194 ms</title></circle>
+      <circle class="punto" cx="520" cy="162.5" r="4"><title>Sep: 187 ms</title></circle>
+      <text class="rotulo-dato" x="72" y="50" text-anchor="start">230</text>
+      <text class="rotulo-dato" x="508" y="151" text-anchor="end">187</text>
+      <text class="rotulo" x="60" y="200" text-anchor="middle">Mar</text>
+      <text class="rotulo" x="152" y="200" text-anchor="middle">Abr</text>
+      <text class="rotulo" x="244" y="200" text-anchor="middle">May</text>
+      <text class="rotulo" x="336" y="200" text-anchor="middle">Jun</text>
+      <text class="rotulo" x="428" y="200" text-anchor="middle">Ago</text>
+      <text class="rotulo" x="520" y="200" text-anchor="middle">Sep</text>
+    </svg>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">El número baja cuando la reacción mejora.</span>
+</section>
+</main>
+<aside>
+<div class="tarjeta">
+  <span class="etiqueta">Tiempo de reacción · comparado</span>
+  <table>
+    <tr><td>M. Ferreira</td><td class="num">164</td></tr>
+    <tr class="clasifica"><td>Lucas Martiarena</td><td class="num">187</td></tr>
+    <tr><td>N. Suárez</td><td class="num">201</td></tr>
+    <tr><td>D. Acosta</td><td class="num">219</td></tr>
+  </table>
+  <p><a href="#">Ver los tres tests →</a></p>
+</div>
+<div class="tarjeta">
+  <span class="etiqueta">Materia</span>
+  <p>Instrumentos: Cámara lenta del celular (120–240 fps), Tracker para videoanálisis y Phyphox para los sensores de acelerómetro y cronómetro acústico.</p>
+</div>
+</aside>
+<footer>
+  <div class="marca-agon"><svg width="26" height="26" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <mask id="lente-mask">
+    <path d="M 100,34 A 81.06 81.06 0 0 1 100,166 A 81.06 81.06 0 0 1 100,34 Z" fill="white"/>
+    <rect x="94" y="87" width="12" height="26" rx="6" fill="black"/>
+  </mask>
+  <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
+</svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
+  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+</footer>
+</div>
+<button type="button" class="interruptor-tema" id="interruptor-tema">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
+  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
+  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
+  <g stroke="#8A8478" stroke-width="1.1">
+    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
+    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
+  </g>
+  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
+  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
+  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
+</svg>
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+  <circle cx="33" cy="33" r="32" fill="#14130F"/>
+  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
+  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
+  <g stroke="#6E675A" stroke-width="1.1">
+    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
+    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
+  </g>
+  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
+  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
+  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
+</svg>
+</button>
+</body>
+</html>

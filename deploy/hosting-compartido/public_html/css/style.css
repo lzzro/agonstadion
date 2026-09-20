@@ -72,6 +72,26 @@ main   { grid-area: main; }
 aside  { grid-area: aside; }
 footer { grid-area: footer; }
 
+/* ---------- Que nada estire la pagina a lo ancho ----------
+   Dentro de un grid o de un flex, cada hijo arranca sin poder
+   achicarse por debajo de su contenido. Alcanza con una tabla de ocho
+   columnas, un dibujo o un boton de texto largo para que empuje la
+   columna entera: la pagina se ensancha y aparece la barra horizontal,
+   que en un telefono es lo peor que puede pasar.
+
+   Con min-width en cero el hijo sí se achica, y el que necesita
+   desplazarse lo hace dentro de su propio marco: la tabla se corre
+   sola gracias a .tabla-scroll, sin arrastrar el resto de la pagina. */
+header, nav, main, aside, footer { min-width: 0; }
+main > *, aside > *, .tarjeta > *, .llave > *, .agenda > * { min-width: 0; }
+.tabla-scroll { min-width: 0; }
+
+/* El encabezado envuelve en vez de estirarse. En el panel y en
+   administracion el nombre de quien entro va al lado de un boton
+   largo, y los dos juntos no entran en una linea de telefono. */
+header { flex-wrap: wrap; }
+.acciones { flex-wrap: wrap; }
+
 /* ---------- Header y nav (Flexbox) ---------- */
 header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -201,6 +221,83 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .pasos .hecho { color: var(--olivo); }
 .pasos .activo { color: var(--ink); }
 
+/* ---------- Agenda del calendario ----------
+   Cada día es un bloque con su fecha arriba y sus partidos debajo. En
+   pantalla angosta la fila se reacomoda sola: el .fila-partido envuelve,
+   así que la hora queda arriba y los nombres abajo en vez de apretarse
+   en una sola línea. */
+.agenda { display: flex; flex-direction: column; gap: 26px; }
+.agenda-dia { display: flex; flex-direction: column; }
+.agenda-dia .dia { padding-bottom: 8px; border-bottom: 1px solid var(--veta); }
+.partido { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 12px 0; border-bottom: 1px solid var(--hair); }
+.partido .hora { font-family: var(--serif); font-size: 20px; color: var(--ink2); min-width: 56px; }
+.partido .cruce-nombres { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
+.partido .cruce-nombres .torneo { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); }
+.partido .cruce-nombres .lados { font-size: 15px; }
+.partido .cruce-nombres .lados .vs { color: var(--ink3); font-size: 13px; padding: 0 4px; }
+
+/* ---------- Tarjetas de indicador (panel y rendimiento) ----------
+   Dos columnas desde el teléfono: con cuatro números cortos entran
+   cómodas en 390 px, y apiladas de a una el bloque quedaba larguísimo. */
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.kpi { background: var(--pario); border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.kpi strong { font-family: var(--serif); font-size: 32px; font-weight: 500; line-height: 1; }
+.kpi .etiqueta { line-height: 1.3; }
+
+/* ---------- Llave de eliminación directa ----------
+   En el teléfono no hay forma honesta de dibujar cuatro rondas una al
+   lado de la otra: se apilan, cada ronda con su nombre. Desde 1024 px
+   pasan a columnas y aparecen las líneas que unen cada par con el
+   cruce siguiente.
+
+   Las líneas no son imágenes: el trazo vertical es el borde derecho de
+   cada .par, y los horizontales son pseudo-elementos de cada cruce. El
+   vertical se recorta 34 px arriba y abajo, que es media caja, para
+   que nazca y muera en el centro de los cruces y no en sus bordes. Por
+   eso las dos filas del cruce miden exactamente 34 px. */
+.llave { display: flex; flex-direction: column; gap: 22px; }
+.llave-ronda { display: flex; flex-direction: column; gap: 10px; }
+.llave-ronda > .etiqueta { padding-bottom: 6px; border-bottom: 1px solid var(--veta); }
+.par { display: flex; flex-direction: column; gap: 10px; }
+.cruce { background: var(--pario); border: 1px solid var(--hair); }
+.cruce > div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 10px; font-size: 13px; line-height: 18px; }
+.cruce > div + div { border-top: 1px solid var(--hair); }
+.cruce .puntos { font-family: var(--serif); font-size: 16px; color: var(--ink2); }
+.cruce .pasa { color: var(--olivo); font-weight: 500; }
+.cruce .pasa .puntos { color: var(--olivo); }
+.cruce .espera { color: var(--ink3); font-style: italic; }
+
+/* ---------- Rendimiento físico ---------- */
+.portada { height: 110px; background: var(--olivoT); border: 1px solid var(--hair); display: flex; align-items: flex-end; justify-content: flex-end; padding: 10px; }
+.medida { display: flex; flex-direction: column; gap: 2px; margin: auto 0 0; }
+.medida .valor { font-family: var(--serif); font-size: 44px; font-weight: 500; line-height: 1; }
+.medida .unidad { font-size: 13px; color: var(--ink2); }
+.grafico { width: 100%; max-width: 100%; height: auto; }
+.grafico .reja { stroke: var(--hair); stroke-width: 1; }
+.grafico .trazo { fill: none; stroke: var(--olivo); stroke-width: 2; }
+.grafico .punto { fill: var(--olivo); stroke: var(--pario); stroke-width: 2; }
+.grafico .rotulo { fill: var(--ink3); font-family: var(--sans); font-size: 11px; }
+.grafico .rotulo-dato { fill: var(--ink2); font-family: var(--serif); font-size: 15px; }
+
+/* ---------- Módulos del sistema (administración) ----------
+   El interruptor es de mentira: no hay nada detrás. Igual lleva el
+   estado escrito al lado, porque la posición del círculo sola no
+   alcanza para quien no distingue los tonos. */
+.modulo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 0; border-bottom: 1px solid var(--hair); }
+.modulo-texto { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.modulo-texto strong { font-weight: 500; }
+.modulo-estado { display: flex; align-items: center; gap: 10px; flex: none; margin-left: auto; }
+.llave-visual { width: 42px; height: 24px; border-radius: 12px; background: var(--veta); position: relative; flex: none; }
+.llave-visual::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--pario); }
+.llave-visual.encendida { background: var(--olivo); }
+.llave-visual.encendida::after { left: 21px; }
+
+/* ---------- Registro de auditoría ---------- */
+.registro { display: flex; flex-direction: column; }
+.registro-linea { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--hair); font-size: 14px; }
+.registro-linea .cuando { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); min-width: 128px; }
+.registro-linea .quien { color: var(--ink2); }
+
 /* ---------- Avisos de los controladores ---------- */
 .avisos { margin: 0; padding-left: 18px; color: var(--cinabrio); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 
@@ -252,6 +349,8 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
   .acceso input, .acceso select { padding: 12px; }
   .acceso .panel-marmol { border-top: none; border-bottom: none; border-right: 1px solid var(--hair); }
   .perfil-cabecera { flex-direction: row; align-items: center; gap: 24px; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .portada { height: 150px; }
   footer { flex-direction: row; justify-content: space-between; align-items: center; padding: 22px 40px; }
 }
 
@@ -266,4 +365,36 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
   .acceso { grid-template-columns: 1.1fr 0.9fr; }
   .acceso .panel { padding: 64px; }
   .acceso h1 { font-size: 54px; }
+
+  /* ---------- La llave pasa a cuatro columnas ----------
+     La alineación no se acomoda a ojo: sale de repartir el alto.
+
+     Cada ronda mide lo mismo, porque son columnas de una misma fila.
+     Dentro de la ronda, los pares se reparten ese alto en partes
+     iguales (flex: 1), y dentro de cada par los dos cruces quedan
+     centrados en su mitad (space-around). Con eso, el centro de un par
+     de octavos cae exactamente donde está el centro del cruce de
+     cuartos que le sigue, y lo mismo ronda por ronda hasta la final.
+
+     El reparto solo es exacto si los pares no llevan separación
+     propia: cualquier gap corre los centros y la llave se desalinea.
+     El aire entre cruces lo pone el space-around, y el min-height de
+     la llave se asegura de que haya aire para poner. */
+  .llave { flex-direction: row; gap: 0; align-items: stretch; min-height: 720px; }
+  .llave-ronda { flex: 1 1 0; gap: 0; padding-right: 26px; }
+  .llave-ronda:last-child { padding-right: 0; }
+  .llave-ronda > .etiqueta { flex: none; margin-bottom: 14px; }
+  .par { position: relative; flex: 1 1 0; justify-content: space-around; gap: 0; }
+  .cruce { position: relative; flex: none; }
+  /* Trazo vertical que une los dos cruces de un par. Empieza y termina
+     al 25% y al 75% del alto del par, que es donde space-around deja
+     los centros de los dos cruces. */
+  .par::after { content: ""; position: absolute; top: 25%; bottom: 25%; right: -13px; border-right: 1px solid var(--veta); }
+  /* Trazo horizontal de salida, del cruce al vertical. */
+  .par .cruce::after { content: ""; position: absolute; top: 50%; left: 100%; width: 13px; border-top: 1px solid var(--veta); }
+  /* Trazo horizontal de entrada, del vertical de la ronda anterior al cruce. */
+  .llave-ronda + .llave-ronda .cruce::before { content: ""; position: absolute; top: 50%; right: 100%; width: 13px; border-top: 1px solid var(--veta); }
+  /* La final no sale hacia ningún lado. */
+  .llave-ronda:last-child .par::after,
+  .llave-ronda:last-child .cruce::after { display: none; }
 }
