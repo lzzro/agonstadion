@@ -27,11 +27,11 @@
 
 session_start();
 
-require_once '../config/database.php';
-require_once '../models/Usuario.php';
-require_once '../models/UsuarioRepositorio.php';
-require_once '../models/Auditoria.php';
-require_once '../models/AuditoriaRepositorio.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/Usuario.php';
+require_once __DIR__ . '/../models/UsuarioRepositorio.php';
+require_once __DIR__ . '/../models/Auditoria.php';
+require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
 $titulo  = 'Inicio de sesion';
 $mensaje = '';
@@ -100,4 +100,4 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     }
 }
 
-include('../index.php');
+include __DIR__ . '/../index.php';

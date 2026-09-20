@@ -13,13 +13,26 @@
 # Todo lo que viene del formulario se imprime con htmlspecialchars: sin
 # eso, un nombre con etiquetas HTML se ejecutaria en la pagina.
 #
-# Las rutas del CSS y del JS son relativas a la direccion del
-# controlador (apps/controllers/), que es la que queda en el navegador.
+# Las rutas del CSS, del JS y de los enlaces son relativas a la
+# direccion del controlador, que es la que queda en el navegador. Esa
+# direccion cambia segun donde este instalado el sitio:
+#
+#   en la maquina local   /apps/controllers/loginController.php
+#   en el hosting         /controllers/login.php
+#
+# Por eso no van escritas a mano sino a traves de $ruta_publica, que
+# quien llama puede dejar preparada. Si nadie la define queda el valor
+# de la instalacion local, que es la de todos los dias.
 # =====================================================================
 
 if (!isset($titulo))  { $titulo  = 'Stadion'; }
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
+if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
+
+# El perfil es el unico destino que no esta en la carpeta publica sino
+# al lado de los controladores, asi que su direccion se arma aparte.
+if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -27,14 +40,14 @@ if (!isset($errores)) { $errores = array(); }
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?php echo htmlspecialchars($titulo); ?> · Stadion</title>
-  <link rel="icon" href="../../public/img/stadion.png">
-  <link rel="stylesheet" href="../../public/css/style.css">
-  <script src="../../public/js/tema.js"></script>
+  <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
+  <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
+  <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
 </head>
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="../../public/index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="<?php echo $ruta_publica; ?>/index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
@@ -58,8 +71,12 @@ if (!isset($errores)) { $errores = array(); }
 <?php } ?>
 
   <div class="fila">
-    <a class="btn" href="../../public/login.html">Volver al acceso</a>
-    <a class="btn" href="../../public/index.html">Ir al inicio</a>
+<?php if (isset($_SESSION['id_usuario'])) { ?>
+    <a class="btn btn-primario" href="<?php echo $ruta_perfil; ?>">Ver el perfil</a>
+<?php } else { ?>
+    <a class="btn" href="<?php echo $ruta_publica; ?>/login.html">Volver al acceso</a>
+<?php } ?>
+    <a class="btn" href="<?php echo $ruta_publica; ?>/index.html">Ir al inicio</a>
   </div>
 </section>
 </main>

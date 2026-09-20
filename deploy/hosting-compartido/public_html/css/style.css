@@ -1,0 +1,269 @@
+/* Stadion · Agón · Maquetado mobile-first (Grid + Flexbox) — Programación Fullstack, 1.ª entrega */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&family=Jost:wght@400;500;600&display=swap');
+
+:root {
+  --pent: #F3EEE3;  /* mármol pentélico: fondo */
+  --pario: #FBF9F4; /* mármol pario: superficies */
+  --veta: #D6CFC1;
+  --hair: #E3DDD0;
+  --ink: #1E1C18;   /* negro de hueso */
+  --ink2: #5B564C;
+  --ink3: #8A8478;
+  --olivo: #4F5F35; /* kotinos */
+  --olivo2: #75865A;
+  --olivoT: #E6EAD9;
+  --cinabrio: #A63A2B; /* solo "en vivo" */
+  --olivoB: #E3DDD0;   /* borde de la fila destacada */
+  --enjuego: #B9975C;  /* estado "en juego" */
+  --vencedor: #3F4A2C; /* estado "vencedor" */
+  --cerrado: #8A8478;  /* estado "cerrado" */
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Jost', 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+
+/* ---------- Modo noche ----------
+   Solo se redefinen los colores: la tipografía, las medidas y la
+   retícula son las mismas. Cada valor sale de los bocetos; los cuatro
+   marcados como "derivado" se sacaron conservando el matiz y el croma
+   del color de día y subiendo la claridad, que es lo que hacen los
+   pares ya confirmados (el matiz de olivo y cinabrio no se mueve ni un
+   grado entre los dos modos). */
+[data-theme="noche"] {
+  --pent: #14130F;     /* basalto: fondo */
+  --pario: #1A1814;    /* basalto claro: superficies */
+  --veta: #3A362E;     /* del círculo exterior del ícono de noche */
+  --hair: #2A2822;
+  --ink: #EDE7DA;      /* cal */
+  --ink2: #C9C1B0;
+  --ink3: #A79F8C;
+  --olivo: #8CA368;    /* kotinos de noche */
+  --olivo2: #B9CB9C;   /* derivado: mantiene la distancia con --olivo */
+  --olivoT: #232A1B;
+  --olivoB: #3A4430;
+  --cinabrio: #D4614E; /* brasa */
+  --enjuego: #AD8B50;  /* derivado */
+  --vencedor: #A7B593; /* derivado */
+  --cerrado: #A79F8C;  /* igual que --ink3: de día son el mismo color */
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--pent); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; }
+a { color: var(--ink); text-decoration: none; }
+a:hover { color: var(--olivo); }
+img { max-width: 100%; }
+
+/* ---------- Estructura general: Grid con áreas, igual que en clase ---------- */
+.pagina {
+  display: grid;
+  grid-template-areas:
+    "header"
+    "nav"
+    "main"
+    "aside"
+    "footer";
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+header { grid-area: header; }
+nav    { grid-area: nav; }
+main   { grid-area: main; }
+aside  { grid-area: aside; }
+footer { grid-area: footer; }
+
+/* ---------- Header y nav (Flexbox) ---------- */
+header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; background: var(--pario); border-bottom: 1px solid var(--hair);
+}
+.marca { display: flex; align-items: center; gap: 10px; }
+.marca svg { width: 30px; height: 30px; flex: none; }
+.marca span { font-family: var(--serif); font-size: 20px; font-weight: 600; letter-spacing: .12em; }
+.acciones { display: flex; gap: 8px; }
+nav { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 20px; background: var(--pario); border-bottom: 1px solid var(--hair); }
+nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); padding: 6px 0; border-bottom: 1.5px solid transparent; }
+nav a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
+
+/* ---------- Botones, etiquetas, tarjetas ---------- */
+.btn { display: inline-block; font-size: 14px; letter-spacing: .08em; padding: 11px 18px; border-radius: 2px; border: 1px solid var(--ink); color: var(--ink); background: transparent; cursor: pointer; font-family: var(--sans); }
+.btn-primario { background: var(--olivo); border-color: var(--olivo); color: var(--pario); }
+.btn-primario:hover { background: var(--olivo2); color: var(--pario); }
+.etiqueta { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink3); }
+.epigrafe { font-family: var(--serif); font-size: 14px; letter-spacing: .28em; color: var(--ink3); }
+
+/* ---------- Estado del torneo: color Y forma juntos ----------
+   Nunca solo el color: quien no distingue el rojo del verde reconoce
+   igual el estado por la figura. La figura sale de ::before salvo en
+   "vencedor", que lleva la rama de olivo en SVG. Todas toman el color
+   de currentColor, así que basta cambiar la variante. */
+.estado { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; }
+.estado::before { content: ""; display: block; flex: none; }
+.estado-en-vivo     { color: var(--cinabrio); }
+.estado-en-vivo::before     { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.estado-inscripcion { color: var(--olivo); }
+.estado-inscripcion::before { width: 9px; height: 9px; border-radius: 50%; border: 2px solid currentColor; }
+.estado-en-juego    { color: var(--enjuego); }
+.estado-en-juego::before    { width: 9px; height: 9px; background: currentColor; }
+.estado-vencedor    { color: var(--vencedor); }
+.estado-vencedor::before    { display: none; }  /* lleva la rama, no el punto */
+.estado-vencedor svg        { flex: none; }
+.estado-cerrado     { color: var(--cerrado); }
+.estado-cerrado::before     { width: 12px; height: 2px; background: currentColor; }
+.tarjeta { background: var(--pario); border: 1px solid var(--hair); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+/* Tarjeta de contraste: lleva colores fijos, no variables, así que es la
+   única pieza que no cambia con el tema. Su fuerza viene de ser lo
+   contrario del papel, y de noche, al darse vuelta con el resto, perdía
+   justamente eso. El dorado de la etiqueta da 6,19:1 sobre este fondo.
+   El borde también es fijo: de noche el fondo de la tarjeta y el de la
+   página quedan casi al mismo tono, así que sin canto el bloque se
+   perdía. El tono es el mismo que el ícono de noche usa en su círculo
+   exterior. */
+.tarjeta-contraste { background: #1E1C18; color: #FBF9F4; border-color: #3A362E; }
+.tarjeta-contraste h3 { color: #FBF9F4; }
+.tarjeta-contraste .etiqueta { color: #B9975C; }
+.tarjeta-contraste .btn { background: #FBF9F4; color: #1E1C18; border-color: #FBF9F4; align-self: flex-start; }
+.tarjeta h3 { margin: 0; font-family: var(--serif); font-size: 22px; font-weight: 500; }
+.barra { height: 2px; background: var(--hair); }
+.barra span { display: block; height: 2px; background: var(--olivo); }
+
+main { padding: 24px 20px; display: flex; flex-direction: column; gap: 28px; }
+aside { padding: 0 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+h1 { margin: 0; font-family: var(--serif); font-size: 40px; font-weight: 500; line-height: 1.02; }
+h1 em { font-style: italic; font-weight: 400; color: var(--olivo); }
+h2 { margin: 0; font-family: var(--serif); font-size: 28px; font-weight: 500; }
+.intro { color: var(--ink2); max-width: 52ch; }
+.grilla { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.fila { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.datos { display: flex; gap: 28px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.datos strong { display: block; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1; }
+
+/* ---------- Tablas ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); font-weight: 500; padding: 8px; border-bottom: 1px solid var(--veta); }
+td { padding: 10px 8px; border-bottom: 1px solid var(--hair); }
+td.num { text-align: right; font-family: var(--serif); font-size: 18px; }
+tr.clasifica { background: var(--olivoT); }
+tr.clasifica td { border-bottom-color: var(--olivoB); }
+.tabla-scroll { overflow-x: auto; }
+
+/* ---------- Formularios ---------- */
+form { display: flex; flex-direction: column; gap: 16px; }
+label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink3); }
+input, select, textarea { font-family: var(--sans); font-size: 15px; padding: 12px; border: 1px solid var(--veta); background: var(--pario); color: var(--ink); border-radius: 2px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--olivo); outline-offset: 1px; }
+input:invalid:not(:placeholder-shown) { border-color: var(--cinabrio); }
+fieldset { border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
+.opciones { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.opcion { display: flex; flex-direction: row; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--hair); background: var(--pario); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.opcion input { width: 16px; height: 16px; accent-color: var(--olivo); margin-top: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 7px 12px; border: 1px solid var(--hair); background: var(--pario); color: var(--ink2); }
+.chip.activo { background: var(--ink); color: var(--pario); border-color: var(--ink); }
+
+/* ---------- Login / registro ---------- */
+.acceso { display: grid; grid-template-columns: 1fr; min-height: 100vh; position: relative; }
+.acceso .panel { padding: 24px 20px; display: flex; flex-direction: column; gap: 18px; justify-content: center; }
+.acceso .panel-marmol { background: var(--pent); }
+.acceso .panel-form { background: var(--pario); }
+
+/* ---------- Acceso en pantalla angosta ----------
+   En un teléfono, el epígrafe, el título y el párrafo del panel de
+   mármol empujaban el formulario fuera de la primera pantalla: había
+   que bajar con el dedo para llegar a los campos. Acá el formulario
+   pasa primero y ese texto baja debajo.
+
+   La marca no puede irse con el texto: tiene que seguir siendo lo
+   primero que se ve. Como vive dentro del panel de mármol, se la saca
+   del flujo y se la fija arriba de todo, contra .acceso. El formulario
+   reserva ese alto con su padding superior.
+
+   Nada de esto toca la maqueta de dos columnas: desde 768px la marca
+   vuelve al flujo del panel y los paneles recuperan su orden. */
+.acceso .panel-form { order: -1; padding-top: 62px; }
+/* En pantalla angosta el formulario de alta es largo: cinco campos, la
+   casilla y el botón. Se aprieta un poco el espaciado para que entre
+   entero incluso en las pantallas más bajas. Desde 768px vuelve al
+   espaciado normal. */
+.acceso form { gap: 12px; }
+.acceso label { gap: 4px; }
+.acceso input, .acceso select { padding: 10px 12px; }
+.acceso .panel-marmol { border-top: 1px solid var(--hair); }
+.acceso .marca { position: absolute; top: 18px; left: 20px; }
+.acceso form { max-width: 400px; width: 100%; margin: 0 auto; }
+.perfil-cabecera { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.avatar { width: 96px; height: 96px; border-radius: 50%; background: var(--veta); border: 3px solid var(--olivo2); }
+.pestanas { display: flex; gap: 24px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); overflow-x: auto; }
+.pestanas a { padding: 12px 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); white-space: nowrap; border-bottom: 1.5px solid transparent; }
+.pestanas a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
+.pasos { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 14px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
+.pasos .hecho { color: var(--olivo); }
+.pasos .activo { color: var(--ink); }
+
+/* ---------- Avisos de los controladores ---------- */
+.avisos { margin: 0; padding-left: 18px; color: var(--cinabrio); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+
+/* ---------- Interruptor de modo noche ----------
+   Los dos discos viven en el HTML y el CSS muestra el que corresponde,
+   así el JavaScript solo tiene que cambiar el atributo data-theme. */
+.interruptor-tema {
+  position: fixed; bottom: 24px; right: 24px; z-index: 20;
+  width: 66px; height: 66px; padding: 0; line-height: 0;
+  border: none; border-radius: 50%; background: transparent; cursor: pointer;
+}
+.interruptor-tema svg:last-of-type { display: none; }
+[data-theme="noche"] .interruptor-tema svg:first-of-type { display: none; }
+[data-theme="noche"] .interruptor-tema svg:last-of-type { display: block; }
+.interruptor-tema:focus-visible { outline: 2px solid var(--olivo); outline-offset: 3px; }
+
+/* ---------- Footer ---------- */
+/* El pie deja lugar abajo para que el interruptor no tape los enlaces
+   en pantalla angosta, donde queda encima. */
+footer { display: flex; flex-direction: column; gap: 8px; padding: 20px 20px 104px; background: var(--pario); border-top: 1px solid var(--hair); font-size: 12px; color: var(--ink3); }
+footer .marca-agon { display: flex; align-items: center; gap: 8px; }
+footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
+
+/* ---------- Tablet: desde 768 px (mismo breakpoint que en clase) ---------- */
+@media (min-width: 768px) {
+  .pagina {
+    grid-template-areas:
+      "header header"
+      "nav nav"
+      "main aside"
+      "footer footer";
+    grid-template-columns: 2fr 1fr;
+  }
+  main { padding: 32px 32px 32px 40px; }
+  aside { padding: 32px 40px 32px 0; }
+  header { padding: 20px 40px; }
+  nav { padding: 12px 40px; }
+  h1 { font-size: 52px; }
+  .grilla { grid-template-columns: repeat(2, 1fr); }
+  .opciones { grid-template-columns: repeat(3, 1fr); }
+  .acceso { grid-template-columns: 1fr 1fr; }
+  .acceso .panel { padding: 48px 40px; }
+  /* Se deshace lo de pantalla angosta: la marca vuelve al flujo del
+     panel de mármol y el formulario a su columna de la derecha. */
+  .acceso .marca { position: static; }
+  .acceso .panel-form { order: 0; padding-top: 48px; }
+  .acceso form { gap: 16px; }
+  .acceso label { gap: 6px; }
+  .acceso input, .acceso select { padding: 12px; }
+  .acceso .panel-marmol { border-top: none; border-bottom: none; border-right: 1px solid var(--hair); }
+  .perfil-cabecera { flex-direction: row; align-items: center; gap: 24px; }
+  footer { flex-direction: row; justify-content: space-between; align-items: center; padding: 22px 40px; }
+}
+
+/* ---------- Escritorio: desde 1024 px ---------- */
+@media (min-width: 1024px) {
+  .pagina { grid-template-columns: 3fr 1fr; max-width: 1440px; margin: 0 auto; }
+  header, nav { padding-left: 72px; padding-right: 72px; }
+  main { padding: 48px 32px 56px 72px; }
+  aside { padding: 48px 72px 56px 0; }
+  h1 { font-size: 64px; }
+  .grilla { grid-template-columns: repeat(3, 1fr); }
+  .acceso { grid-template-columns: 1.1fr 0.9fr; }
+  .acceso .panel { padding: 64px; }
+  .acceso h1 { font-size: 54px; }
+}

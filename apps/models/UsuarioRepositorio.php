@@ -178,6 +178,38 @@ class UsuarioRepositorio
         return $this->construirUsuario($fila);
     }
 
+    # Carga en el objeto los roles que la cuenta tiene asignados.
+    # Se hace aparte de buscarPorId porque no siempre hacen falta: el
+    # inicio de sesion no los necesita, el perfil si.
+    public function cargarRoles(Usuario $usuario)
+    {
+        if ($usuario->getIdUsuario() === null) {
+            return false;
+        }
+
+        $sql = 'SELECT r.id_rol, r.nombre, r.descripcion
+                FROM rol r
+                    INNER JOIN usuario_rol ur ON ur.id_rol = r.id_rol
+                WHERE ur.id_usuario = ?
+                ORDER BY r.nombre';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return false;
+        }
+
+        $id = $usuario->getIdUsuario();
+        $sentencia->bind_param('i', $id);
+        $sentencia->execute();
+        $resultado = $sentencia->get_result();
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $usuario->agregarRol(new Rol(
+                $fila['id_rol'], $fila['nombre'], $fila['descripcion']));
+        }
+        $sentencia->close();
+        return true;
+    }
+
     public function existeCorreo($correo)
     {
         $sql = 'SELECT id_usuario FROM usuario WHERE correo = ?';

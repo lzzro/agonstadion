@@ -1,0 +1,34 @@
+<?php
+# =====================================================================
+# Configuracion de la base en el hosting - ARCHIVO DE EJEMPLO
+# Proyecto SGDM - Stadion (Agon)
+# ---------------------------------------------------------------------
+# Este archivo SI se sube, porque no tiene nada secreto. La copia con
+# los datos de verdad se llama database.local.php y se escribe en el
+# hosting, no acá.
+#
+# Pasos, una vez subido todo:
+#   1. en el File Manager de cPanel, entrar a stadion_app/config/
+#   2. copiar este archivo como database.local.php
+#      (boton derecho -> Copy, y cambiarle el nombre)
+#   3. editarlo y poner los tres datos que da cPanel
+#   4. dejarlo en permisos 600
+#
+# En cPanel los nombres llevan adelante el de la cuenta. Si la cuenta
+# es "lucasmar" y la base se llamo "sgdm", el nombre completo es
+# lucasmar_sgdm. Lo mismo con el usuario. Los nombres completos estan
+# a la vista en MySQL Databases.
+#
+# Son distintos de los de XAMPP a proposito: la contrasena local no
+# sirve acá, y la del hosting no sirve en la maquina de casa.
+#
+# El servidor casi siempre es localhost, porque la base corre en la
+# misma maquina que el sitio. Si el hosting indica otro, va ese.
+# =====================================================================
+
+return array(
+    'servidor' => 'localhost',
+    'usuario'  => 'CUENTA_sgdm_app',
+    'clave'    => 'LA-CONTRASENA-QUE-DIO-CPANEL',
+    'base'     => 'CUENTA_sgdm'
+);

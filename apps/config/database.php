@@ -54,9 +54,15 @@ function conectarBD()
     # Sin configuracion local no hay clave, y conviene decirlo con
     # claridad en vez de dejar que falle como si el servidor no
     # estuviera.
-    if ($configuracion_bd['clave'] === '') {
-        $error_bd = 'Falta la configuracion local de la base de datos.';
-        return null;
+    # En el hosting compartido el nombre de la base y el del usuario
+    # tambien cambian, asi que se comprueban los tres y no solo la
+    # clave: media configuracion cargada falla igual, pero con un
+    # mensaje que no ayuda.
+    foreach (array('usuario', 'clave', 'base') as $dato) {
+        if (!isset($configuracion_bd[$dato]) || $configuracion_bd[$dato] === '') {
+            $error_bd = 'Falta la configuracion local de la base de datos.';
+            return null;
+        }
     }
 
     mysqli_report(MYSQLI_REPORT_OFF);
