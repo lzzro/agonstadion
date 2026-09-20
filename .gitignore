@@ -6,9 +6,24 @@
 # Cada maquina tiene la suya; el repositorio solo lleva el ejemplo.
 apps/config/database.local.php
 
+# Credenciales de sgdm_admin que usa el script de respaldo.
+scripts/respaldo.local.cnf
+
 # Por si alguna vez se usan otros nombres para lo mismo
 *.local.php
+*.local.cnf
 .env
+
+# ---------------------------------------------------------------------
+# Lo que generan los scripts: no es codigo, no se versiona
+# ---------------------------------------------------------------------
+
+# Respaldos diarios: pesan y ademas llevan un volcado de la base con
+# los datos de las personas adentro.
+backups/
+
+# Lecturas de disco, memoria y servicios que grafica Grafana.
+metricas/
 
 # ---------------------------------------------------------------------
 # Basura del sistema y de los editores

@@ -1,0 +1,30 @@
+# =====================================================================
+# Credenciales del respaldo - ARCHIVO DE EJEMPLO
+# Proyecto SGDM - Stadion (Agon)
+# ---------------------------------------------------------------------
+# Este archivo SI va al repositorio, porque no tiene nada secreto.
+#
+# Para poner en marcha el respaldo en una maquina:
+#   1. copiarlo en la misma carpeta con el nombre respaldo.local.cnf
+#          cp respaldo.local.cnf.ejemplo respaldo.local.cnf
+#   2. escribir ahi la contrasena real de sgdm_admin
+#   3. dejarlo privado, o el script se niega a arrancar:
+#          chmod 600 respaldo.local.cnf
+#   4. no agregarlo al repositorio: el .gitignore ya lo excluye
+#
+# La contrasena se le pone al usuario de base de datos con:
+#   ALTER USER 'sgdm_admin'@'localhost' IDENTIFIED BY 'la-que-elijas';
+#
+# Se usa sgdm_admin y no sgdm_app porque el respaldo necesita leer todo
+# el esquema. La aplicacion, en cambio, anda con el permiso justo.
+#
+# El formato es el de los archivos de opciones de MariaDB: el script se
+# lo pasa a mysqldump con --defaults-extra-file. Asi la contrasena no
+# viaja en la linea de comandos, donde cualquiera con un "ps aux" la
+# veria mientras el respaldo corre.
+# =====================================================================
+
+[mysqldump]
+user = sgdm_admin
+password = LA-CONTRASENA-REAL-DE-sgdm_admin
+host = localhost
