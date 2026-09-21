@@ -83,7 +83,8 @@ footer { grid-area: footer; }
    desplazarse lo hace dentro de su propio marco: la tabla se corre
    sola gracias a .tabla-scroll, sin arrastrar el resto de la pagina. */
 header, nav, main, aside, footer { min-width: 0; }
-main > *, aside > *, .tarjeta > *, .llave > *, .agenda > * { min-width: 0; }
+main > *, aside > *, .tarjeta > *, .llave > *, .agenda > *,
+.torneo-zona > *, .vista > * { min-width: 0; }
 .tabla-scroll { min-width: 0; }
 
 /* El encabezado envuelve en vez de estirarse. En el panel y en
@@ -217,6 +218,31 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .pestanas { display: flex; gap: 24px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); overflow-x: auto; }
 .pestanas a { padding: 12px 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); white-space: nowrap; border-bottom: 1.5px solid transparent; }
 .pestanas a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
+/* ---------- Pestañas que cambian de contenido, sin JavaScript ----------
+
+   Como funciona: cada vista es un bloque con su propio id. El
+   navegador marca con :target al que coincide con el ancla de la
+   direccion, asi que #participantes aparece solo cuando la direccion
+   termina en #participantes.
+
+   Para que la vista por defecto sea posiciones sin necesidad de ancla,
+   el orden en el HTML importa: participantes va primero y arranca
+   oculto; posiciones va despues y arranca visible. Cuando el ancla
+   apunta a participantes, el combinador ~ alcanza a posiciones, que
+   viene despues, y lo apaga. Al reves no se podria: un selector no
+   puede volver hacia atras.
+
+   Cada vista lleva su propia barra de pestañas, con su entrada
+   marcada. Por eso la barra que se ve es siempre la de la vista que
+   esta abierta, sin que nada tenga que cambiarle la clase. */
+.vista { display: flex; flex-direction: column; gap: 28px; }
+#participantes { display: none; }
+#participantes:target { display: flex; }
+#participantes:target ~ #posiciones { display: none; }
+/* La zona del torneo no separa la cabecera de las pestañas: van
+   pegadas, como cuando la barra vivia dentro de la cabecera. */
+.torneo-zona { display: flex; flex-direction: column; gap: 0; }
+
 .pasos { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 14px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
 .pasos .hecho { color: var(--olivo); }
 .pasos .activo { color: var(--ink); }

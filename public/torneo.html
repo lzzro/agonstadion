@@ -19,17 +19,32 @@
 </svg><span>STADION</span></a>
   <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
 </header>
-<nav><a href="index.html">Inicio</a><a href="torneos.html" class="activo">Torneos</a><a href="calendario.html">Calendario</a><a href="torneo.html#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.html">Inicio</a><a href="torneos.html">Torneos</a><a href="calendario.html">Calendario</a><a href="torneo.html#posiciones" class="activo">Posiciones</a><a href="panel.html">Organizadores</a></nav>
 <main>
+<div class="torneo-zona">
 <section>
   <p class="etiqueta">Torneos / Esports</p>
   <div class="fila"><span class="etiqueta">Liga · Esports · Ronda 7 de 11</span><span class="estado estado-en-vivo">En vivo</span></div>
   <h1>Liga Valorant · Otoño</h1>
   <p class="intro">Organiza <strong>Comunidad Vórtice</strong> · 12 equipos · 22 de agosto – 26 de octubre · Montevideo (online)</p>
   <div class="fila"><a class="btn" href="#">Seguir torneo</a><a class="btn btn-primario" href="#">Inscribir equipo</a></div>
-  <div class="pestanas"><a href="#">Resumen</a><a href="#">Calendario</a><a href="#" class="activo">Posiciones</a><a href="#">Participantes</a><a href="#">Reglas</a></div>
 </section>
-<section class="tarjeta" id="posiciones">
+<div class="vista" id="participantes">
+  <div class="pestanas"><a href="#">Resumen</a><a href="#">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes" class="activo">Participantes</a><a href="#">Reglas</a></div>
+  <section class="tarjeta">
+  <h2>Participantes</h2>
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Equipo</th><th>Ciudad</th><th>Capitán</th></tr></thead>
+    <tbody><tr><td>Titanes CS</td><td>Montevideo</td><td>L. Martiarena</td></tr><tr><td>Nova Esports</td><td>Ciudad de la Costa</td><td>G. Etcheverry</td></tr><tr><td>Vortex</td><td>Montevideo</td><td>F. Bentancor</td></tr><tr><td>Delta Gaming</td><td>Las Piedras</td><td>R. Olivera</td></tr><tr><td>Aurora FC</td><td>Canelones</td><td>V. Techera</td></tr><tr><td>Halcones</td><td>Pando</td><td>H. Cardozo</td></tr><tr><td>Ping Masters</td><td>Montevideo</td><td>S. Viera</td></tr><tr><td>Liceo 3</td><td>Montevideo</td><td>A. Falero</td></tr></tbody>
+  </table>
+  </div>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Ocho equipos · un capitán por equipo</span>
+  </section>
+</div>
+<div class="vista" id="posiciones">
+  <div class="pestanas"><a href="#">Resumen</a><a href="#">Calendario</a><a href="#posiciones" class="activo">Posiciones</a><a href="#participantes">Participantes</a><a href="#">Reglas</a></div>
+  <section class="tarjeta">
   <h2>Tabla de posiciones</h2>
   <div class="tabla-scroll">
   <table>
@@ -39,6 +54,8 @@
   </div>
   <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">En verde: clasifican a playoffs · Victoria 3 pts · Empate 1 pt</span>
 </section>
+</div>
+</div>
 </main>
 <aside>
 <div class="tarjeta">
