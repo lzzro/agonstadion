@@ -132,7 +132,8 @@ nav a.activo,
 .ficha-torneo:has(#posiciones:target) nav a[href$="#posiciones"],
 .ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.html"],
 .panel-organizador:has(#mis-torneos:target) nav a[href="#mis-torneos"],
-.panel-organizador:not(:has(#mis-torneos:target)) nav a[href="#resumen"]
+.panel-organizador:has(#resultados:target) nav a[href="#resultados"],
+.panel-organizador:not(:has(#mis-torneos:target)):not(:has(#resultados:target)) nav a[href="#resumen"]
   { color: var(--ink); border-bottom-color: var(--olivo); }
 
 /* ---------- Botones, etiquetas, tarjetas ---------- */
@@ -277,14 +278,15 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 /* Las cuatro primeras son de torneo.html y la ultima de panel.html.
    En las dos paginas la vista por defecto se llama #resumen y va
    ultima, asi que la misma mecanica sirve para las dos. */
-#calendario, #posiciones, #participantes, #reglas, #mis-torneos { display: none; }
+#calendario, #posiciones, #participantes, #reglas, #mis-torneos, #resultados { display: none; }
 #calendario:target, #posiciones:target, #participantes:target,
-#reglas:target, #mis-torneos:target { display: flex; }
+#reglas:target, #mis-torneos:target, #resultados:target { display: flex; }
 #calendario:target ~ #resumen,
 #posiciones:target ~ #resumen,
 #participantes:target ~ #resumen,
 #reglas:target ~ #resumen,
-#mis-torneos:target ~ #resumen { display: none; }
+#mis-torneos:target ~ #resumen,
+#resultados:target ~ #resumen { display: none; }
 /* La zona del torneo no separa la cabecera de las pestañas: van
    pegadas, como cuando la barra vivia dentro de la cabecera. */
 .torneo-zona { display: flex; flex-direction: column; gap: 0; }
@@ -307,6 +309,13 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .partido .cruce-nombres .torneo { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); }
 .partido .cruce-nombres .lados { font-size: 15px; }
 .partido .cruce-nombres .lados .vs { color: var(--ink3); font-size: 13px; padding: 0 4px; }
+
+/* El marcador de un partido ya cargado va donde los pendientes llevan
+   el boton de cargar, con la misma letra que la hora de la agenda. */
+.partido .marcador { font-family: var(--serif); font-size: 20px; color: var(--ink); }
+/* Una accion que todavia no se puede hacer: se ve, pero no es un
+   enlace ni tiene a donde ir. La nota de al lado dice por que. */
+.enlace-apagado { color: var(--ink3); cursor: not-allowed; }
 
 /* ---------- Tarjetas de indicador (panel y rendimiento) ----------
    Dos columnas desde el teléfono: con cuatro números cortos entran
