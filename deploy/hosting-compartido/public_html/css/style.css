@@ -226,18 +226,25 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
    termina en #participantes.
 
    Para que la vista por defecto sea posiciones sin necesidad de ancla,
-   el orden en el HTML importa: participantes va primero y arranca
-   oculto; posiciones va despues y arranca visible. Cuando el ancla
-   apunta a participantes, el combinador ~ alcanza a posiciones, que
-   viene despues, y lo apaga. Al reves no se podria: un selector no
-   puede volver hacia atras.
+   el orden en el HTML importa, y es la regla a respetar al agregar una
+   pestaña nueva:
+
+       la vista por defecto va ULTIMA y arranca visible;
+       todas las demas van antes y arrancan ocultas.
+
+   Cuando el ancla apunta a una de las de arriba, el combinador ~
+   alcanza a posiciones, que viene despues, y la apaga. Al reves no se
+   podria: un selector no puede volver hacia atras. A las otras vistas
+   ocultas no hace falta apagarlas, porque nunca se prendieron: solo se
+   prende la que coincide con el ancla, y ancla hay una sola.
 
    Cada vista lleva su propia barra de pestañas, con su entrada
    marcada. Por eso la barra que se ve es siempre la de la vista que
    esta abierta, sin que nada tenga que cambiarle la clase. */
 .vista { display: flex; flex-direction: column; gap: 28px; }
-#participantes { display: none; }
-#participantes:target { display: flex; }
+#reglas, #participantes { display: none; }
+#reglas:target, #participantes:target { display: flex; }
+#reglas:target ~ #posiciones,
 #participantes:target ~ #posiciones { display: none; }
 /* La zona del torneo no separa la cabecera de las pestañas: van
    pegadas, como cuando la barra vivia dentro de la cabecera. */
