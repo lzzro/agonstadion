@@ -104,7 +104,25 @@ header {
 .acciones { display: flex; gap: 8px; }
 nav { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 20px; background: var(--pario); border-bottom: 1px solid var(--hair); }
 nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); padding: 6px 0; border-bottom: 1.5px solid transparent; }
-nav a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
+/* ---------- La entrada marcada del menu ----------
+   En casi todas las paginas la marca va escrita a mano en el HTML, que
+   es la convencion del proyecto. La ficha de torneo no puede: la misma
+   direccion muestra Resumen o Posiciones segun el ancla, y la entrada
+   marcada tiene que acompañar. Sin ancla es el detalle de un torneo, y
+   marca Torneos igual que llave.html; con #posiciones marca Posiciones,
+   que es a donde apunta ese enlace del menu.
+
+   El combinador ~ de las pestañas no sirve para esto: alcanza hermanos
+   posteriores, y el bloque de posiciones no es hermano del menu sino
+   nieto de .pagina, porque vive dentro de main. :has() mira hacia
+   adentro desde .pagina, que es el unico elemento que llega a los dos.
+
+   La apariencia no se repite: los dos selectores nuevos se suman a la
+   misma regla de siempre. */
+nav a.activo,
+.ficha-torneo:has(#posiciones:target) nav a[href$="#posiciones"],
+.ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.html"]
+  { color: var(--ink); border-bottom-color: var(--olivo); }
 
 /* ---------- Botones, etiquetas, tarjetas ---------- */
 .btn { display: inline-block; font-size: 14px; letter-spacing: .08em; padding: 11px 18px; border-radius: 2px; border: 1px solid var(--ink); color: var(--ink); background: transparent; cursor: pointer; font-family: var(--sans); }
