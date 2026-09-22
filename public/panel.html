@@ -10,7 +10,7 @@
   <script src="js/tema.js"></script>
 </head>
 <body>
-<div class="pagina">
+<div class="pagina panel-organizador">
 <header>
   <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
@@ -19,14 +19,32 @@
 </svg><span>STADION</span></a>
   <div class="acciones"><span class="etiqueta">Club Sur · Organizador</span><a class="btn btn-primario" href="crear.html">Nuevo torneo</a></div>
 </header>
-<nav><a href="panel.html" class="activo">Resumen</a><a href="torneos.html">Mis torneos</a><a href="#">Participantes</a><a href="#">Resultados</a><a href="#">Reportes</a><a href="#">Configuración</a></nav>
+<nav><a href="#resumen">Resumen</a><a href="#mis-torneos">Mis torneos</a><a href="#">Participantes</a><a href="#">Resultados</a><a href="#">Reportes</a><a href="#">Configuración</a></nav>
 <main>
 <section>
   <p class="epigrafe">ἀγωνοθέτης</p>
   <h1>Buenas tardes, Club Sur</h1>
   <p class="intro">Jueves 18 de septiembre · 17:42</p>
 </section>
-<section>
+<div class="vista" id="mis-torneos">
+  <section class="tarjeta">
+  <h2>Mis torneos</h2>
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Torneo</th><th>Disciplina</th><th>Formato</th><th>Estado</th><th>Ronda o inscriptos</th><th>Inicio</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Abierto de Tenis de Mesa</td><td>Tenis de mesa</td><td>Suizo</td><td><span class="estado estado-en-vivo">En vivo</span></td><td>Ronda 3 de 5 · 24</td><td>5 de septiembre</td><td><a href="#">Administrar →</a></td></tr>
+      <tr><td>Copa de Verano</td><td>Fútbol</td><td>Eliminación</td><td><span class="estado estado-en-juego">Final</span></td><td>16</td><td>16 de agosto</td><td><a href="llave.html">Ver la llave →</a></td></tr>
+      <tr><td>Liga Interna Club Sur</td><td>Fútbol</td><td>Liga</td><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>9 de 12</td><td>4 de octubre</td><td><a href="#">Administrar →</a></td></tr>
+      <tr><td>Torneo Relámpago Agosto</td><td>Ajedrez</td><td>Eliminación</td><td><span class="estado estado-cerrado">Finalizado</span></td><td>32</td><td>9 de agosto</td><td><a href="#">Ver el resumen →</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Cuatro torneos: uno en vivo, uno en su final, uno abierto a inscripción y uno cerrado.</span>
+  </section>
+</div>
+<div class="vista" id="resumen">
+  <section>
   <div class="kpis">
     <div class="kpi"><strong>3</strong><span class="etiqueta">Torneos activos</span></div>
     <div class="kpi"><strong>12</strong><span class="etiqueta">Resultados pendientes</span></div>
@@ -34,7 +52,7 @@
     <div class="kpi"><strong>81</strong><span class="etiqueta">Participantes totales</span></div>
   </div>
 </section>
-<section class="tarjeta">
+  <section class="tarjeta">
   <h2>Resultados pendientes de carga</h2>
   <p class="intro">La tabla y la llave se ordenan con cada marcador cargado.</p>
   <div class="agenda-dia">
@@ -52,7 +70,7 @@
     <a href="#">Publicar ronda 3 →</a>
   </div>
 </section>
-<section class="tarjeta">
+  <section class="tarjeta">
   <h2>Mis torneos</h2>
   <div class="tabla-scroll">
   <table>
@@ -66,6 +84,7 @@
   </table>
   </div>
 </section>
+</div>
 </main>
 <aside>
 <div class="tarjeta">

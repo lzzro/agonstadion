@@ -117,11 +117,22 @@ nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color
    nieto de .pagina, porque vive dentro de main. :has() mira hacia
    adentro desde .pagina, que es el unico elemento que llega a los dos.
 
-   La apariencia no se repite: los dos selectores nuevos se suman a la
-   misma regla de siempre. */
+   El panel del organizador tiene el mismo caso y se resuelve igual. Su
+   menu es propio de la pagina, no el compartido del sitio, asi que se
+   evaluo si alcanzaba con algo mas simple: no alcanza. El menu sigue
+   siendo hijo de .pagina y las vistas siguen siendo nietas, de modo
+   que el ~ tampoco llega. La alternativa sin :has() era un elemento
+   invisible, puesto ahi solo para que el ancla lo apunte, mas reglas
+   que apaguen la marca por defecto. Mas piezas y mas dificil de
+   explicar que reusar el selector que el proyecto ya declara.
+
+   La apariencia no se repite: los cuatro selectores nuevos se suman a
+   la misma regla de siempre. */
 nav a.activo,
 .ficha-torneo:has(#posiciones:target) nav a[href$="#posiciones"],
-.ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.html"]
+.ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.html"],
+.panel-organizador:has(#mis-torneos:target) nav a[href="#mis-torneos"],
+.panel-organizador:not(:has(#mis-torneos:target)) nav a[href="#resumen"]
   { color: var(--ink); border-bottom-color: var(--olivo); }
 
 /* ---------- Botones, etiquetas, tarjetas ---------- */
@@ -263,13 +274,17 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
    marcada. Por eso la barra que se ve es siempre la de la vista que
    esta abierta, sin que nada tenga que cambiarle la clase. */
 .vista { display: flex; flex-direction: column; gap: 28px; }
-#calendario, #posiciones, #participantes, #reglas { display: none; }
-#calendario:target, #posiciones:target,
-#participantes:target, #reglas:target { display: flex; }
+/* Las cuatro primeras son de torneo.html y la ultima de panel.html.
+   En las dos paginas la vista por defecto se llama #resumen y va
+   ultima, asi que la misma mecanica sirve para las dos. */
+#calendario, #posiciones, #participantes, #reglas, #mis-torneos { display: none; }
+#calendario:target, #posiciones:target, #participantes:target,
+#reglas:target, #mis-torneos:target { display: flex; }
 #calendario:target ~ #resumen,
 #posiciones:target ~ #resumen,
 #participantes:target ~ #resumen,
-#reglas:target ~ #resumen { display: none; }
+#reglas:target ~ #resumen,
+#mis-torneos:target ~ #resumen { display: none; }
 /* La zona del torneo no separa la cabecera de las pestañas: van
    pegadas, como cuando la barra vivia dentro de la cabecera. */
 .torneo-zona { display: flex; flex-direction: column; gap: 0; }
