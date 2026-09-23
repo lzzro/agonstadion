@@ -135,7 +135,8 @@ nav a.activo,
 .panel-organizador:has(#participantes:target) nav a[href="#participantes"],
 .panel-organizador:has(#resultados:target) nav a[href="#resultados"],
 .panel-organizador:has(#reportes:target) nav a[href="#reportes"],
-.panel-organizador:not(:has(#mis-torneos:target)):not(:has(#participantes:target)):not(:has(#resultados:target)):not(:has(#reportes:target)) nav a[href="#resumen"]
+.panel-organizador:has(#configuracion:target) nav a[href="#configuracion"],
+.panel-organizador:not(:has(#mis-torneos:target)):not(:has(#participantes:target)):not(:has(#resultados:target)):not(:has(#reportes:target)):not(:has(#configuracion:target)) nav a[href="#resumen"]
   { color: var(--ink); border-bottom-color: var(--olivo); }
 
 /* ---------- Botones, etiquetas, tarjetas ---------- */
@@ -278,21 +279,23 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
    esta abierta, sin que nada tenga que cambiarle la clase. */
 .vista { display: flex; flex-direction: column; gap: 28px; }
 /* #calendario, #posiciones y #reglas son de torneo.html; #mis-torneos,
-   #resultados y #reportes, de panel.html; #participantes, de las dos.
+   #resultados, #reportes y #configuracion, de panel.html; #participantes,
+   de las dos.
    En las dos paginas la vista por defecto se llama #resumen y va
    ultima, asi que la misma mecanica sirve para las dos. */
 #calendario, #posiciones, #participantes, #reglas, #mis-torneos, #resultados,
-#reportes { display: none; }
+#reportes, #configuracion { display: none; }
 #calendario:target, #posiciones:target, #participantes:target,
 #reglas:target, #mis-torneos:target, #resultados:target,
-#reportes:target { display: flex; }
+#reportes:target, #configuracion:target { display: flex; }
 #calendario:target ~ #resumen,
 #posiciones:target ~ #resumen,
 #participantes:target ~ #resumen,
 #reglas:target ~ #resumen,
 #mis-torneos:target ~ #resumen,
 #resultados:target ~ #resumen,
-#reportes:target ~ #resumen { display: none; }
+#reportes:target ~ #resumen,
+#configuracion:target ~ #resumen { display: none; }
 /* La zona del torneo no separa la cabecera de las pestañas: van
    pegadas, como cuando la barra vivia dentro de la cabecera. */
 .torneo-zona { display: flex; flex-direction: column; gap: 0; }
@@ -391,6 +394,19 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .llave-visual::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--pario); }
 .llave-visual.encendida { background: var(--olivo); }
 .llave-visual.encendida::after { left: 21px; }
+/* Ajustes de solo lectura (Configuracion del panel). El fieldset va con
+   disabled, asi que ningun campo se puede tocar; esto solo hace que se
+   note: fondo del marmol de la pagina en vez del de las superficies,
+   texto atenuado y el cursor de prohibido. Safari atenua los campos
+   deshabilitados por su cuenta; las dos ultimas lineas lo evitan para
+   que el valor se lea igual en todos lados. */
+.ajustes { border: 0; padding: 0; gap: 0; }
+.ajustes legend { padding: 0 0 6px; font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--ink); }
+.ajuste label { flex-direction: row; }
+.ajuste input { width: 12em; max-width: 100%; margin-left: auto; text-align: right; background: var(--pent); border-color: var(--hair); color: var(--ink2); cursor: not-allowed; -webkit-text-fill-color: var(--ink2); opacity: 1; }
+.ajuste input[type="number"] { width: 5em; }
+.ajuste .llave-visual { cursor: not-allowed; }
+.ajuste .a-definir { margin-left: auto; font-size: 14px; color: var(--ink3); font-style: italic; }
 
 /* ---------- Registro de auditoría ---------- */
 .registro { display: flex; flex-direction: column; }

@@ -19,7 +19,7 @@
 </svg><span>STADION</span></a>
   <div class="acciones"><span class="etiqueta">Club Sur · Organizador</span><a class="btn btn-primario" href="crear.html">Nuevo torneo</a></div>
 </header>
-<nav><a href="#resumen">Resumen</a><a href="#mis-torneos">Mis torneos</a><a href="#participantes">Participantes</a><a href="#resultados">Resultados</a><a href="#reportes">Reportes</a><a href="#">Configuración</a></nav>
+<nav><a href="#resumen">Resumen</a><a href="#mis-torneos">Mis torneos</a><a href="#participantes">Participantes</a><a href="#resultados">Resultados</a><a href="#reportes">Reportes</a><a href="#configuracion">Configuración</a></nav>
 <main>
 <section>
   <p class="epigrafe">ἀγωνοθέτης</p>
@@ -151,6 +151,33 @@
     <thead><tr><th>Estado</th><th>Cantidad</th><th>Torneo</th></tr></thead>
     <tbody><tr><td><span class="estado estado-en-vivo">En vivo</span></td><td>1</td><td>Abierto de Tenis de Mesa</td></tr><tr><td><span class="estado estado-en-juego">Final</span></td><td>1</td><td>Copa de Verano</td></tr><tr><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>1</td><td>Liga Interna Club Sur</td></tr><tr><td><span class="estado estado-cerrado">Finalizado</span></td><td>1</td><td>Torneo Relámpago Agosto</td></tr></tbody>
   </table>
+  </div>
+  </section>
+</div>
+<div class="vista" id="configuracion">
+  <section class="tarjeta">
+  <div class="fila" style="justify-content:space-between"><h2>Configuración</h2><span class="chip">Solo lectura</span></div>
+  <fieldset class="ajustes" disabled>
+    <legend>Organizador</legend>
+    <div class="modulo ajuste"><label for="cfg-nombre">Nombre</label><input id="cfg-nombre" type="text" value="Club Sur" readonly></div>
+    <div class="modulo ajuste"><label for="cfg-correo">Correo</label><input id="cfg-correo" type="email" value="torneos@clubsur.uy" readonly></div>
+  </fieldset>
+  </section>
+  <section class="tarjeta">
+  <fieldset class="ajustes" disabled>
+    <legend>Valores por defecto de cada torneo nuevo</legend>
+    <div class="modulo ajuste"><label for="cfg-pv">Puntos por victoria</label><input id="cfg-pv" type="number" value="3" readonly></div>
+    <div class="modulo ajuste"><label for="cfg-pe">Puntos por empate</label><input id="cfg-pe" type="number" value="1" readonly></div>
+    <div class="modulo ajuste"><label for="cfg-pd">Puntos por derrota</label><input id="cfg-pd" type="number" value="0" readonly></div>
+    <div class="modulo ajuste"><span class="etiqueta">Admite empate</span><span class="modulo-estado"><span class="etiqueta">Sí</span><span class="llave-visual encendida" role="img" aria-label="Admite empate: Sí"></span></span></div>
+    <div class="modulo ajuste"><label for="cfg-playoffs">Clasifican a playoffs</label><input id="cfg-playoffs" type="number" value="0" readonly></div>
+    <div class="modulo ajuste"><span class="etiqueta">Ida y vuelta</span><span class="modulo-estado"><span class="etiqueta">No</span><span class="llave-visual" role="img" aria-label="Ida y vuelta: No"></span></span></div>
+    <div class="modulo ajuste"><span class="etiqueta">Rondas previstas</span><span class="a-definir">A definir en cada torneo</span></div>
+    <div class="modulo ajuste"><span class="etiqueta">Reglas</span><span class="a-definir">A definir en cada torneo</span></div>
+  </fieldset>
+  <div class="fila" style="justify-content:space-between">
+    <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Los valores se ajustan al crear cada torneo. Acá quedan solo a la vista.</span>
+    <span class="enlace-apagado" aria-disabled="true">Guardar</span>
   </div>
   </section>
 </div>
