@@ -147,8 +147,10 @@ class ConfiguracionTorneo
             $errores[] = 'Los puntos por victoria no pueden ser menores que los de '
                        . 'empate, ni los de empate menores que los de derrota.';
         }
-        if ($this->puntos_victoria < 0 || $this->puntos_victoria > 10) {
-            $errores[] = 'Los puntos por victoria tienen que estar entre 0 y 10.';
+        # Minimo 1, el mismo min="1" del formulario de crear.html: una
+        # victoria que no suma puntos no distingue al que gana.
+        if ($this->puntos_victoria < 1 || $this->puntos_victoria > 10) {
+            $errores[] = 'Los puntos por victoria tienen que estar entre 1 y 10.';
         }
         if ($this->puntos_empate < 0 || $this->puntos_empate > 10) {
             $errores[] = 'Los puntos por empate tienen que estar entre 0 y 10.';
