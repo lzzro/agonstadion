@@ -126,14 +126,15 @@ nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color
    que apaguen la marca por defecto. Mas piezas y mas dificil de
    explicar que reusar el selector que el proyecto ya declara.
 
-   La apariencia no se repite: los cuatro selectores nuevos se suman a
+   La apariencia no se repite: los selectores nuevos se suman a
    la misma regla de siempre. */
 nav a.activo,
 .ficha-torneo:has(#posiciones:target) nav a[href$="#posiciones"],
 .ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.html"],
 .panel-organizador:has(#mis-torneos:target) nav a[href="#mis-torneos"],
+.panel-organizador:has(#participantes:target) nav a[href="#participantes"],
 .panel-organizador:has(#resultados:target) nav a[href="#resultados"],
-.panel-organizador:not(:has(#mis-torneos:target)):not(:has(#resultados:target)) nav a[href="#resumen"]
+.panel-organizador:not(:has(#mis-torneos:target)):not(:has(#participantes:target)):not(:has(#resultados:target)) nav a[href="#resumen"]
   { color: var(--ink); border-bottom-color: var(--olivo); }
 
 /* ---------- Botones, etiquetas, tarjetas ---------- */
@@ -275,7 +276,8 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
    marcada. Por eso la barra que se ve es siempre la de la vista que
    esta abierta, sin que nada tenga que cambiarle la clase. */
 .vista { display: flex; flex-direction: column; gap: 28px; }
-/* Las cuatro primeras son de torneo.html y la ultima de panel.html.
+/* #calendario, #posiciones y #reglas son de torneo.html; #mis-torneos y
+   #resultados, de panel.html; #participantes, de las dos.
    En las dos paginas la vista por defecto se llama #resumen y va
    ultima, asi que la misma mecanica sirve para las dos. */
 #calendario, #posiciones, #participantes, #reglas, #mis-torneos, #resultados { display: none; }
