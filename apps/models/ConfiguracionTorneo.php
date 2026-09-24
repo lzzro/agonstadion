@@ -148,7 +148,8 @@ class ConfiguracionTorneo
                        . 'empate, ni los de empate menores que los de derrota.';
         }
         # Minimo 1, el mismo min="1" del formulario de crear.html: una
-        # victoria que no suma puntos no distingue al que gana.
+        # victoria que no suma puntos no distingue al que gana. Mismo
+        # rango que la restriccion ck_config_victoria de la tabla.
         if ($this->puntos_victoria < 1 || $this->puntos_victoria > 10) {
             $errores[] = 'Los puntos por victoria tienen que estar entre 1 y 10.';
         }

@@ -289,7 +289,13 @@ CREATE TABLE configuracion_torneo (
   CONSTRAINT ck_config_emp    CHECK (admite_empate IN (0, 1)),
   CONSTRAINT ck_config_iv     CHECK (ida_y_vuelta IN (0, 1)),
   CONSTRAINT ck_config_pts    CHECK (puntos_victoria >= puntos_empate
-                                 AND puntos_empate >= puntos_derrota)
+                                 AND puntos_empate >= puntos_derrota),
+  -- Minimo 1, el mismo min="1" del formulario de crear.html y de
+  -- ConfiguracionTorneo::validar(): una victoria que no suma puntos no
+  -- distingue al que gana. El tope de 10 es el mismo de validar().
+  -- En una base creada antes de esta restriccion se agrega con
+  -- sql/migraciones/001_check_puntos_victoria.sql.
+  CONSTRAINT ck_config_victoria CHECK (puntos_victoria BETWEEN 1 AND 10)
 ) ENGINE=InnoDB;
 
 
