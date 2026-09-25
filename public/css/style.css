@@ -102,13 +102,14 @@ header {
 .marca svg { width: 30px; height: 30px; flex: none; }
 .marca span { font-family: var(--serif); font-size: 20px; font-weight: 600; letter-spacing: .12em; }
 .acciones { display: flex; gap: 8px; }
-/* Con la sesion abierta la cabecera lleva el nombre (enlace al perfil)
-   y "Cerrar sesion", que es un formulario con POST (ver
-   apps/cabecera.php). El formulario no suma margenes ni ocupa una linea
-   propia: el boton queda en la fila como cualquier otro. */
+/* Con la sesion abierta la cabecera lleva un solo circulo, la foto o
+   las iniciales, que es el enlace al perfil (ver apps/cabecera.php). El
+   circulo sale de la misma funcion que el del perfil; aca solo cambia
+   el tamano, con .avatar-chico. El foco se ve al andar con teclado. */
 .acciones { align-items: center; }
-.acciones form.salir { display: flex; margin: 0; }
-.sesion-nombre { font-size: 14px; letter-spacing: .04em; color: var(--ink); padding: 11px 6px; border-bottom: 1.5px solid var(--olivo); }
+.sesion-circulo { display: inline-flex; border-radius: 50%; flex: none; }
+.sesion-circulo:hover .avatar { border-color: var(--olivo); }
+.sesion-circulo:focus-visible { outline: 2px solid var(--olivo); outline-offset: 3px; }
 nav { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 20px; background: var(--pario); border-bottom: 1px solid var(--hair); }
 nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); padding: 6px 0; border-bottom: 1.5px solid transparent; }
 /* ---------- La entrada marcada del menu ----------
@@ -261,7 +262,18 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
    franja de siempre. */
 img.avatar { object-fit: cover; display: block; flex: none; }
 .avatar-vacio { display: flex; align-items: center; justify-content: center; flex: none;
+  background: var(--olivoT);
   font-family: var(--serif); font-size: 36px; font-weight: 500; letter-spacing: .04em; color: var(--ink2); }
+/* El mismo circulo, chico, para la cabecera: 30 px en el telefono y 34
+   desde 768 px (ver las media queries). */
+.avatar.avatar-chico { width: 30px; height: 30px; border-width: 1.5px; font-size: 13px; letter-spacing: .02em; }
+/* "Cerrar sesion" en el perfil, debajo del nombre: el mismo formulario
+   con POST, pero con aspecto de texto discreto y no de boton. */
+.salir-perfil { margin: 6px 0 0; align-items: flex-start; }
+.salir-perfil button { font-family: var(--sans); font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink3); background: none; border: 0; padding: 4px 0; cursor: pointer; }
+.salir-perfil button:hover { color: var(--ink2); text-decoration: underline; text-underline-offset: 3px; }
+.salir-perfil button:focus-visible { outline: 2px solid var(--olivo); outline-offset: 3px; }
 .portada.portada-con-imagen { padding: 0; overflow: hidden; }
 .portada-con-imagen img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .perfil-cabecera { margin-top: 18px; }
@@ -478,6 +490,7 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
 
 /* ---------- Tablet: desde 768 px (mismo breakpoint que en clase) ---------- */
 @media (min-width: 768px) {
+  .avatar.avatar-chico { width: 34px; height: 34px; font-size: 14px; }
   .pagina {
     grid-template-areas:
       "header header"

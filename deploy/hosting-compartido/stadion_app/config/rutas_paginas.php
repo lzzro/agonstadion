@@ -12,4 +12,3 @@
 
 $ruta_publica = '.';
 $ruta_perfil  = 'controllers/perfil.php';
-$ruta_salir   = 'controllers/salir.php';

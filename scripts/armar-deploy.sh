@@ -98,9 +98,9 @@ avisar "Rutas de los formularios ajustadas."
 #    mira si hay sesion para armar la cabecera. En el hosting esa
 #    carpeta se llama stadion_app/ y queda al lado de public_html.
 #
-#    Ademas las paginas necesitan saber donde estan el perfil y la
-#    salida, y esas direcciones tambien cambian: en el hosting son los
-#    puentes de controllers/. Se reescribe el archivo que las guarda.
+#    Ademas las paginas necesitan saber donde esta el perfil, y esa
+#    direccion tambien cambia: en el hosting es el puente de
+#    controllers/. Se reescribe el archivo que la guarda.
 #
 #    perfil.php y rendimiento.php ya no hacen falta tocarlos: son
 #    desvios del lado del servidor al perfil real, en las dos
@@ -129,7 +129,6 @@ cat > "$PRIVADO/config/rutas_paginas.php" <<'RUTAS'
 
 $ruta_publica = '.';
 $ruta_perfil  = 'controllers/perfil.php';
-$ruta_salir   = 'controllers/salir.php';
 RUTAS
 avisar "Paginas apuntadas a stadion_app/ y a los puentes."
 

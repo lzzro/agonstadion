@@ -4,6 +4,8 @@
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
 # Vistas desde una pagina de public/ (/index.php, /torneos.php...).
+# "Cerrar sesion" no esta en las paginas sino en el perfil, asi que aca
+# no hace falta la direccion de la salida.
 # En la maquina local los controladores se alcanzan por el Alias
 # /apps/controllers de Apache (ver docs/configuracion-apache.md).
 #
@@ -13,4 +15,3 @@
 
 $ruta_publica = '.';
 $ruta_perfil  = '../apps/controllers/perfilController.php';
-$ruta_salir   = '../apps/controllers/salirController.php';

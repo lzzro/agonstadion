@@ -90,7 +90,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     $usuario->getIdUsuario(), null, $ip));
 
                 $mensaje = 'La sesion queda abierta a nombre de '
-                         . $usuario->getNombreCompleto() . '.';
+                         . $usuario->getNombreCompletoVisible() . '.';
+
+                # La cuenta, para el circulo de la cabecera de la vista
+                # de resultado.
+                $persona_cabecera = $usuario;
             }
             # Si la auditoria fallara, no se le avisa a quien entra: el
             # inicio de sesion ya paso y el aviso lo confundiria.

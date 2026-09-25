@@ -18,7 +18,7 @@
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
 <nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html" class="activo">Organizadores</a></nav>
 <main>

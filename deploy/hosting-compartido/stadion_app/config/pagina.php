@@ -11,9 +11,10 @@
 #      config/sesion.php. Asi la cabecera muestra "Iniciar sesion" o el
 #      nombre de quien entro, y una sesion vencida por inactividad se
 #      nota en la primera pagina que se abra despues de la media hora.
-#   2. Deja preparadas las direcciones del perfil y de la salida, que
-#      no son las mismas en la maquina local y en el hosting (ver
-#      config/rutas_paginas.php).
+#   2. Si hay sesion, lee la cuenta de la base: la cabecera muestra su
+#      foto, o sus iniciales, en un circulo que lleva al perfil.
+#   3. Deja preparada la direccion del perfil, que no es la misma en la
+#      maquina local y en el hosting (ver config/rutas_paginas.php).
 #
 # Solo se abre la sesion si el navegador ya trae la cookie. Quien nunca
 # inicio sesion no recibe ninguna: no hay por que crearle una sesion
@@ -27,7 +28,9 @@
 # =====================================================================
 
 require_once __DIR__ . '/sesion.php';
+require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rutas_paginas.php';
+require_once __DIR__ . '/../models/UsuarioRepositorio.php';
 require_once __DIR__ . '/../cabecera.php';
 
 # La pagina cambia segun haya o no sesion: que el navegador no guarde
@@ -35,6 +38,24 @@ require_once __DIR__ . '/../cabecera.php';
 # podria mostrar la cabecera con el nombre de quien ya salio.
 header('Cache-Control: no-store');
 
-if (isset($_COOKIE[session_name()])) {
-    sesionVigente();
+# La cuenta de la sesion, leida de la base, para el circulo de la
+# cabecera. null si no hay sesion.
+$persona_sesion = null;
+
+if (isset($_COOKIE[session_name()]) && sesionVigente()) {
+    $conexion = conectarBD();
+    if ($conexion !== null) {
+        $cuentas = new UsuarioRepositorio($conexion);
+        $persona_sesion = $cuentas->buscarPorId((int)$_SESSION['id_usuario']);
+        $conexion->close();
+
+        # La sesion dice que hay alguien, pero la cuenta ya no esta o
+        # quedo dada de baja: se cierra, igual que hace el perfil.
+        if ($persona_sesion === null || !$persona_sesion->estaActivo()) {
+            $persona_sesion = null;
+            cerrarSesion();
+        }
+    }
+    # Si la base no responde, la sesion sigue: la cabecera muestra la
+    # inicial del nombre que guarda la sesion (ver accionesCabecera).
 }

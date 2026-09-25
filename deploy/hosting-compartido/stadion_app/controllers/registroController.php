@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     # lo confundiria.
 
                     $mensaje = 'La cuenta queda abierta a nombre de '
-                             . $usuario->getNombreCompleto()
+                             . $usuario->getNombreCompletoVisible()
                              . ', con el numero ' . $usuario->getIdUsuario() . '.';
                 }
                 $conexion->close();

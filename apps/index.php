@@ -33,7 +33,9 @@ if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 # El perfil es el unico destino que no esta en la carpeta publica sino
 # al lado de los controladores, asi que su direccion se arma aparte.
 if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
-if (!isset($ruta_salir))  { $ruta_salir  = 'salirController.php'; }
+# La cuenta que acaba de entrar, si el controlador la deja preparada
+# (loginController lo hace). Sin ella, la cabecera usa la sesion.
+if (!isset($persona_cabecera)) { $persona_cabecera = null; }
 
 require_once __DIR__ . '/cabecera.php';
 ?>
@@ -55,7 +57,7 @@ require_once __DIR__ . '/cabecera.php';
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_cabecera); ?>
 </header>
 <main>
 <section>

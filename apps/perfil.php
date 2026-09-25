@@ -10,7 +10,12 @@
 #   $mensaje        texto de resultado, si se acaba de guardar algo
 #   $errores        arreglo de mensajes, si algo fallo
 #   $ruta_publica, $ruta_perfil, $ruta_salir   direcciones (ver
-#                   apps/index.php)
+#                   apps/index.php). La de salida es para "Cerrar
+#                   sesion", que vive aca, debajo del nombre.
+#
+# El nombre y el apellido se muestran con getNombreCompletoVisible():
+# primera letra en mayuscula si estan guardados en minuscula. Los campos
+# del formulario, en cambio, muestran lo guardado tal cual.
 #
 # Tres pestanas, con la misma mecanica sin JavaScript que torneo.php:
 # cada vista es un bloque con su id y su propia barra, y :target
@@ -65,15 +70,11 @@ if (!empty($alta)) {
     }
 }
 
-# Las imagenes solo se muestran si el nombre tiene la forma de los que
-# genera el sistema. Si no, va el marcador, como si no hubiera imagen.
-$foto    = ImagenSubida::nombreValido($usuario->getFotoPerfil())  ? $usuario->getFotoPerfil()  : null;
+# La portada solo se muestra si el nombre tiene la forma de los que
+# genera el sistema. La foto la resuelve circuloPersona(), con el mismo
+# control (ver apps/cabecera.php).
 $portada = ImagenSubida::nombreValido($usuario->getFotoPortada()) ? $usuario->getFotoPortada() : null;
 
-# Iniciales para el marcador de la foto: la primera letra del nombre y
-# la del apellido.
-$iniciales = mb_strtoupper(mb_substr((string)$usuario->getNombre(), 0, 1)
-                         . mb_substr((string)$usuario->getApellido(), 0, 1));
 
 # Cantidad de torneos: la misma lista de la pestana, contada. Un torneo
 # en el que la persona aparece dos veces (dos equipos) cuenta una vez.
@@ -114,7 +115,7 @@ $estados = array(
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $usuario); ?>
 </header>
 <nav><a href="<?php echo $ruta_publica; ?>/index.php">Inicio</a><a href="<?php echo $ruta_publica; ?>/torneos.php">Torneos</a><a href="<?php echo $ruta_publica; ?>/calendario.php">Calendario</a><a href="<?php echo $ruta_publica; ?>/torneo.php#posiciones">Posiciones</a><a href="<?php echo $ruta_publica; ?>/panel.html">Organizadores</a></nav>
 <main>
@@ -125,22 +126,24 @@ $estados = array(
   <div class="portada" aria-hidden="true"></div>
 <?php } ?>
   <div class="perfil-cabecera">
-<?php if ($foto !== null) { ?>
-    <img class="avatar" src="<?php echo $ruta_publica; ?>/subidas/<?php echo $foto; ?>" alt="Foto de perfil">
-<?php } else { ?>
-    <div class="avatar avatar-vacio" role="img" aria-label="Sin foto de perfil"><?php echo htmlspecialchars($iniciales); ?></div>
-<?php } ?>
+    <?php echo circuloPersona($usuario, $ruta_publica, 'avatar', false); ?>
     <div>
       <p class="epigrafe">ἀθλητής</p>
-      <h1 style="font-size:36px"><?php echo htmlspecialchars($usuario->getNombreCompleto()); ?></h1>
+      <h1 style="font-size:36px"><?php echo htmlspecialchars($usuario->getNombreCompletoVisible()); ?></h1>
       <p class="intro"><?php
         $linea = array();
         if ($usuario->getAlias() !== null && $usuario->getAlias() !== '') {
             $linea[] = $usuario->getAlias();
         }
+        foreach ($usuario->getRoles() as $rol) { $linea[] = $rol->getNombre(); }
         if ($desde !== '') { $linea[] = $desde; }
         echo htmlspecialchars(implode(' · ', $linea));
       ?></p>
+      <?php # Cerrar sesion: el mismo formulario con POST de siempre, al
+            # mismo controlador. Vive aca y no en la cabecera. ?>
+      <form class="salir-perfil" action="<?php echo htmlspecialchars($ruta_salir); ?>" method="post">
+        <button type="submit">Cerrar sesión</button>
+      </form>
     </div>
   </div>
 </section>
@@ -238,7 +241,7 @@ $estados = array(
   <span class="etiqueta">Tiempo de reacción · comparado</span>
   <table>
     <tr><td>M. Ferreira</td><td class="num">164</td></tr>
-    <tr class="clasifica"><td><?php echo htmlspecialchars($usuario->getNombreCompleto()); ?></td><td class="num">187</td></tr>
+    <tr class="clasifica"><td><?php echo htmlspecialchars($usuario->getNombreCompletoVisible()); ?></td><td class="num">187</td></tr>
     <tr><td>N. Suárez</td><td class="num">201</td></tr>
     <tr><td>D. Acosta</td><td class="num">219</td></tr>
   </table>

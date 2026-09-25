@@ -82,6 +82,35 @@ class Usuario
         return $this->nombre . ' ' . $this->apellido;
     }
 
+    # --- Nombres para mostrar ----------------------------------------
+    # Lo que se guarda no se toca: si alguien se registra como "lucas",
+    # en la base queda "lucas". Solo al mostrarlo sale "Lucas".
+    #
+    # La regla: si el texto esta entero en minuscula, se sube la primera
+    # letra y nada mas. Si ya tiene alguna mayuscula, se respeta tal como
+    # la persona lo escribio. Asi "lucas" pasa a "Lucas", pero "de Itaca"
+    # (con la I mayuscula) queda como esta, con su "de" en minuscula: no
+    # se convierte palabra por palabra.
+    #
+    # Con las funciones mb_, que cuentan caracteres y no bytes: con
+    # strtoupper, una tilde o una enie quedarian sin convertir o rotas.
+    public static function paraMostrar($texto)
+    {
+        $texto = (string)$texto;
+        if ($texto === '' || $texto !== mb_strtolower($texto)) {
+            return $texto;
+        }
+        return mb_strtoupper(mb_substr($texto, 0, 1)) . mb_substr($texto, 1);
+    }
+
+    public function getNombreVisible()   { return self::paraMostrar($this->nombre); }
+    public function getApellidoVisible() { return self::paraMostrar($this->apellido); }
+
+    public function getNombreCompletoVisible()
+    {
+        return trim($this->getNombreVisible() . ' ' . $this->getApellidoVisible());
+    }
+
     public function estaActivo()
     {
         return $this->activo === 1;
