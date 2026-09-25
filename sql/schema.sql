@@ -5,11 +5,31 @@
 -- Segunda entrega: modelo relacional normalizado (3FN) + DDL + DCL
 --
 -- Motor: MariaDB con InnoDB. Probado ejecutando este mismo archivo en
--- MariaDB 10.11, que es la version de la VM del instituto. Necesita
+-- MariaDB 10.11, que es la version de la VM del instituto, y su version
+-- para el hosting en MariaDB 11.4, la del hosting. Necesita
 -- MariaDB 10.2 o superior, porque antes de esa version las
 -- restricciones CHECK se aceptaban pero no se verificaban.
--- El script se puede correr varias veces seguidas: empieza borrando las
--- tablas en orden inverso al de creacion.
+-- En un servidor propio el script se puede correr varias veces
+-- seguidas: empieza borrando las tablas en orden inverso al de creacion
+-- (la version del hosting, en cambio, no borra nada; ver abajo).
+--
+-- CODIFICACION: cada CREATE TABLE lleva escrita la suya (utf8mb4 con
+-- utf8mb4_unicode_ci), ademas del CREATE DATABASE. Asi el resultado no
+-- depende de la base donde se importe. Sin eso, una tabla toma la
+-- codificacion por defecto de la base, y en un hosting la base la crea
+-- cPanel con la del servidor: latin1. Paso en el hosting, y ahi latin1
+-- no guarda un emoji ni ningun caracter fuera del alfabeto de Europa
+-- occidental. La base que ya quedo en latin1 se convierte con
+-- sql/migraciones/004_utf8mb4.sql.
+--
+-- [solo servidor propio] desde aca
+-- HOSTING COMPARTIDO: este archivo no se importa tal cual en un hosting.
+-- Ahi no se puede crear la base ni usuarios por SQL, y los bloques
+-- marcados "[solo servidor propio]" (CREATE DATABASE, USE, el borrado
+-- de las tablas y el DCL) darian error o harian dano. La version para
+-- el hosting la genera scripts/armar-deploy.sh, sin esos bloques, en
+-- deploy/hosting-compartido/sql/schema-hosting.sql. No se edita a mano.
+-- [solo servidor propio] hasta aca
 -- =====================================================================
 --
 -- MODELO RELACIONAL (resumen textual)
@@ -96,6 +116,17 @@
 -- ---------------------------------------------------------------------
 -- 0. BASE DE DATOS
 -- ---------------------------------------------------------------------
+-- El archivo esta escrito en UTF-8, y asi lo tiene que leer el servidor,
+-- lo importe phpMyAdmin o la consola.
+SET NAMES utf8mb4;
+
+-- [solo servidor propio] desde aca
+-- Desde aca hasta "[solo servidor propio] hasta aca", solo para un
+-- servidor propio (XAMPP, la VM). armar-deploy.sh lo saca de la version
+-- del hosting: ahi la base ya la creo cPanel, y el borrado de tablas,
+-- en una base con cuentas reales, se llevaria los datos por delante.
+-- Sin el borrado, importar la version del hosting sobre una base que ya
+-- tiene tablas frena en la primera ("already exists") sin tocar nada.
 CREATE DATABASE IF NOT EXISTS sgdm
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -121,6 +152,14 @@ DROP TABLE IF EXISTS pedido_rol;
 DROP TABLE IF EXISTS usuario_rol;
 DROP TABLE IF EXISTS usuario;
 DROP TABLE IF EXISTS rol;
+-- [solo servidor propio] hasta aca
+
+-- La codificacion por defecto de la base, tambien en utf8mb4. Sin
+-- nombre de base: vale para la que esta elegida (sgdm despues del USE,
+-- o la que se eligio en phpMyAdmin en el hosting, donde la crea cPanel
+-- en latin1). Las tablas no dependen de esto, porque cada una declara
+-- la suya; es para que la base entera quede pareja.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -133,7 +172,7 @@ CREATE TABLE rol (
   descripcion VARCHAR(150) NULL,
   CONSTRAINT pk_rol     PRIMARY KEY (id_rol),
   CONSTRAINT uq_rol_nom UNIQUE (nombre)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- La contrasena se guarda como hash generado en PHP con password_hash()
 -- (algoritmo por defecto, bcrypt = 60 caracteres). Se reservan 255 por
@@ -166,7 +205,7 @@ CREATE TABLE usuario (
                                     OR BINARY foto_perfil REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$'),
   CONSTRAINT ck_usuario_portada CHECK (foto_portada IS NULL
                                     OR BINARY foto_portada REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$')
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Un usuario puede tener mas de un rol (jugador y organizador a la vez),
 -- y un rol lo tienen muchos usuarios: relacion N:M con tabla intermedia.
@@ -179,7 +218,7 @@ CREATE TABLE usuario_rol (
       ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_usurol_rol      FOREIGN KEY (id_rol) REFERENCES rol (id_rol)
       ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Pedidos de rol: una cuenta pide un rol (hoy, organizador) y un
 -- administrador lo aprueba o lo rechaza. Es el historial de pedidos, no
@@ -228,7 +267,7 @@ CREATE TABLE pedido_rol (
                                                                AND id_usuario_resuelve IS NOT NULL)),
   CONSTRAINT ck_pedido_fechas    CHECK (fecha_resolucion IS NULL OR fecha_resolucion >= fecha_pedido),
   CONSTRAINT ck_pedido_propio    CHECK (id_usuario_resuelve IS NULL OR id_usuario_resuelve <> id_usuario)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -247,7 +286,7 @@ CREATE TABLE equipo (
   CONSTRAINT fk_equipo_cap  FOREIGN KEY (id_usuario_capitan) REFERENCES usuario (id_usuario)
       ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT ck_equipo_act  CHECK (activo IN (0, 1))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Un usuario puede integrar varios equipos (de distintas disciplinas) y
 -- un equipo tiene varios integrantes: otra relacion N:M.
@@ -264,7 +303,7 @@ CREATE TABLE integrante_equipo (
       ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT uq_integ_dorsal    UNIQUE (id_equipo, dorsal),
   CONSTRAINT ck_integ_act       CHECK (activo IN (0, 1))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -276,7 +315,7 @@ CREATE TABLE disciplina (
   nombre        VARCHAR(40)  NOT NULL,
   CONSTRAINT pk_disciplina     PRIMARY KEY (id_disciplina),
   CONSTRAINT uq_disciplina_nom UNIQUE (nombre)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tipo de torneo: define QUIEN compite (una persona o un equipo).
 -- compite_equipo = 1 -> los participantes son equipos
@@ -289,7 +328,7 @@ CREATE TABLE tipo_torneo (
   CONSTRAINT pk_tipo_torneo     PRIMARY KEY (id_tipo_torneo),
   CONSTRAINT uq_tipo_torneo_nom UNIQUE (nombre),
   CONSTRAINT ck_tipo_torneo_eq  CHECK (compite_equipo IN (0, 1))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Modulo de competencia: define COMO se arma el fixture (liga,
 -- eliminacion directa, suizo). Los modulos en si son de la tercera
@@ -300,7 +339,7 @@ CREATE TABLE modulo_competencia (
   descripcion VARCHAR(150) NULL,
   CONSTRAINT pk_modulo     PRIMARY KEY (id_modulo),
   CONSTRAINT uq_modulo_nom UNIQUE (nombre)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -333,7 +372,7 @@ CREATE TABLE torneo (
   CONSTRAINT ck_torneo_max    CHECK (max_participantes BETWEEN 2 AND 128),
   CONSTRAINT ck_torneo_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio),
   CONSTRAINT ck_torneo_estado CHECK (estado IN ('borrador', 'inscripcion', 'en_curso', 'finalizado', 'cancelado'))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Relacion 1:1 con torneo. Se separo en su propia tabla porque son los
 -- parametros de puntaje y reglas, que solo existen una vez publicado el
@@ -362,7 +401,7 @@ CREATE TABLE configuracion_torneo (
   -- En una base creada antes de esta restriccion se agrega con
   -- sql/migraciones/001_check_puntos_victoria.sql.
   CONSTRAINT ck_config_victoria CHECK (puntos_victoria BETWEEN 1 AND 10)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -407,7 +446,7 @@ CREATE TABLE participante (
   CONSTRAINT ck_part_competidor CHECK ((id_usuario IS NOT NULL AND id_equipo IS NULL)
                                     OR (id_usuario IS NULL AND id_equipo IS NOT NULL)),
   CONSTRAINT ck_part_estado     CHECK (estado IN ('inscripto', 'confirmado', 'baja', 'descalificado'))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -429,7 +468,7 @@ CREATE TABLE ronda (
   CONSTRAINT ck_ronda_num    CHECK (numero >= 1),
   CONSTRAINT ck_ronda_fechas CHECK (fecha_fin IS NULL OR fecha_inicio IS NULL OR fecha_fin >= fecha_inicio),
   CONSTRAINT ck_ronda_estado CHECK (estado IN ('pendiente', 'en_curso', 'cerrada'))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- id_participante_visitante admite NULL para el caso de "libre" (bye),
 -- cuando la cantidad de participantes es impar.
@@ -455,7 +494,7 @@ CREATE TABLE enfrentamiento (
   CONSTRAINT ck_enfr_distintos  CHECK (id_participante_visitante IS NULL
                                     OR id_participante_visitante <> id_participante_local),
   CONSTRAINT ck_enfr_estado     CHECK (estado IN ('programado', 'en_vivo', 'jugado', 'suspendido', 'anulado'))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -485,7 +524,7 @@ CREATE TABLE resultado (
       ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT ck_res_walkover  CHECK (walkover IN (0, 1)),
   CONSTRAINT ck_res_puntajes  CHECK (puntaje_local >= 0 AND puntaje_visitante >= 0)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -516,7 +555,7 @@ CREATE TABLE tabla_posiciones (
       ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT ck_pos_contadores CHECK (ganados >= 0 AND empatados >= 0 AND perdidos >= 0
                                   AND favor >= 0 AND contra >= 0)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -545,7 +584,7 @@ CREATE TABLE auditoria (
   CONSTRAINT ck_audit_accion  CHECK (accion IN ('alta', 'baja', 'modificacion',
                                                 'login_ok', 'login_error', 'logout',
                                                 'pedido_rol', 'aprobacion', 'rechazo'))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ---------------------------------------------------------------------
@@ -581,9 +620,13 @@ INSERT INTO modulo_competencia (nombre, descripcion) VALUES
   ('Suizo',               'Emparejamiento por puntaje, sin repetir rivales');
 
 
+-- [solo servidor propio] desde aca
 -- =====================================================================
 -- 12. DCL - USUARIOS DE BASE DE DATOS Y PERMISOS
 -- =====================================================================
+-- En un hosting compartido esta seccion no corre: los usuarios y sus
+-- permisos se dan desde cPanel. La version del hosting no la trae.
+--
 -- IMPORTANTE: las contrasenas de abajo son marcadores y tienen que
 -- quedar asi en el repositorio. La real se le pone al usuario aparte,
 -- a mano, despues de correr este script:
@@ -644,6 +687,7 @@ GRANT ALL PRIVILEGES ON sgdm.* TO 'sgdm_admin'@'localhost';
 
 -- GRANT y REVOKE toman efecto de inmediato. FLUSH PRIVILEGES solo hace
 -- falta si se editan a mano las tablas de la base mysql.
+-- [solo servidor propio] hasta aca
 
 
 -- =====================================================================

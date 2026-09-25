@@ -34,6 +34,12 @@
 --   - Si se corre dos veces, el CREATE TABLE avisa "Table 'pedido_rol'
 --     already exists" y no cambia nada.
 --
+-- La tabla lleva su codificacion escrita (utf8mb4), igual que todas las
+-- de schema.sql: asi queda en utf8mb4 aunque la base este en latin1. En
+-- una base donde esta migracion ya corrio antes de ese agregado, la
+-- tabla quedo con la codificacion de la base; la 004 la convierte junto
+-- con las demas.
+--
 -- Necesita MariaDB 10.2 o superior, igual que schema.sql (los CHECK y las
 -- columnas calculadas).
 -- =====================================================================
@@ -63,7 +69,7 @@ CREATE TABLE pedido_rol (
                                                                AND id_usuario_resuelve IS NOT NULL)),
   CONSTRAINT ck_pedido_fechas    CHECK (fecha_resolucion IS NULL OR fecha_resolucion >= fecha_pedido),
   CONSTRAINT ck_pedido_propio    CHECK (id_usuario_resuelve IS NULL OR id_usuario_resuelve <> id_usuario)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE auditoria DROP CONSTRAINT ck_audit_accion;
 ALTER TABLE auditoria ADD CONSTRAINT ck_audit_accion

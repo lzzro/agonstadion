@@ -8,7 +8,8 @@
 #
 #     deploy/hosting-compartido/
 #     ├── public_html/      -> va tal cual a public_html/ del hosting
-#     └── stadion_app/      -> va AL LADO de public_html, no adentro
+#     ├── stadion_app/      -> va AL LADO de public_html, no adentro
+#     └── sql/              -> NO se sube: el esquema para phpMyAdmin
 #
 # Existe para que la copia no se desincronice del original. Despues de
 # tocar cualquier cosa en public/ o en apps/, se corre esto y la copia
@@ -245,7 +246,104 @@ EJEMPLO
 avisar "Plantilla de configuracion del hosting escrita."
 
 # ---------------------------------------------------------------------
-# 7. Comprobaciones: que no se haya colado nada que no deba estar.
+# 7. El esquema para importar en el hosting.
+#
+#    sql/schema.sql esta pensado para un servidor propio (XAMPP, la VM):
+#    crea la base, la elige con USE, borra las tablas para poder correrse
+#    de nuevo y crea los usuarios de la base con sus permisos (DCL). En
+#    un hosting compartido nada de eso se puede o se debe hacer: la base
+#    y los usuarios los da cPanel, y en una base con cuentas reales un
+#    DROP TABLE se lleva los datos por delante.
+#
+#    Esos bloques van marcados en schema.sql entre dos renglones:
+#        -- [solo servidor propio] desde aca
+#        -- [solo servidor propio] hasta aca
+#    y aca se sacan. Todo lo demas pasa tal cual, incluida la
+#    codificacion que cada tabla lleva escrita (utf8mb4): es la que hace
+#    que el resultado no dependa de la base donde se importe.
+#
+#    La copia queda en sql/, al lado de public_html/ y stadion_app/,
+#    pero esa carpeta NO se sube: el archivo se importa en phpMyAdmin.
+#
+#    Existe para que nunca haya que recortar schema.sql a mano: la vez
+#    que se hizo, con el CREATE DATABASE se fue tambien la codificacion,
+#    y las tablas del hosting quedaron en latin1.
+# ---------------------------------------------------------------------
+ESQUEMA="$RAIZ/sql/schema.sql"
+ESQUEMA_HOSTING="$DESTINO/sql/schema-hosting.sql"
+mkdir -p "$DESTINO/sql"
+
+[ -f "$ESQUEMA" ] || { echo "ERROR: no aparece $ESQUEMA" >&2; exit 5; }
+
+# Cada tabla tiene que declarar su codificacion: se comprueba en el
+# original, asi una tabla nueva que la olvide no llega a ningun lado.
+# (tr saca el \r de los finales de renglon de Windows.)
+TABLAS=$(tr -d '\r' < "$ESQUEMA" | grep -c '^CREATE TABLE')
+CON_CODIFICACION=$(tr -d '\r' < "$ESQUEMA" | grep -c '^) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;$')
+if [ "$TABLAS" -eq 0 ] || [ "$TABLAS" -ne "$CON_CODIFICACION" ]; then
+    echo "ERROR: schema.sql tiene $TABLAS tablas y solo $CON_CODIFICACION declaran" >&2
+    echo "       ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci." >&2
+    exit 9
+fi
+
+{
+    cat <<'CABECERA'
+-- =====================================================================
+-- ESQUEMA PARA HOSTING COMPARTIDO - GENERADO, NO EDITAR A MANO
+-- ---------------------------------------------------------------------
+-- Lo genera scripts/armar-deploy.sh a partir de sql/schema.sql. Es el
+-- mismo esquema sin los bloques "[solo servidor propio]": sin CREATE
+-- DATABASE, sin USE, sin el borrado de las tablas y sin el DCL (los
+-- usuarios de la base y sus permisos se dan en cPanel). Cada tabla
+-- lleva su codificacion escrita, asi que queda en utf8mb4 aunque la
+-- base del hosting venga en latin1.
+--
+-- Se importa en phpMyAdmin, con la base del hosting elegida a la
+-- izquierda, en una base VACIA. Si la base ya tiene tablas, frena en la
+-- primera ("already exists") sin tocar nada: para una base que ya
+-- existe van las migraciones de sql/migraciones/. El paso a paso esta
+-- en docs/deploy-hosting-compartido.md.
+-- =====================================================================
+
+CABECERA
+    awk -v desde='-- [solo servidor propio] desde aca' \
+        -v hasta='-- [solo servidor propio] hasta aca' '
+        { linea = $0; sub(/\r$/, "", linea) }
+        linea == desde {
+            if (dentro) { print "renglon " NR ": se abre un bloque sin cerrar el anterior" > "/dev/stderr"; mal = 1 }
+            dentro = 1; next
+        }
+        linea == hasta {
+            if (!dentro) { print "renglon " NR ": se cierra un bloque que no se abrio" > "/dev/stderr"; mal = 1 }
+            dentro = 0; next
+        }
+        !dentro { print }
+        END {
+            if (dentro) { print "un bloque [solo servidor propio] queda sin cerrar" > "/dev/stderr"; mal = 1 }
+            exit mal
+        }' "$ESQUEMA"
+} > "$ESQUEMA_HOSTING" || { echo "ERROR: las marcas [solo servidor propio] de schema.sql no cierran." >&2; exit 9; }
+
+# Lo que no puede quedar en la version del hosting, fuera de los
+# comentarios.
+if tr -d '\r' < "$ESQUEMA_HOSTING" | grep -v '^[[:space:]]*--' \
+     | grep -Eiq '^[[:space:]]*(CREATE[[:space:]]+(DATABASE|SCHEMA|USER)|DROP[[:space:]]+(DATABASE|SCHEMA|TABLE|USER)|USE[[:space:]]|GRANT[[:space:]]|REVOKE[[:space:]]|ALTER[[:space:]]+USER|FLUSH[[:space:]])'; then
+    echo "ERROR: la version del hosting todavia trae CREATE DATABASE, USE," >&2
+    echo "       DROP, usuarios o permisos. Revisar las marcas de schema.sql." >&2
+    exit 9
+fi
+# Y tienen que estar todas las tablas, cada una con su codificacion.
+TABLAS_HOSTING=$(tr -d '\r' < "$ESQUEMA_HOSTING" | grep -c '^CREATE TABLE')
+CODIFICACION_HOSTING=$(tr -d '\r' < "$ESQUEMA_HOSTING" | grep -c '^) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;$')
+if [ "$TABLAS_HOSTING" -ne "$TABLAS" ] || [ "$CODIFICACION_HOSTING" -ne "$TABLAS" ]; then
+    echo "ERROR: la version del hosting tiene $TABLAS_HOSTING de $TABLAS tablas" >&2
+    echo "       ($CODIFICACION_HOSTING con la codificacion escrita)." >&2
+    exit 9
+fi
+avisar "Esquema para el hosting escrito: $TABLAS tablas, todas en utf8mb4."
+
+# ---------------------------------------------------------------------
+# 8. Comprobaciones: que no se haya colado nada que no deba estar.
 # ---------------------------------------------------------------------
 COLADOS=0
 for PROHIBIDO in "database.local.php" "respaldo.local.cnf"; do
@@ -270,5 +368,7 @@ echo "    $PUBLICO"
 echo "        -> sube a public_html/ del hosting"
 echo "    $PRIVADO"
 echo "        -> sube AL LADO de public_html/, no adentro"
+echo "    $ESQUEMA_HOSTING"
+echo "        -> NO se sube: se importa en phpMyAdmin, en una base vacia"
 echo
 echo "El paso a paso completo: docs/deploy-hosting-compartido.md"
