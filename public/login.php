@@ -1,3 +1,11 @@
+<?php
+require __DIR__ . '/../apps/config/pagina.php';
+# Con la sesion ya abierta no hay nada que hacer aca: se va al perfil.
+if (isset($_SESSION['id_usuario'])) {
+    header('Location: ' . $ruta_perfil);
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,7 +20,7 @@
 <body>
 <div class="acceso">
   <section class="panel panel-marmol">
-    <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
@@ -30,7 +38,7 @@
       <label>Contraseña<input type="password" name="password" placeholder="mínimo 10 caracteres" required minlength="10" autocomplete="current-password"></label>
       <div class="fila" style="justify-content:space-between"><label class="opcion" style="border:none;padding:0"><input type="checkbox" name="recordar"> Recordarme</label><a href="#">Recuperar contraseña</a></div>
       <button class="btn btn-primario" type="submit">Entrar</button>
-      <a class="btn" href="registro.html" style="text-align:center">Crear una cuenta</a>
+      <a class="btn" href="registro.php" style="text-align:center">Crear una cuenta</a>
     </form>
   </section>
 </div>

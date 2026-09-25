@@ -1,0 +1,15 @@
+# =====================================================================
+# Paginas publicas - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# Las paginas pasaron de .html a .php en la segunda entrega, porque la
+# cabecera depende de la sesion (ver apps/config/pagina.php).
+# =====================================================================
+
+# La portada es index.php. En la maquina local el virtual host decia
+# index.html; esta linea lo corrige sin tener que tocarlo.
+DirectoryIndex index.php
+
+# Quien tenga guardada una direccion vieja (torneos.html, login.html...)
+# llega a la pagina nueva en vez de a un error. panel.html y admin.html
+# no estan en la lista porque siguen siendo .html.
+RedirectMatch 301 "^(.*/)(index|torneos|torneo|calendario|llave|crear|login|registro|perfil|rendimiento)\.html$" "$1$2.php"

@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/../apps/config/pagina.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,14 +13,14 @@
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
 </header>
-<nav><a href="index.html">Inicio</a><a href="torneos.html">Torneos</a><a href="calendario.html" class="activo">Calendario</a><a href="torneo.html#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php" class="activo">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
 <main>
 <section>
   <p class="epigrafe">ἡμέραι</p>
@@ -42,7 +43,7 @@
 </div>
 <div class="agenda-dia">
   <p class="etiqueta dia">Viernes 19 de septiembre</p>
-  <div class="partido"><span class="hora">18:00</span><span class="cruce-nombres"><span class="torneo"><a href="llave.html">Copa Interliceal de Ajedrez</a> · Semifinal</span><span class="lados">M. Ferreira<span class="vs">vs</span>C. Silva</span></span></div>
+  <div class="partido"><span class="hora">18:00</span><span class="cruce-nombres"><span class="torneo"><a href="llave.php">Copa Interliceal de Ajedrez</a> · Semifinal</span><span class="lados">M. Ferreira<span class="vs">vs</span>C. Silva</span></span></div>
   <div class="partido"><span class="hora">19:30</span><span class="cruce-nombres"><span class="torneo">Liga Barrial · Fecha 4</span><span class="lados">La Teja<span class="vs">vs</span>Cerro FC</span></span></div>
 </div>
 <div class="agenda-dia">

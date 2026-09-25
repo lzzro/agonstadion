@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/../stadion_app/config/pagina.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,14 +13,14 @@
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
 </header>
-<nav><a href="index.html">Inicio</a><a href="torneos.html" class="activo">Torneos</a><a href="calendario.html">Calendario</a><a href="torneo.html#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
 <main>
 <section>
   <p class="epigrafe">κλῆρος</p>
@@ -62,7 +63,7 @@
   <span class="etiqueta">Próxima partida</span>
   <h3>Semifinal</h3>
   <table><tr><td>M. Ferreira</td><td class="etiqueta">VIE 18:00</td><td>C. Silva</td></tr></table>
-  <p><a href="calendario.html">Ver el calendario completo →</a></p>
+  <p><a href="calendario.php">Ver el calendario completo →</a></p>
 </div>
 <div class="tarjeta">
   <span class="etiqueta">Reglas en breve</span>

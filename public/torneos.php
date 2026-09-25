@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/../apps/config/pagina.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,14 +13,14 @@
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
 </header>
-<nav><a href="index.html">Inicio</a><a href="torneos.html" class="activo">Torneos</a><a href="calendario.html">Calendario</a><a href="torneo.html#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
 <main>
 <section>
   <p class="epigrafe">ἀγῶνες</p>
@@ -39,14 +40,14 @@
     <h3>Liga Valorant Otoño</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Comunidad Vórtice · 12 equipos · Ronda 7 de 11</p>
     <div class="barra"><span style="width:64%"></span></div>
-    <a href="torneo.html">Ver torneo →</a>
+    <a href="torneo.php">Ver torneo →</a>
   </article>
   <article class="tarjeta">
     <div class="fila"><span class="estado estado-en-juego">En juego</span><span class="etiqueta">Eliminación · Ajedrez</span></div>
     <h3>Copa Interliceal de Ajedrez</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Liceo N.º 3 · 16 participantes · Cuartos</p>
     <div class="barra"><span style="width:50%"></span></div>
-    <a href="llave.html">Ver torneo →</a>
+    <a href="llave.php">Ver torneo →</a>
   </article>
   <article class="tarjeta">
     <span class="estado estado-en-vivo">En vivo</span>
@@ -88,7 +89,7 @@
   <span class="etiqueta">Para organizadores</span>
   <h3>Abrí tu propio estadio</h3>
   <p>El torneo se arma con lo que cargás: participantes, formato, fecha. Del calendario y la llave se ocupa Stadion.</p>
-  <a class="btn" href="crear.html">Crear torneo</a>
+  <a class="btn" href="crear.php">Crear torneo</a>
 </div>
 </aside>
 <footer>

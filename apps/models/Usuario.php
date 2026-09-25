@@ -29,13 +29,16 @@ class Usuario
     private $presentacion;
     private $activo;
     private $fecha_alta;
+    private $foto_perfil;    # nombre del archivo, o null si no hay
+    private $foto_portada;   # idem
     private $roles;          # arreglo de objetos Rol
     #endregion
 
     #region FUNCIONES
 
     public function __construct($id_usuario, $correo, $hash_password, $nombre, $apellido,
-                                $alias = null, $presentacion = null, $activo = 1, $fecha_alta = null)
+                                $alias = null, $presentacion = null, $activo = 1, $fecha_alta = null,
+                                $foto_perfil = null, $foto_portada = null)
     {
         $this->id_usuario    = $id_usuario;
         $this->correo        = $correo;
@@ -46,6 +49,8 @@ class Usuario
         $this->presentacion  = $presentacion;
         $this->activo        = (int)$activo;
         $this->fecha_alta    = $fecha_alta;
+        $this->foto_perfil   = $foto_perfil;
+        $this->foto_portada  = $foto_portada;
         $this->roles         = array();
     }
 
@@ -66,6 +71,8 @@ class Usuario
     public function getPresentacion(){ return $this->presentacion; }
     public function getActivo()      { return $this->activo; }
     public function getFechaAlta()   { return $this->fecha_alta; }
+    public function getFotoPerfil()  { return $this->foto_perfil; }
+    public function getFotoPortada() { return $this->foto_portada; }
     public function getRoles()       { return $this->roles; }
 
     # Equivale al CONCAT(nombre, ' ', apellido) de la consulta de

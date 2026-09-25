@@ -102,6 +102,13 @@ header {
 .marca svg { width: 30px; height: 30px; flex: none; }
 .marca span { font-family: var(--serif); font-size: 20px; font-weight: 600; letter-spacing: .12em; }
 .acciones { display: flex; gap: 8px; }
+/* Con la sesion abierta la cabecera lleva el nombre (enlace al perfil)
+   y "Cerrar sesion", que es un formulario con POST (ver
+   apps/cabecera.php). El formulario no suma margenes ni ocupa una linea
+   propia: el boton queda en la fila como cualquier otro. */
+.acciones { align-items: center; }
+.acciones form.salir { display: flex; margin: 0; }
+.sesion-nombre { font-size: 14px; letter-spacing: .04em; color: var(--ink); padding: 11px 6px; border-bottom: 1.5px solid var(--olivo); }
 nav { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 20px; background: var(--pario); border-bottom: 1px solid var(--hair); }
 nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); padding: 6px 0; border-bottom: 1.5px solid transparent; }
 /* ---------- La entrada marcada del menu ----------
@@ -109,7 +116,7 @@ nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color
    es la convencion del proyecto. La ficha de torneo no puede: la misma
    direccion muestra Resumen o Posiciones segun el ancla, y la entrada
    marcada tiene que acompañar. Sin ancla es el detalle de un torneo, y
-   marca Torneos igual que llave.html; con #posiciones marca Posiciones,
+   marca Torneos igual que llave.php; con #posiciones marca Posiciones,
    que es a donde apunta ese enlace del menu.
 
    El combinador ~ de las pestañas no sirve para esto: alcanza hermanos
@@ -130,7 +137,7 @@ nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color
    la misma regla de siempre. */
 nav a.activo,
 .ficha-torneo:has(#posiciones:target) nav a[href$="#posiciones"],
-.ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.html"],
+.ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.php"],
 .panel-organizador:has(#mis-torneos:target) nav a[href="#mis-torneos"],
 .panel-organizador:has(#participantes:target) nav a[href="#participantes"],
 .panel-organizador:has(#resultados:target) nav a[href="#resultados"],
@@ -248,6 +255,33 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .acceso form { max-width: 400px; width: 100%; margin: 0 auto; }
 .perfil-cabecera { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .avatar { width: 96px; height: 96px; border-radius: 50%; background: var(--veta); border: 3px solid var(--olivo2); }
+/* Foto de perfil y portada del perfil real. La foto se recorta en el
+   circulo sin deformarse; sin foto, el mismo circulo lleva las
+   iniciales, que es el marcador neutro. La portada, sin imagen, es la
+   franja de siempre. */
+img.avatar { object-fit: cover; display: block; flex: none; }
+.avatar-vacio { display: flex; align-items: center; justify-content: center; flex: none;
+  font-family: var(--serif); font-size: 36px; font-weight: 500; letter-spacing: .04em; color: var(--ink2); }
+.portada.portada-con-imagen { padding: 0; overflow: hidden; }
+.portada-con-imagen img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.perfil-cabecera { margin-top: 18px; }
+form.subida { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+form.subida input[type="file"] { max-width: 100%; }
+/* Un selector de archivo vacio cuenta como "invalido" porque es
+   obligatorio, y la regla general lo pintaria de rojo antes de que
+   nadie haga nada. Aca va con el borde de siempre. */
+form.subida input[type="file"]:invalid { border-color: var(--veta); }
+/* En la grilla de datos del perfil, que los campos se achiquen con su
+   columna en vez de salirse de la tarjeta (mismo caso que el de las
+   tablas: un hijo de grid no baja de su contenido sin min-width: 0). */
+.datos-perfil .grilla > label { min-width: 0; }
+.datos-perfil .grilla input { width: 100%; min-width: 0; }
+/* Marca de lo que no sale de la base. Mismo idioma que los graficos del
+   panel: contorno punteado para lo que falta. Chica y en gris, para que
+   se vea sin tapar el dato. */
+.muestra { display: inline-block; width: fit-content; white-space: nowrap; font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink3); border: 1px dashed var(--ink3); padding: 3px 7px; }
+.datos .muestra { display: block; margin-top: 8px; }
 .pestanas { display: flex; gap: 24px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); overflow-x: auto; }
 .pestanas a { padding: 12px 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); white-space: nowrap; border-bottom: 1.5px solid transparent; }
 .pestanas a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
@@ -278,16 +312,19 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
    marcada. Por eso la barra que se ve es siempre la de la vista que
    esta abierta, sin que nada tenga que cambiarle la clase. */
 .vista { display: flex; flex-direction: column; gap: 28px; }
-/* #calendario, #posiciones y #reglas son de torneo.html; #mis-torneos,
-   #resultados, #reportes y #configuracion, de panel.html; #participantes,
-   de las dos.
-   En las dos paginas la vista por defecto se llama #resumen y va
-   ultima, asi que la misma mecanica sirve para las dos. */
+/* #calendario, #posiciones y #reglas son de torneo.php; #resultados,
+   #reportes y #configuracion, de panel.html; #participantes, de las
+   dos; #mis-torneos, de panel.html y del perfil; #rendimiento, del
+   perfil.
+   En torneo.php y panel.html la vista por defecto se llama #resumen y
+   va ultima, asi que la misma mecanica sirve para las dos. En el
+   perfil la vista por defecto es #datos, tambien ultima: tiene sus
+   propias reglas para apagarse, mas abajo. */
 #calendario, #posiciones, #participantes, #reglas, #mis-torneos, #resultados,
-#reportes, #configuracion { display: none; }
+#reportes, #configuracion, #rendimiento { display: none; }
 #calendario:target, #posiciones:target, #participantes:target,
 #reglas:target, #mis-torneos:target, #resultados:target,
-#reportes:target, #configuracion:target { display: flex; }
+#reportes:target, #configuracion:target, #rendimiento:target { display: flex; }
 #calendario:target ~ #resumen,
 #posiciones:target ~ #resumen,
 #participantes:target ~ #resumen,
@@ -296,6 +333,8 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 #resultados:target ~ #resumen,
 #reportes:target ~ #resumen,
 #configuracion:target ~ #resumen { display: none; }
+#mis-torneos:target ~ #datos,
+#rendimiento:target ~ #datos { display: none; }
 /* La zona del torneo no separa la cabecera de las pestañas: van
    pegadas, como cuando la barra vivia dentro de la cabecera. */
 .torneo-zona { display: flex; flex-direction: column; gap: 0; }

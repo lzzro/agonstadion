@@ -4,18 +4,28 @@
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
 # La incluye perfilController.php despues de cargar al usuario. Recibe:
-#   $usuario   objeto Usuario con sus roles ya cargados
-#   $mensaje   texto de resultado, si se acaba de guardar
-#   $errores   arreglo de mensajes, si algo fallo
-#   $ruta_publica  desde donde alcanzar css, js e imagenes
+#   $usuario        objeto Usuario con sus roles ya cargados
+#   $inscripciones  torneos de la persona (ver TorneoRepositorio), o
+#                   null si la consulta no se pudo hacer
+#   $mensaje        texto de resultado, si se acaba de guardar algo
+#   $errores        arreglo de mensajes, si algo fallo
+#   $ruta_publica, $ruta_perfil, $ruta_salir   direcciones (ver
+#                   apps/index.php)
 #
-# Reemplaza a public/perfil.html, que tenia datos inventados. Lo que se
-# muestra sale de la base: no hay ni un dato escrito a mano.
+# Tres pestanas, con la misma mecanica sin JavaScript que torneo.php:
+# cada vista es un bloque con su id y su propia barra, y :target
+# muestra la que coincide con el ancla. Datos es la vista por defecto y
+# por eso va ultima (la regla esta explicada en style.css).
 #
-# Por eso tampoco estan los contadores de torneos, finales y kotinos
-# que tenia la maqueta: todavia no hay torneos en la base, y un numero
-# inventado en una pantalla que dice mostrar datos reales es peor que
-# no mostrarlo.
+#   Datos         lo que sale de la base, y se edita: nombre, alias,
+#                 presentacion, foto y portada
+#   Mis torneos   de la base: los torneos en los que compite la persona,
+#                 sola o con un equipo
+#   Rendimiento   DE MUESTRA: todavia no hay tabla de mediciones. Son
+#                 los valores de la maqueta, marcados en pantalla
+#
+# Lo real y lo de muestra no se mezclan sin aviso: todo numero que no
+# sale de la base lleva al lado la marca "De muestra".
 #
 # Todo lo que viene de la base se imprime con htmlspecialchars: sin
 # eso, una presentacion con etiquetas HTML se ejecutaria en la pagina.
@@ -23,12 +33,26 @@
 
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
+if (!isset($inscripciones)) { $inscripciones = null; }
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
+if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
+if (!isset($ruta_salir))   { $ruta_salir   = 'salirController.php'; }
+
+require_once __DIR__ . '/cabecera.php';
+require_once __DIR__ . '/models/ImagenSubida.php';
 
 # La fecha llega de la base como 2026-09-20 14:32:05. En pantalla va en
 # castellano y sin la hora, que a nadie le importa.
 $meses = array(1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre');
+function fechaLarga($fecha, $meses)
+{
+    $partes = explode('-', substr((string)$fecha, 0, 10));
+    if (count($partes) !== 3 || !isset($meses[(int)$partes[1]])) {
+        return '';
+    }
+    return (int)$partes[2] . ' de ' . $meses[(int)$partes[1]] . ' de ' . $partes[0];
+}
 $alta = $usuario->getFechaAlta();
 $desde = '';
 if (!empty($alta)) {
@@ -40,6 +64,36 @@ if (!empty($alta)) {
         }
     }
 }
+
+# Las imagenes solo se muestran si el nombre tiene la forma de los que
+# genera el sistema. Si no, va el marcador, como si no hubiera imagen.
+$foto    = ImagenSubida::nombreValido($usuario->getFotoPerfil())  ? $usuario->getFotoPerfil()  : null;
+$portada = ImagenSubida::nombreValido($usuario->getFotoPortada()) ? $usuario->getFotoPortada() : null;
+
+# Iniciales para el marcador de la foto: la primera letra del nombre y
+# la del apellido.
+$iniciales = mb_strtoupper(mb_substr((string)$usuario->getNombre(), 0, 1)
+                         . mb_substr((string)$usuario->getApellido(), 0, 1));
+
+# Cantidad de torneos: la misma lista de la pestana, contada. Un torneo
+# en el que la persona aparece dos veces (dos equipos) cuenta una vez.
+$cantidad_torneos = 0;
+if (is_array($inscripciones)) {
+    $vistos = array();
+    foreach ($inscripciones as $inscripcion) {
+        $vistos[$inscripcion['torneo']->getIdTorneo()] = true;
+    }
+    $cantidad_torneos = count($vistos);
+}
+
+# Como se nombra cada estado de torneo en pantalla, y con que chip.
+$estados = array(
+    'borrador'    => array('estado-cerrado',     'En preparación'),
+    'inscripcion' => array('estado-inscripcion', 'Inscripción abierta'),
+    'en_curso'    => array('estado-en-juego',    'En juego'),
+    'finalizado'  => array('estado-cerrado',     'Finalizado'),
+    'cancelado'   => array('estado-cerrado',     'Cancelado')
+);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -55,28 +109,39 @@ if (!empty($alta)) {
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="<?php echo $ruta_publica; ?>/index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="<?php echo $ruta_publica; ?>/index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <div class="acciones"><a class="btn btn-primario" href="<?php echo $ruta_publica; ?>/crear.html">Crear torneo</a></div>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
 </header>
-<nav><a href="<?php echo $ruta_publica; ?>/index.html">Inicio</a><a href="<?php echo $ruta_publica; ?>/torneos.html">Torneos</a><a href="<?php echo $ruta_publica; ?>/torneo.html">Calendario</a><a href="<?php echo $ruta_publica; ?>/torneo.html">Posiciones</a><a href="<?php echo $ruta_publica; ?>/crear.html">Organizadores</a></nav>
+<nav><a href="<?php echo $ruta_publica; ?>/index.php">Inicio</a><a href="<?php echo $ruta_publica; ?>/torneos.php">Torneos</a><a href="<?php echo $ruta_publica; ?>/calendario.php">Calendario</a><a href="<?php echo $ruta_publica; ?>/torneo.php#posiciones">Posiciones</a><a href="<?php echo $ruta_publica; ?>/panel.html">Organizadores</a></nav>
 <main>
-<section class="perfil-cabecera">
-  <div class="avatar" role="img" aria-label="Foto de perfil"></div>
-  <div>
-    <p class="epigrafe">ἀθλητής</p>
-    <h1 style="font-size:36px"><?php echo htmlspecialchars($usuario->getNombreCompleto()); ?></h1>
-    <p class="intro"><?php
-      $linea = array();
-      if ($usuario->getAlias() !== null && $usuario->getAlias() !== '') {
-          $linea[] = $usuario->getAlias();
-      }
-      if ($desde !== '') { $linea[] = $desde; }
-      echo htmlspecialchars(implode(' · ', $linea));
-    ?></p>
+<section>
+<?php if ($portada !== null) { ?>
+  <div class="portada portada-con-imagen"><img src="<?php echo $ruta_publica; ?>/subidas/<?php echo $portada; ?>" alt=""></div>
+<?php } else { ?>
+  <div class="portada" aria-hidden="true"></div>
+<?php } ?>
+  <div class="perfil-cabecera">
+<?php if ($foto !== null) { ?>
+    <img class="avatar" src="<?php echo $ruta_publica; ?>/subidas/<?php echo $foto; ?>" alt="Foto de perfil">
+<?php } else { ?>
+    <div class="avatar avatar-vacio" role="img" aria-label="Sin foto de perfil"><?php echo htmlspecialchars($iniciales); ?></div>
+<?php } ?>
+    <div>
+      <p class="epigrafe">ἀθλητής</p>
+      <h1 style="font-size:36px"><?php echo htmlspecialchars($usuario->getNombreCompleto()); ?></h1>
+      <p class="intro"><?php
+        $linea = array();
+        if ($usuario->getAlias() !== null && $usuario->getAlias() !== '') {
+            $linea[] = $usuario->getAlias();
+        }
+        if ($desde !== '') { $linea[] = $desde; }
+        echo htmlspecialchars(implode(' · ', $linea));
+      ?></p>
+    </div>
   </div>
 </section>
 
@@ -92,18 +157,130 @@ if (!empty($alta)) {
 <p class="intro"><?php echo htmlspecialchars($mensaje); ?></p>
 <?php } ?>
 
-<section class="tarjeta">
+<div class="datos">
+  <div><strong><?php echo $cantidad_torneos; ?></strong><span class="etiqueta">Torneos</span></div>
+  <div><strong>3</strong><span class="etiqueta">Finales</span><span class="muestra">De muestra</span></div>
+  <div><strong style="color:var(--olivo)">2</strong><span class="etiqueta">Kotinos · victorias</span><span class="muestra">De muestra</span></div>
+</div>
+
+<div class="vista" id="mis-torneos">
+  <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos" class="activo">Mis torneos</a><a href="#rendimiento">Rendimiento</a></div>
+  <section class="tarjeta">
+  <h2>Mis torneos</h2>
+<?php if ($inscripciones === null) { ?>
+  <p>La lista de torneos no se puede leer por ahora.</p>
+<?php } elseif (empty($inscripciones)) { ?>
+  <p>Ningún torneo a nombre de esta cuenta.</p>
+  <p><a href="<?php echo $ruta_publica; ?>/torneos.php">Ver los torneos públicos →</a></p>
+<?php } else { ?>
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Torneo</th><th>Disciplina</th><th>Estado</th><th>Participación</th><th>Inicio</th></tr></thead>
+    <tbody>
+<?php   foreach ($inscripciones as $inscripcion) {
+          $t = $inscripcion['torneo'];
+          $p = $inscripcion['participante'];
+          $estado = isset($estados[$t->getEstado()]) ? $estados[$t->getEstado()] : array('estado-cerrado', $t->getEstado());
+          $como = $p->esEquipo() ? 'Equipo · ' . $p->getEquipo()->getNombre() : 'Individual';
+          if ($p->getEstado() === 'descalificado') { $como .= ' · descalificación'; } ?>
+      <tr><td><?php echo htmlspecialchars($t->getNombre()); ?></td><td><?php echo htmlspecialchars($t->getDisciplina()->getNombre()); ?></td><td><span class="estado <?php echo $estado[0]; ?>"><?php echo htmlspecialchars($estado[1]); ?></span></td><td><?php echo htmlspecialchars($como); ?></td><td><?php echo htmlspecialchars(fechaLarga($t->getFechaInicio(), $meses)); ?></td></tr>
+<?php   } ?>
+    </tbody>
+  </table>
+  </div>
+<?php } ?>
+  </section>
+</div>
+
+<div class="vista" id="rendimiento">
+  <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento" class="activo">Rendimiento</a></div>
+  <section class="tarjeta">
+  <div class="fila" style="justify-content:space-between"><h2>Rendimiento físico</h2><span class="muestra">De muestra</span></div>
+  <div class="grilla">
+<div class="tarjeta"><span class="etiqueta">Cinemática · caída libre</span><h3>Tiempo de reacción</h3><p class="medida"><span class="valor">187</span><span class="unidad">milisegundos</span></p></div>
+<div class="tarjeta"><span class="etiqueta">Dinámica · fuerza neta</span><h3>Aceleración de salida</h3><p class="medida"><span class="valor">3.8</span><span class="unidad">metros / s²</span></p></div>
+<div class="tarjeta"><span class="etiqueta">Trabajo y energía</span><h3>Potencia de salto</h3><p class="medida"><span class="valor">612</span><span class="unidad">watts</span></p></div>
+  </div>
+  </section>
+  <section class="tarjeta">
+  <div class="fila" style="justify-content:space-between"><div></div><span class="muestra">De muestra</span></div>
+  <h3>Tiempo de reacción</h3>
+  <span class="etiqueta">Seis mediciones · milisegundos</span>
+    <svg class="grafico" viewBox="0 0 560 212" role="img" aria-label="Tiempo de reacción de marzo a septiembre: baja de 230 a 187 milisegundos en seis mediciones.">
+      <line class="reja" x1="52" y1="30" x2="530" y2="30"/>
+      <text class="rotulo" x="44" y="34" text-anchor="end">240</text>
+      <line class="reja" x1="52" y1="80" x2="530" y2="80"/>
+      <text class="rotulo" x="44" y="84" text-anchor="end">220</text>
+      <line class="reja" x1="52" y1="130" x2="530" y2="130"/>
+      <text class="rotulo" x="44" y="134" text-anchor="end">200</text>
+      <line class="reja" x1="52" y1="180" x2="530" y2="180"/>
+      <text class="rotulo" x="44" y="184" text-anchor="end">180</text>
+      <polyline class="trazo" points="60,55.0 152,77.5 244,100.0 336,117.5 428,145.0 520,162.5"/>
+      <circle class="punto" cx="60" cy="55.0" r="4"><title>Mar: 230 ms</title></circle>
+      <circle class="punto" cx="152" cy="77.5" r="4"><title>Abr: 221 ms</title></circle>
+      <circle class="punto" cx="244" cy="100.0" r="4"><title>May: 212 ms</title></circle>
+      <circle class="punto" cx="336" cy="117.5" r="4"><title>Jun: 205 ms</title></circle>
+      <circle class="punto" cx="428" cy="145.0" r="4"><title>Ago: 194 ms</title></circle>
+      <circle class="punto" cx="520" cy="162.5" r="4"><title>Sep: 187 ms</title></circle>
+      <text class="rotulo-dato" x="72" y="50" text-anchor="start">230</text>
+      <text class="rotulo-dato" x="508" y="151" text-anchor="end">187</text>
+      <text class="rotulo" x="60" y="200" text-anchor="middle">Mar</text>
+      <text class="rotulo" x="152" y="200" text-anchor="middle">Abr</text>
+      <text class="rotulo" x="244" y="200" text-anchor="middle">May</text>
+      <text class="rotulo" x="336" y="200" text-anchor="middle">Jun</text>
+      <text class="rotulo" x="428" y="200" text-anchor="middle">Ago</text>
+      <text class="rotulo" x="520" y="200" text-anchor="middle">Sep</text>
+    </svg>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">El número baja cuando la reacción mejora.</span>
+  </section>
+  <section class="tarjeta">
+  <div class="fila" style="justify-content:space-between"><div></div><span class="muestra">De muestra</span></div>
+  <span class="etiqueta">Tiempo de reacción · comparado</span>
+  <table>
+    <tr><td>M. Ferreira</td><td class="num">164</td></tr>
+    <tr class="clasifica"><td><?php echo htmlspecialchars($usuario->getNombreCompleto()); ?></td><td class="num">187</td></tr>
+    <tr><td>N. Suárez</td><td class="num">201</td></tr>
+    <tr><td>D. Acosta</td><td class="num">219</td></tr>
+  </table>
+  </section>
+  <section class="tarjeta">
+  <span class="etiqueta">Materia</span>
+  <p>Instrumentos: Cámara lenta del celular (120–240 fps), Tracker para videoanálisis y Phyphox para los sensores de acelerómetro y cronómetro acústico.</p>
+  </section>
+</div>
+
+<div class="vista" id="datos">
+  <div class="pestanas"><a href="#datos" class="activo">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento">Rendimiento</a></div>
+  <section class="tarjeta">
   <h2>Datos del perfil</h2>
-  <form action="" method="post">
+  <form class="datos-perfil" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post">
+    <input type="hidden" name="accion" value="datos">
     <div class="grilla">
       <label>Nombre<input type="text" name="nombre" value="<?php echo htmlspecialchars($usuario->getNombre()); ?>" required minlength="2" maxlength="40"></label>
       <label>Apellido<input type="text" name="apellido" value="<?php echo htmlspecialchars($usuario->getApellido()); ?>" required minlength="2" maxlength="40"></label>
-      <label>Alias en juego<input type="text" name="alias" value="<?php echo htmlspecialchars($usuario->getAlias()); ?>" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo"></label>
+      <label>Alias en juego<input type="text" name="alias" value="<?php echo htmlspecialchars((string)$usuario->getAlias()); ?>" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo"></label>
     </div>
-    <label>Presentación<textarea name="presentacion" rows="3" maxlength="300"><?php echo htmlspecialchars($usuario->getPresentacion()); ?></textarea></label>
+    <label>Presentación<textarea name="presentacion" rows="3" maxlength="300"><?php echo htmlspecialchars((string)$usuario->getPresentacion()); ?></textarea></label>
     <div class="fila" style="justify-content:flex-end"><button class="btn" type="reset">Descartar</button><button class="btn btn-primario" type="submit">Guardar cambios</button></div>
   </form>
-</section>
+  </section>
+  <section class="tarjeta">
+  <h2>Imágenes</h2>
+  <p class="intro">JPG, PNG o WEBP, hasta 2 MB y 4000 píxeles de lado. Cada imagen nueva reemplaza a la anterior.</p>
+  <div class="grilla">
+    <form class="subida" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="accion" value="foto">
+      <label>Foto de perfil<input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" required></label>
+      <button class="btn" type="submit">Subir foto</button>
+    </form>
+    <form class="subida" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="accion" value="portada">
+      <label>Portada<input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" required></label>
+      <button class="btn" type="submit">Subir portada</button>
+    </form>
+  </div>
+  </section>
+</div>
 </main>
 <aside>
 <div class="tarjeta">
@@ -141,5 +318,31 @@ if (!empty($alta)) {
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
 </footer>
 </div>
+<button type="button" class="interruptor-tema" id="interruptor-tema">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
+  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
+  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
+  <g stroke="#8A8478" stroke-width="1.1">
+    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
+    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
+  </g>
+  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
+  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
+  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
+</svg>
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+  <circle cx="33" cy="33" r="32" fill="#14130F"/>
+  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
+  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
+  <g stroke="#6E675A" stroke-width="1.1">
+    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
+    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
+  </g>
+  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
+  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
+  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
+</svg>
+</button>
 </body>
 </html>

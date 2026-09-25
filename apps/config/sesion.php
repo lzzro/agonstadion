@@ -60,6 +60,9 @@ function sesionVigente()
 
 # ---------------------------------------------------------------------
 # Cierra la sesion por completo.
+# Ademas de vaciarla y borrarla del servidor, le pide al navegador que
+# tire la cookie: si no, seguiria mandando un identificador que ya no
+# corresponde a nada, y cada pagina abriria una sesion vacia con el.
 # ---------------------------------------------------------------------
 function cerrarSesion()
 {
@@ -69,6 +72,12 @@ function cerrarSesion()
 
     session_unset();
     session_destroy();
+
+    if (!headers_sent()) {
+        $cookie = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 3600, $cookie['path'],
+                  $cookie['domain'], $cookie['secure'], $cookie['httponly']);
+    }
 }
 
 # ---------------------------------------------------------------------

@@ -33,6 +33,9 @@ if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 # El perfil es el unico destino que no esta en la carpeta publica sino
 # al lado de los controladores, asi que su direccion se arma aparte.
 if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
+if (!isset($ruta_salir))  { $ruta_salir  = 'salirController.php'; }
+
+require_once __DIR__ . '/cabecera.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -47,11 +50,12 @@ if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="<?php echo $ruta_publica; ?>/index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="<?php echo $ruta_publica; ?>/index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
 </header>
 <main>
 <section>
@@ -74,9 +78,9 @@ if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
 <?php if (isset($_SESSION['id_usuario'])) { ?>
     <a class="btn btn-primario" href="<?php echo $ruta_perfil; ?>">Ver el perfil</a>
 <?php } else { ?>
-    <a class="btn" href="<?php echo $ruta_publica; ?>/login.html">Volver al acceso</a>
+    <a class="btn" href="<?php echo $ruta_publica; ?>/login.php">Volver al acceso</a>
 <?php } ?>
-    <a class="btn" href="<?php echo $ruta_publica; ?>/index.html">Ir al inicio</a>
+    <a class="btn" href="<?php echo $ruta_publica; ?>/index.php">Ir al inicio</a>
   </div>
 </section>
 </main>

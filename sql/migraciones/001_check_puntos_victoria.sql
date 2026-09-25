@@ -6,7 +6,7 @@
 -- (la del XAMPP local y la del hosting). Una base nueva no la necesita:
 -- sql/schema.sql ya trae ck_config_victoria dentro del CREATE TABLE.
 --
--- Por que: minimo 1, el mismo min="1" del formulario de crear.html y de
+-- Por que: minimo 1, el mismo min="1" del formulario de crear.php y de
 -- ConfiguracionTorneo::validar(). Una victoria que no suma puntos no
 -- distingue al que gana. El tope de 10 es el mismo de validar().
 --

@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/../stadion_app/config/pagina.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,20 +13,20 @@
 <body>
 <div class="pagina">
 <header>
-  <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-  <div class="acciones"><a class="btn" href="login.html">Iniciar sesión</a><a class="btn btn-primario" href="crear.html">Crear torneo</a></div>
+  <?php accionesCabecera($ruta_publica, $ruta_perfil, $ruta_salir); ?>
 </header>
-<nav><a href="index.html" class="activo">Inicio</a><a href="torneos.html">Torneos</a><a href="calendario.html">Calendario</a><a href="torneo.html#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php" class="activo">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
 <main>
 <section>
   <p class="epigrafe">ἀγών · στάδιον</p>
   <h1>Toda competencia merece un <em>estadio.</em></h1>
   <p class="intro">Liga, eliminación directa o sistema suizo. Esports, ajedrez, tenis de mesa o fútbol: inscripciones, enfrentamientos, resultados y posiciones en un solo lugar.</p>
-  <div class="fila"><a class="btn btn-primario" href="crear.html">Organizar un torneo</a><a class="btn" href="torneos.html">Ver torneos públicos</a></div>
+  <div class="fila"><a class="btn btn-primario" href="crear.php">Organizar un torneo</a><a class="btn" href="torneos.php">Ver torneos públicos</a></div>
   <div class="datos"><div><strong>312</strong><span class="etiqueta">Torneos activos</span></div><div><strong>4.860</strong><span class="etiqueta">Participantes</span></div><div><strong>3</strong><span class="etiqueta">Formatos</span></div></div>
 </section>
 <section>
@@ -36,21 +37,21 @@
     <h3>Liga Valorant Otoño</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">12 equipos · Ronda 7 de 11</p>
     <div class="barra"><span style="width:64%"></span></div>
-    <a href="torneo.html">Ver torneo →</a>
+    <a href="torneo.php">Ver torneo →</a>
   </article>
   <article class="tarjeta">
     <span class="etiqueta">Eliminación · Ajedrez</span>
     <h3>Copa Interliceal</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">32 participantes · Octavos</p>
     <div class="barra"><span style="width:40%"></span></div>
-    <a href="torneo.html">Ver torneo →</a>
+    <a href="torneo.php">Ver torneo →</a>
   </article>
   <article class="tarjeta">
     <span class="etiqueta">Suizo · Tenis de mesa</span>
     <h3>Abierto de Tenis de Mesa</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">24 jugadores · Ronda 3 de 5</p>
     <div class="barra"><span style="width:60%"></span></div>
-    <a href="torneo.html">Ver torneo →</a>
+    <a href="torneo.php">Ver torneo →</a>
   </article>
   </div>
 </section>
@@ -68,7 +69,7 @@
   <div class="fila" style="justify-content:space-between"><span class="etiqueta">Cuartos de final</span><span class="estado estado-en-vivo">En vivo</span></div>
   <h3>Liga Valorant · Otoño</h3>
   <table><tr><td>Titanes CS</td><td class="num">2 – 0</td><td>Nova Esports</td></tr><tr><td>Vortex</td><td class="num">1 – 1</td><td>Aurora FC</td></tr><tr><td>Delta Gaming</td><td class="num">—</td><td>Ping Masters</td></tr></table>
-  <a href="torneo.html">Tabla completa →</a>
+  <a href="torneo.php">Tabla completa →</a>
 </div>
 <div class="tarjeta">
   <span class="etiqueta">Por qué olivo</span>

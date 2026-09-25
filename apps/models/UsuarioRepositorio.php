@@ -134,7 +134,8 @@ class UsuarioRepositorio
     public function buscarPorCorreo($correo)
     {
         $sql = 'SELECT id_usuario, correo, hash_password, nombre, apellido,
-                       alias, presentacion, activo, fecha_alta
+                       alias, presentacion, activo, fecha_alta,
+                       foto_perfil, foto_portada
                 FROM usuario
                 WHERE correo = ?';
         $sentencia = $this->conexion->prepare($sql);
@@ -157,7 +158,8 @@ class UsuarioRepositorio
     public function buscarPorId($id_usuario)
     {
         $sql = 'SELECT id_usuario, correo, hash_password, nombre, apellido,
-                       alias, presentacion, activo, fecha_alta
+                       alias, presentacion, activo, fecha_alta,
+                       foto_perfil, foto_portada
                 FROM usuario
                 WHERE id_usuario = ?';
         $sentencia = $this->conexion->prepare($sql);
@@ -270,6 +272,32 @@ class UsuarioRepositorio
         return array();
     }
 
+    # --- Imagenes -----------------------------------------------------
+    # Guarda el nombre de la foto de perfil o de la portada. $tipo es
+    # 'foto' o 'portada'. El nombre de la columna no puede viajar como
+    # dato de una sentencia preparada, asi que sale de esta lista fija y
+    # nunca de lo que mande el formulario.
+    # Devuelve true si la fila quedo actualizada.
+    public function actualizarImagen(Usuario $usuario, $tipo, $archivo)
+    {
+        $columnas = array('foto' => 'foto_perfil', 'portada' => 'foto_portada');
+        if (!isset($columnas[$tipo]) || $usuario->getIdUsuario() === null) {
+            return false;
+        }
+
+        $sql = 'UPDATE usuario SET ' . $columnas[$tipo] . ' = ? WHERE id_usuario = ?';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return false;
+        }
+
+        $id = $usuario->getIdUsuario();
+        $sentencia->bind_param('si', $archivo, $id);
+        $bien = $sentencia->execute();
+        $sentencia->close();
+        return $bien;
+    }
+
     # --- Baja logica ------------------------------------------------
     # La cuenta no se borra: se marca. El usuario de base de datos de la
     # aplicacion ni siquiera tiene permiso de DELETE sobre esta tabla.
@@ -292,7 +320,9 @@ class UsuarioRepositorio
             $fila['alias'],
             $fila['presentacion'],
             $fila['activo'],
-            $fila['fecha_alta']
+            $fila['fecha_alta'],
+            $fila['foto_perfil'],
+            $fila['foto_portada']
         );
     }
 

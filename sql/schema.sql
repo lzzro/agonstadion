@@ -16,7 +16,7 @@
 -- -------------------------------------------------------------------
 -- rol (id_rol, nombre, descripcion)
 -- usuario (id_usuario, correo, hash_password, nombre, apellido, alias,
---          presentacion, activo, fecha_alta)
+--          presentacion, activo, fecha_alta, foto_perfil, foto_portada)
 -- usuario_rol (id_usuario*, id_rol*, fecha_asignacion)
 -- equipo (id_equipo, nombre, ciudad, id_usuario_capitan, activo, fecha_alta)
 -- integrante_equipo (id_equipo*, id_usuario*, dorsal, activo, fecha_alta)
@@ -145,10 +145,24 @@ CREATE TABLE usuario (
   presentacion  VARCHAR(300) NULL,
   activo        TINYINT(1)   NOT NULL DEFAULT 1,
   fecha_alta    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- Foto de perfil y portada: solo el nombre del archivo, que genera el
+  -- sistema (32 caracteres al azar y la extension), nunca el que manda
+  -- el usuario. La carpeta no se guarda porque no es la misma en la
+  -- maquina local y en el hosting. Los dos CHECK exigen exactamente esa
+  -- forma: aunque el codigo fallara, la base no acepta una ruta ni un
+  -- "../" en estas columnas. BINARY hace que distinga mayusculas: la
+  -- tabla no las distingue, y el nombre generado va siempre en
+  -- minusculas. NULL es "sin imagen".
+  foto_perfil   VARCHAR(40)  NULL,
+  foto_portada  VARCHAR(40)  NULL,
   CONSTRAINT pk_usuario     PRIMARY KEY (id_usuario),
   CONSTRAINT uq_usuario_cor UNIQUE (correo),
   CONSTRAINT uq_usuario_ali UNIQUE (alias),
-  CONSTRAINT ck_usuario_act CHECK (activo IN (0, 1))
+  CONSTRAINT ck_usuario_act CHECK (activo IN (0, 1)),
+  CONSTRAINT ck_usuario_foto    CHECK (foto_perfil IS NULL
+                                    OR BINARY foto_perfil REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$'),
+  CONSTRAINT ck_usuario_portada CHECK (foto_portada IS NULL
+                                    OR BINARY foto_portada REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$')
 ) ENGINE=InnoDB;
 
 -- Un usuario puede tener mas de un rol (jugador y organizador a la vez),
@@ -290,7 +304,7 @@ CREATE TABLE configuracion_torneo (
   CONSTRAINT ck_config_iv     CHECK (ida_y_vuelta IN (0, 1)),
   CONSTRAINT ck_config_pts    CHECK (puntos_victoria >= puntos_empate
                                  AND puntos_empate >= puntos_derrota),
-  -- Minimo 1, el mismo min="1" del formulario de crear.html y de
+  -- Minimo 1, el mismo min="1" del formulario de crear.php y de
   -- ConfiguracionTorneo::validar(): una victoria que no suma puntos no
   -- distingue al que gana. El tope de 10 es el mismo de validar().
   -- En una base creada antes de esta restriccion se agrega con

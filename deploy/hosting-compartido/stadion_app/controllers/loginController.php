@@ -4,7 +4,7 @@
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
 # Recibe por POST el formulario de "iniciar sesion" de
-# public/login.html, busca el usuario por correo y comprueba la clave
+# public/login.php, busca el usuario por correo y comprueba la clave
 # con verificarClave(), que usa password_verify().
 #
 # Al entrar se cambia el identificador de sesion con

@@ -1,10 +1,18 @@
+<?php
+require __DIR__ . '/../stadion_app/config/pagina.php';
+# Con la sesion ya abierta no hay nada que hacer aca: se va al perfil.
+if (isset($_SESSION['id_usuario'])) {
+    header('Location: ' . $ruta_perfil);
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
-  <title>Crear una cuenta · Stadion</title>
+  <title>Iniciar sesión · Stadion</title>
   <link rel="icon" href="img/stadion.png">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/tema.js"></script>
@@ -12,28 +20,25 @@
 <body>
 <div class="acceso">
   <section class="panel panel-marmol">
-    <a class="marca" href="index.html"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
   <rect x="22" y="86" width="6" height="28" fill="currentColor"/>
   <rect x="172" y="86" width="6" height="28" fill="currentColor"/>
 </svg><span>STADION</span></a>
-    <p class="epigrafe">ἀρετή</p>
-    <h1>Cada prueba tiene un solo <em>vencedor.</em></h1>
-    <p class="intro">No hay segundo ni tercer puesto. Cada torneo tiene una tabla clara, un calendario cumplido y un ganador que nadie discute.</p>
+    <p class="epigrafe">κότινος</p>
+    <h1>El vencedor no lleva oro:<br>lleva una rama de <em>olivo.</em></h1>
+    <p class="intro">En Olimpia el único premio es el <em>kotinos</em>, cortado del olivo silvestre que crece junto al templo de Zeus. Todo torneo, pequeño o vasto, se rige por la misma ley.</p>
     <span class="etiqueta">Un producto de Agón</span>
   </section>
   <section class="panel panel-form">
-    <form action="../apps/controllers/registroController.php" method="post" id="alta">
-      <span class="etiqueta">Primera vez</span>
-      <h2>Crear una cuenta</h2>
-      <label>Nombre<input type="text" name="nombre" placeholder="Ana" required minlength="2" maxlength="40" autocomplete="given-name"></label>
-      <label>Apellido<input type="text" name="apellido" placeholder="Pereira" required minlength="2" maxlength="40" autocomplete="family-name"></label>
-      <label>Correo<input type="email" name="correo" placeholder="tu@correo.com" required maxlength="120" autocomplete="email"></label>
-      <label>Contraseña<input type="password" name="password" placeholder="mínimo 10 caracteres" required minlength="10" autocomplete="new-password"></label>
-      <label>Alias en juego · opcional<input type="text" name="alias" placeholder="ana_p" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo"></label>
-      <label class="opcion" style="border:none;padding:0"><input type="checkbox" name="terminos" required> <span>Conforme con los <a href="#" style="color:var(--olivo)">términos</a></span></label>
-      <button class="btn btn-primario" type="submit">Crear una cuenta</button>
-      <span class="etiqueta" style="text-transform:none;letter-spacing:.04em;text-align:center">¿Ya tenés cuenta? <a href="login.html" style="color:var(--olivo)">Iniciar sesión</a></span>
+    <form action="controllers/login.php" method="post">
+      <span class="etiqueta">Bienvenido de vuelta</span>
+      <h2>Iniciar sesión</h2>
+      <label>Correo<input type="email" name="correo" placeholder="tu@correo.com" required autocomplete="email"></label>
+      <label>Contraseña<input type="password" name="password" placeholder="mínimo 10 caracteres" required minlength="10" autocomplete="current-password"></label>
+      <div class="fila" style="justify-content:space-between"><label class="opcion" style="border:none;padding:0"><input type="checkbox" name="recordar"> Recordarme</label><a href="#">Recuperar contraseña</a></div>
+      <button class="btn btn-primario" type="submit">Entrar</button>
+      <a class="btn" href="registro.php" style="text-align:center">Crear una cuenta</a>
     </form>
   </section>
 </div>

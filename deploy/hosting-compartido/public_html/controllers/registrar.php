@@ -23,6 +23,12 @@ $APLICACION = __DIR__ . '/../../stadion_app';
 # este archivo en el navegador (/controllers/...).
 $ruta_publica = '..';
 $ruta_perfil  = 'perfil.php';
+$ruta_salir   = 'salir.php';
+
+# Donde se guardan las fotos de perfil y las portadas: la carpeta
+# subidas/ de public_html, al lado de esta. La que tiene el .htaccess
+# que impide ejecutar nada.
+$carpeta_subidas = __DIR__ . '/../subidas';
 
 if (!is_dir($APLICACION)) {
     http_response_code(500);

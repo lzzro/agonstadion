@@ -54,7 +54,13 @@ mkdir -p "$PUBLICO/controllers" "$PRIVADO"
 # 1. Lo publico: las paginas, el CSS, el JS y las imagenes.
 # ---------------------------------------------------------------------
 cp -r "$RAIZ/public/." "$PUBLICO/"
-avisar "Paginas y recursos copiados."
+
+# Las fotos que se hayan subido en la maquina local NO viajan: son de
+# prueba, y son datos de personas. De la carpeta de subidas solo va el
+# .htaccess que impide ejecutar nada ahi. Asi, ademas, el zip nunca trae
+# un archivo que pise una foto que ya este en el hosting.
+find "$PUBLICO/subidas" -mindepth 1 ! -name '.htaccess' -exec rm -rf {} +
+avisar "Paginas y recursos copiados (subidas: solo el .htaccess)."
 
 # ---------------------------------------------------------------------
 # 2. Lo privado: la aplicacion entera, que queda FUERA de public_html.
@@ -81,43 +87,54 @@ fi
 #    de la carpeta publica a proposito. Los formularios pasan a apuntar
 #    a los puentes de controllers/.
 # ---------------------------------------------------------------------
-sed -i 's|action="\.\./apps/controllers/loginController\.php"|action="controllers/login.php"|' "$PUBLICO/login.html"
-sed -i 's|action="\.\./apps/controllers/registroController\.php"|action="controllers/registrar.php"|' "$PUBLICO/registro.html"
+sed -i 's|action="\.\./apps/controllers/loginController\.php"|action="controllers/login.php"|' "$PUBLICO/login.php"
+sed -i 's|action="\.\./apps/controllers/registroController\.php"|action="controllers/registrar.php"|' "$PUBLICO/registro.php"
 avisar "Rutas de los formularios ajustadas."
 
 # ---------------------------------------------------------------------
-# 4. perfil.html era una maqueta con datos inventados. En el hosting no
-#    puede quedar publicada: cualquiera que entre veria un perfil que
-#    no existe. Se reemplaza por un desvio al perfil de verdad.
+# 4. El arranque de las paginas.
+#
+#    Cada pagina .php empieza incluyendo apps/config/pagina.php, que
+#    mira si hay sesion para armar la cabecera. En el hosting esa
+#    carpeta se llama stadion_app/ y queda al lado de public_html.
+#
+#    Ademas las paginas necesitan saber donde estan el perfil y la
+#    salida, y esas direcciones tambien cambian: en el hosting son los
+#    puentes de controllers/. Se reescribe el archivo que las guarda.
+#
+#    perfil.php y rendimiento.php ya no hacen falta tocarlos: son
+#    desvios del lado del servidor al perfil real, en las dos
+#    instalaciones.
 # ---------------------------------------------------------------------
-cat > "$PUBLICO/perfil.html" <<'HTML'
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0; url=controllers/perfil.php">
-  <title>Perfil · Stadion</title>
-  <link rel="icon" href="img/stadion.png">
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-<div class="pagina">
-<main>
-<section>
-  <p class="etiqueta">Perfil</p>
-  <h1>El perfil se abre con la sesión iniciada.</h1>
-  <div class="fila"><a class="btn btn-primario" href="controllers/perfil.php">Ir al perfil</a></div>
-</section>
-</main>
-</div>
-</body>
-</html>
-HTML
-avisar "perfil.html reemplazado por el desvio al perfil real."
+for PAGINA in "$PUBLICO"/*.php; do
+    sed -i "s|__DIR__ \. '/\.\./apps/config/pagina\.php'|__DIR__ . '/../stadion_app/config/pagina.php'|" "$PAGINA"
+done
+if grep -l "/../apps/config/pagina.php" "$PUBLICO"/*.php | grep -q .; then
+    echo "ERROR: alguna pagina sigue buscando apps/ en vez de stadion_app/." >&2
+    exit 9
+fi
+
+cat > "$PRIVADO/config/rutas_paginas.php" <<'RUTAS'
+<?php
+# =====================================================================
+# Direcciones que usan las paginas publicas - HOSTING
+# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# Generado por scripts/armar-deploy.sh. No editar a mano.
+#
+# Vistas desde una pagina de public_html/ (/index.php, /torneos.php...).
+# En el hosting los controladores se alcanzan por los puentes de
+# public_html/controllers/.
+# =====================================================================
+
+$ruta_publica = '.';
+$ruta_perfil  = 'controllers/perfil.php';
+$ruta_salir   = 'controllers/salir.php';
+RUTAS
+avisar "Paginas apuntadas a stadion_app/ y a los puentes."
 
 # ---------------------------------------------------------------------
-# 5. Los tres puentes.
+# 5. Los puentes.
 #
 #    Cada uno hace una sola cosa: incluir el controlador de verdad, que
 #    vive fuera de public_html. Son cortos a proposito. Toda la logica
@@ -159,6 +176,12 @@ escribir_puente() {
 # este archivo en el navegador (/controllers/...).
 \$ruta_publica = '..';
 \$ruta_perfil  = 'perfil.php';
+\$ruta_salir   = 'salir.php';
+
+# Donde se guardan las fotos de perfil y las portadas: la carpeta
+# subidas/ de public_html, al lado de esta. La que tiene el .htaccess
+# que impide ejecutar nada.
+\$carpeta_subidas = __DIR__ . '/../subidas';
 
 if (!is_dir(\$APLICACION)) {
     http_response_code(500);
@@ -173,7 +196,8 @@ PUENTE
 escribir_puente "registrar.php" "registroController.php" "alta de cuenta"
 escribir_puente "login.php"     "loginController.php"    "inicio de sesion"
 escribir_puente "perfil.php"    "perfilController.php"   "perfil"
-avisar "Tres puentes escritos."
+escribir_puente "salir.php"     "salirController.php"    "cierre de sesion"
+avisar "Cuatro puentes escritos."
 
 # ---------------------------------------------------------------------
 # 6. La plantilla de configuracion propia del hosting.
@@ -228,6 +252,14 @@ for PROHIBIDO in "database.local.php" "respaldo.local.cnf"; do
         COLADOS=1
     fi
 done
+if find "$PUBLICO/subidas" -mindepth 1 ! -name '.htaccess' | grep -q .; then
+    echo "ERROR: hay imagenes subidas en la copia; solo va el .htaccess." >&2
+    COLADOS=1
+fi
+if [ ! -f "$PUBLICO/subidas/.htaccess" ]; then
+    echo "ERROR: falta public_html/subidas/.htaccess." >&2
+    COLADOS=1
+fi
 [ "$COLADOS" -eq 0 ] || exit 9
 
 avisar "Listo."

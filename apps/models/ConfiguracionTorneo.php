@@ -147,7 +147,7 @@ class ConfiguracionTorneo
             $errores[] = 'Los puntos por victoria no pueden ser menores que los de '
                        . 'empate, ni los de empate menores que los de derrota.';
         }
-        # Minimo 1, el mismo min="1" del formulario de crear.html: una
+        # Minimo 1, el mismo min="1" del formulario de crear.php: una
         # victoria que no suma puntos no distingue al que gana. Mismo
         # rango que la restriccion ck_config_victoria de la tabla.
         if ($this->puntos_victoria < 1 || $this->puntos_victoria > 10) {

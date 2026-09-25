@@ -4,7 +4,7 @@
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
 # Recibe por POST el formulario de "crear una cuenta" de
-# public/login.html. Sigue el camino de la estructura de clase:
+# public/registro.php. Sigue el camino de la estructura de clase:
 # require_once de los modelos, validar con isset/empty, castear lo
 # numerico, crear el objeto, y volver a incluir la vista con el
 # resultado.

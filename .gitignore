@@ -25,6 +25,12 @@ backups/
 # Lecturas de disco, memoria y servicios que grafica Grafana.
 metricas/
 
+# Fotos de perfil y portadas que sube la gente: son datos de personas,
+# no codigo. Se versiona solo el .htaccess que impide ejecutar nada en
+# esa carpeta.
+public/subidas/*
+!public/subidas/.htaccess
+
 # ---------------------------------------------------------------------
 # Basura del sistema y de los editores
 # ---------------------------------------------------------------------
