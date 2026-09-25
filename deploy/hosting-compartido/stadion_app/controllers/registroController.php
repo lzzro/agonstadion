@@ -19,8 +19,15 @@
 # de sesion. No lleva detalle: con el id de la cuenta recien creada ya
 # se sabe todo lo que hace falta, y el correo esta en la propia fila de
 # usuario.
+#
+# El formulario trae el token de config/csrf.php: sin el, o con uno que
+# no es el de esta sesion, no se da de alta nada. La sesion se abre
+# solo para compararlo; el alta no inicia sesion.
 # =====================================================================
 
+session_start();
+
+require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/UsuarioRepositorio.php';
@@ -33,6 +40,8 @@ $errores = array();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $errores[] = 'El alta llega desde el formulario de la pagina de acceso.';
+} elseif (!csrfValido()) {
+    $errores[] = rechazarCsrf();
 } else {
 
     # --- lo que llega del formulario ---

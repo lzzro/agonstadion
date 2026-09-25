@@ -18,7 +18,9 @@
 #
 # Solo se abre la sesion si el navegador ya trae la cookie. Quien nunca
 # inicio sesion no recibe ninguna: no hay por que crearle una sesion
-# vacia a cada visitante.
+# vacia a cada visitante. Las dos excepciones son login.php y
+# registro.php, que la abren para el token de su formulario (ver
+# config/csrf.php, que tambien se carga desde aca).
 #
 # Por que las paginas pasaron de .html a .php: la cabecera depende de la
 # sesion, y la sesion solo la conoce el servidor. Resolverlo aca, antes
@@ -28,6 +30,7 @@
 # =====================================================================
 
 require_once __DIR__ . '/sesion.php';
+require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rutas_paginas.php';
 require_once __DIR__ . '/../models/UsuarioRepositorio.php';

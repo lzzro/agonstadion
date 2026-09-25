@@ -9,9 +9,14 @@
 #                   null si la consulta no se pudo hacer
 #   $mensaje        texto de resultado, si se acaba de guardar algo
 #   $errores        arreglo de mensajes, si algo fallo
-#   $ruta_publica, $ruta_perfil, $ruta_salir   direcciones (ver
-#                   apps/index.php). La de salida es para "Cerrar
-#                   sesion", que vive aca, debajo del nombre.
+#   $pedido_organizador  el ultimo pedido del rol de organizador
+#                   (PedidoRol), o null si nunca lo pidio o ya lo tiene
+#   $ruta_publica, $ruta_perfil, $ruta_salir, $ruta_admin   direcciones
+#                   (ver apps/index.php). La de salida es para "Cerrar
+#                   sesion", que vive aca, debajo del nombre; la de
+#                   administracion solo se muestra a quien tiene el rol.
+#
+# Todo formulario lleva el token de config/csrf.php (campoCsrf()).
 #
 # El nombre y el apellido se muestran con getNombreCompletoVisible():
 # primera letra en mayuscula si estan guardados en minuscula. Los campos
@@ -42,8 +47,11 @@ if (!isset($inscripciones)) { $inscripciones = null; }
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_salir))   { $ruta_salir   = 'salirController.php'; }
+if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
+if (!isset($pedido_organizador)) { $pedido_organizador = null; }
 
 require_once __DIR__ . '/cabecera.php';
+require_once __DIR__ . '/config/csrf.php';
 require_once __DIR__ . '/models/ImagenSubida.php';
 
 # La fecha llega de la base como 2026-09-20 14:32:05. En pantalla va en
@@ -142,6 +150,7 @@ $estados = array(
       <?php # Cerrar sesion: el mismo formulario con POST de siempre, al
             # mismo controlador. Vive aca y no en la cabecera. ?>
       <form class="salir-perfil" action="<?php echo htmlspecialchars($ruta_salir); ?>" method="post">
+        <?php echo campoCsrf(); ?>
         <button type="submit">Cerrar sesión</button>
       </form>
     </div>
@@ -258,6 +267,7 @@ $estados = array(
   <h2>Datos del perfil</h2>
   <form class="datos-perfil" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post">
     <input type="hidden" name="accion" value="datos">
+    <?php echo campoCsrf(); ?>
     <div class="grilla">
       <label>Nombre<input type="text" name="nombre" value="<?php echo htmlspecialchars($usuario->getNombre()); ?>" required minlength="2" maxlength="40"></label>
       <label>Apellido<input type="text" name="apellido" value="<?php echo htmlspecialchars($usuario->getApellido()); ?>" required minlength="2" maxlength="40"></label>
@@ -273,11 +283,13 @@ $estados = array(
   <div class="grilla">
     <form class="subida" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post" enctype="multipart/form-data">
       <input type="hidden" name="accion" value="foto">
+      <?php echo campoCsrf(); ?>
       <label>Foto de perfil<input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" required></label>
       <button class="btn" type="submit">Subir foto</button>
     </form>
     <form class="subida" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post" enctype="multipart/form-data">
       <input type="hidden" name="accion" value="portada">
+      <?php echo campoCsrf(); ?>
       <label>Portada<input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" required></label>
       <button class="btn" type="submit">Subir portada</button>
     </form>
@@ -288,12 +300,14 @@ $estados = array(
 <aside>
 <div class="tarjeta">
   <span class="etiqueta">La cuenta</span>
-  <table>
-    <tr><td>Correo</td><td class="num"><?php echo htmlspecialchars($usuario->getCorreo()); ?></td></tr>
+<?php # Dato arriba y valor abajo, como los roles: en la columna lateral
+      # un correo largo no entra al lado de su nombre. ?>
+  <ul class="lista-apilada">
+    <li><small>Correo</small><span class="valor-cuenta"><?php echo htmlspecialchars($usuario->getCorreo()); ?></span></li>
 <?php if ($desde !== '') { ?>
-    <tr><td>Alta</td><td class="num"><?php echo htmlspecialchars(ucfirst(str_replace('miembro desde ', '', $desde))); ?></td></tr>
+    <li><small>Alta</small><span class="valor-cuenta"><?php echo htmlspecialchars(ucfirst(str_replace('miembro desde ', '', $desde))); ?></span></li>
 <?php } ?>
-  </table>
+  </ul>
   <p><small>El correo identifica la cuenta y no se cambia desde acá.</small></p>
 </div>
 <div class="tarjeta">
@@ -303,11 +317,35 @@ $estados = array(
   if (empty($roles)) { ?>
   <p>Sin roles asignados.</p>
 <?php } else { ?>
-  <table>
+<?php   # Nombre arriba y descripcion abajo, no en dos columnas: en la
+        # columna lateral no entran las dos una al lado de la otra. ?>
+  <ul class="lista-apilada">
 <?php   foreach ($roles as $rol) { ?>
-    <tr><td><?php echo htmlspecialchars($rol->getNombre()); ?></td><td><small><?php echo htmlspecialchars($rol->getDescripcion()); ?></small></td></tr>
+    <li><span><?php echo htmlspecialchars($rol->getNombre()); ?></span><small><?php echo htmlspecialchars($rol->getDescripcion()); ?></small></li>
 <?php   } ?>
-  </table>
+  </ul>
+<?php } ?>
+<?php # El rol de organizador se pide desde aca y lo aprueba la
+      # administracion. Quien ya lo tiene no ve nada. ?>
+<?php if (!$usuario->tieneRol('organizador')) { ?>
+  <div class="pedido-rol">
+<?php   if ($pedido_organizador !== null && $pedido_organizador->estaPendiente()) { ?>
+    <p><strong>Organizador</strong> · pedido en revisión desde el <?php echo htmlspecialchars(fechaLarga($pedido_organizador->getFechaPedido(), $meses)); ?>.</p>
+<?php   } else { ?>
+<?php     if ($pedido_organizador !== null && $pedido_organizador->estaRechazado()) { ?>
+    <p><small>El último pedido de organizador queda rechazado el <?php echo htmlspecialchars(fechaLarga($pedido_organizador->getFechaResolucion(), $meses)); ?>. Puede pedirse otra vez.</small></p>
+<?php     } ?>
+    <form class="pedir-rol" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post">
+      <input type="hidden" name="accion" value="pedir_rol">
+      <?php echo campoCsrf(); ?>
+      <button class="btn" type="submit">Pedir el rol de organizador</button>
+    </form>
+    <p><small>Lo aprueba la administración.</small></p>
+<?php   } ?>
+  </div>
+<?php } ?>
+<?php if ($usuario->tieneRol('administrador')) { ?>
+  <p><a href="<?php echo htmlspecialchars($ruta_admin); ?>">Administración →</a></p>
 <?php } ?>
 </div>
 </aside>

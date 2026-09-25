@@ -23,10 +23,16 @@
 #
 # Al entrar se guarda ademas la hora de la ultima actividad. Con ella,
 # config/sesion.php cierra la sesion que queda media hora sin uso.
+#
+# El formulario trae el token de config/csrf.php: sin el, o con uno que
+# no es el de esta sesion, no se intenta nada y no queda registro (no
+# hay intento de verdad que registrar). Al entrar se cambia el token,
+# igual que el identificador de sesion.
 # =====================================================================
 
 session_start();
 
+require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/UsuarioRepositorio.php';
@@ -39,6 +45,8 @@ $errores = array();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $errores[] = 'El inicio de sesion llega desde el formulario de la pagina de acceso.';
+} elseif (!csrfValido()) {
+    $errores[] = rechazarCsrf();
 } else {
 
     $correo = isset($_POST['correo'])   ? trim($_POST['correo']) : '';
@@ -77,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             } else {
                 # Identificador nuevo antes de guardar nada en la sesion.
                 session_regenerate_id(true);
+                renovarCsrf();
 
                 $_SESSION['id_usuario'] = $usuario->getIdUsuario();
                 $_SESSION['nombre']     = $usuario->getNombre();

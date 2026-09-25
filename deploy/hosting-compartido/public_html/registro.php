@@ -5,6 +5,10 @@ if (isset($_SESSION['id_usuario'])) {
     header('Location: ' . $ruta_perfil);
     exit;
 }
+# El token del formulario (ver apps/config/csrf.php). Abre una sesion
+# sin nadie adentro: login y registro son las unicas paginas que la
+# abren antes de entrar, porque su formulario tambien lo lleva.
+tokenCsrf();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -32,6 +36,7 @@ if (isset($_SESSION['id_usuario'])) {
   </section>
   <section class="panel panel-form">
     <form action="controllers/registrar.php" method="post" id="alta">
+      <?php echo campoCsrf(); ?>
       <span class="etiqueta">Primera vez</span>
       <h2>Crear una cuenta</h2>
       <label>Nombre<input type="text" name="nombre" placeholder="Ana" required minlength="2" maxlength="40" autocomplete="given-name"></label>

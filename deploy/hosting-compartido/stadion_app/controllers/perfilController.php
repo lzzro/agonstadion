@@ -22,11 +22,15 @@
 # se cambia por su propio camino. El formulario solo manda los cuatro
 # campos que si son del perfil.
 #
-# Recibe tres formularios, que se distinguen por el campo "accion":
-#   datos     nombre, apellido, alias y presentacion (el de siempre;
-#             si no llega "accion" tambien es este)
-#   foto      la foto de perfil
-#   portada   la imagen de portada
+# Recibe cuatro formularios, que se distinguen por el campo "accion":
+#   datos      nombre, apellido, alias y presentacion (el de siempre;
+#              si no llega "accion" tambien es este)
+#   foto       la foto de perfil
+#   portada    la imagen de portada
+#   pedir_rol  el pedido del rol de organizador, que despues aprueba o
+#              rechaza la administracion (ver adminController.php)
+# Todos traen el token de config/csrf.php. Sin el, o con uno que no es
+# el de esta sesion, no se toca nada: se responde 403 con el aviso.
 # Las dos imagenes pasan por ImagenSubida, que decide si se aceptan.
 # Cada una va al mismo lugar: una carpeta que no ejecuta nada (ver el
 # .htaccess de public/subidas/). Al reemplazar una imagen, la anterior
@@ -37,11 +41,13 @@
 # =====================================================================
 
 require_once __DIR__ . '/../config/sesion.php';
+require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/UsuarioRepositorio.php';
 require_once __DIR__ . '/../models/TorneoRepositorio.php';
 require_once __DIR__ . '/../models/ImagenSubida.php';
+require_once __DIR__ . '/../models/PedidoRolRepositorio.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
@@ -51,6 +57,7 @@ require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_salir))   { $ruta_salir   = 'salirController.php'; }
+if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 
 # Donde se guardan las imagenes, en el disco. En el hosting la deja
 # preparada el puente, porque ahi la carpeta publica es public_html.
@@ -78,6 +85,7 @@ if ($conexion === null) {
 
 $repositorio = new UsuarioRepositorio($conexion);
 $auditorias  = new AuditoriaRepositorio($conexion);
+$pedidos     = new PedidoRolRepositorio($conexion);
 
 $usuario = $repositorio->buscarPorId($id_usuario);
 
@@ -105,9 +113,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         && isset($_SERVER['CONTENT_LENGTH']) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
         $errores[] = 'La imagen supera los 2 MB.';
 
+    } elseif (!csrfValido()) {
+        # Sin el token de esta sesion no se hace nada: ni datos, ni
+        # imagenes, ni pedidos.
+        $errores[] = rechazarCsrf();
+
+    } elseif ($accion === 'pedir_rol') {
+
+        # --- 3a. Pedido del rol de organizador ------------------------
+        # El rol pedido es siempre organizador: no se lee del formulario,
+        # asi nadie pide "administrador" cambiando un campo oculto.
+        # Quien ya es organizador no tiene nada que pedir. Que no haya
+        # dos pedidos pendientes a la vez lo asegura la base (ver
+        # PedidoRolRepositorio::crear); esta comprobacion solo da un
+        # aviso mas claro.
+        $repositorio->cargarRoles($usuario);
+        $anterior = $pedidos->ultimoDe($id_usuario, 'organizador');
+
+        if ($usuario->tieneRol('organizador')) {
+            $errores[] = 'La cuenta ya tiene el rol de organizador.';
+        } elseif ($anterior !== null && $anterior->estaPendiente()) {
+            $errores[] = 'Ya hay un pedido en revision.';
+        } else {
+            $errores = $pedidos->crear($usuario, 'organizador');
+            if (empty($errores)) {
+                $nuevo = $pedidos->ultimoDe($id_usuario, 'organizador');
+                $mensaje = 'El pedido del rol de organizador queda en revision.';
+                $auditorias->registrar(new Auditoria(
+                    null, $usuario, 'pedido_rol', 'pedido_rol',
+                    ($nuevo === null) ? null : $nuevo->getIdPedidoRol(),
+                    'Rol organizador', $ip));
+            }
+        }
+
+        # Los roles se vuelven a cargar abajo, completos.
+        $usuario = $repositorio->buscarPorId($id_usuario);
+
     } elseif ($accion === 'foto' || $accion === 'portada') {
 
-        # --- 3a. Foto de perfil o portada ----------------------------
+        # --- 3b. Foto de perfil o portada ----------------------------
         # Otra vez: la imagen es SIEMPRE de quien tiene la sesion. Un
         # id_usuario que llegue en el formulario ni se lee.
         $imagen  = new ImagenSubida(isset($_FILES['imagen']) ? $_FILES['imagen'] : null);
@@ -148,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } else {
 
-        # --- 3b. Datos del perfil -------------------------------------
+        # --- 3c. Datos del perfil -------------------------------------
         $nombre       = isset($_POST['nombre'])       ? trim($_POST['nombre'])       : '';
         $apellido     = isset($_POST['apellido'])     ? trim($_POST['apellido'])     : '';
         $alias        = isset($_POST['alias'])        ? trim($_POST['alias'])        : '';
@@ -201,8 +245,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-# --- 4. Roles, torneos y vista ---------------------------------------
+# --- 4. Roles, pedido, torneos y vista -------------------------------
 $repositorio->cargarRoles($usuario);
+
+# El ultimo pedido del rol de organizador, para que la vista sepa que
+# mostrar: nada (ya es organizador), "en revision", o el boton de
+# pedirlo (nunca lo pidio, o se lo rechazaron y puede volver a pedir).
+$pedido_organizador = $usuario->tieneRol('organizador') ? null
+                    : $pedidos->ultimoDe($id_usuario, 'organizador');
 
 # Los torneos de la persona, de la base. null si la consulta falla,
 # para que la vista no confunda "no se pudo leer" con "ninguno".

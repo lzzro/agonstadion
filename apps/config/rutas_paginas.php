@@ -15,3 +15,4 @@
 
 $ruta_publica = '.';
 $ruta_perfil  = '../apps/controllers/perfilController.php';
+$ruta_admin   = '../apps/controllers/adminController.php';

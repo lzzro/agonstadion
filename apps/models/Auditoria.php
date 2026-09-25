@@ -73,7 +73,7 @@ class Auditoria
         if ($this->esAnonima()) {
             return 'anonimo';
         }
-        return $this->usuario->getNombreCompleto();
+        return $this->usuario->getNombreCompletoVisible();
     }
 
     public function validar()
@@ -87,7 +87,8 @@ class Auditoria
         }
 
         # Misma lista que la restriccion ck_audit_accion.
-        $acciones = array('alta', 'baja', 'modificacion', 'login_ok', 'login_error', 'logout');
+        $acciones = array('alta', 'baja', 'modificacion', 'login_ok', 'login_error', 'logout',
+                          'pedido_rol', 'aprobacion', 'rechazo');
         if (!in_array($this->accion, $acciones)) {
             $errores[] = 'La accion registrada no es una de las previstas.';
         }

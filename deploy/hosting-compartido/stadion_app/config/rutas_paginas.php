@@ -12,3 +12,4 @@
 
 $ruta_publica = '.';
 $ruta_perfil  = 'controllers/perfil.php';
+$ruta_admin   = 'controllers/admin.php';

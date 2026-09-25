@@ -18,6 +18,8 @@
 -- usuario (id_usuario, correo, hash_password, nombre, apellido, alias,
 --          presentacion, activo, fecha_alta, foto_perfil, foto_portada)
 -- usuario_rol (id_usuario*, id_rol*, fecha_asignacion)
+-- pedido_rol (id_pedido_rol, id_usuario*, id_rol*, estado, fecha_pedido,
+--             fecha_resolucion, id_usuario_resuelve*)
 -- equipo (id_equipo, nombre, ciudad, id_usuario_capitan, activo, fecha_alta)
 -- integrante_equipo (id_equipo*, id_usuario*, dorsal, activo, fecha_alta)
 -- disciplina (id_disciplina, nombre)
@@ -115,6 +117,7 @@ DROP TABLE IF EXISTS tipo_torneo;
 DROP TABLE IF EXISTS disciplina;
 DROP TABLE IF EXISTS integrante_equipo;
 DROP TABLE IF EXISTS equipo;
+DROP TABLE IF EXISTS pedido_rol;
 DROP TABLE IF EXISTS usuario_rol;
 DROP TABLE IF EXISTS usuario;
 DROP TABLE IF EXISTS rol;
@@ -176,6 +179,55 @@ CREATE TABLE usuario_rol (
       ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_usurol_rol      FOREIGN KEY (id_rol) REFERENCES rol (id_rol)
       ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- Pedidos de rol: una cuenta pide un rol (hoy, organizador) y un
+-- administrador lo aprueba o lo rechaza. Es el historial de pedidos, no
+-- los roles en si: los roles que una cuenta TIENE siguen en usuario_rol,
+-- y aprobar un pedido es agregar ahi la fila que corresponde.
+--
+-- Un pedido pendiente no tiene resolucion; uno aprobado o rechazado
+-- tiene las dos cosas, la fecha y quien lo resolvio (ck_pedido_resuelto).
+-- Nadie resuelve su propio pedido (ck_pedido_propio): la base lo
+-- impide aunque el codigo fallara.
+--
+-- Un solo pedido pendiente por cuenta y por rol. MariaDB no tiene
+-- indices UNIQUE parciales ("unico solo entre los pendientes"), asi que
+-- se arma con una columna calculada: pendiente_de vale el id de quien
+-- pide mientras el pedido esta pendiente, y NULL cuando se resuelve. El
+-- UNIQUE sobre (pendiente_de, id_rol) no deja dos pendientes iguales, y
+-- como un UNIQUE admite varios NULL, los resueltos no molestan. La
+-- columna no se escribe nunca: la calcula la base a partir de estado.
+--
+-- Las dos claves foraneas a usuario van con ON UPDATE RESTRICT por la
+-- misma razon que en participante (error 1901): hay un CHECK y una
+-- columna calculada que las leen. Y ON DELETE RESTRICT: las cuentas no se
+-- borran, se dan de baja.
+CREATE TABLE pedido_rol (
+  id_pedido_rol       INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_usuario          INT UNSIGNED NOT NULL,
+  id_rol              INT UNSIGNED NOT NULL,
+  estado              VARCHAR(10)  NOT NULL DEFAULT 'pendiente',
+  fecha_pedido        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_resolucion    DATETIME     NULL,
+  id_usuario_resuelve INT UNSIGNED NULL,
+  pendiente_de        INT UNSIGNED GENERATED ALWAYS AS
+                        (IF(estado = 'pendiente', id_usuario, NULL)) STORED,
+  CONSTRAINT pk_pedido_rol       PRIMARY KEY (id_pedido_rol),
+  CONSTRAINT fk_pedido_usuario   FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_pedido_rol       FOREIGN KEY (id_rol) REFERENCES rol (id_rol)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_pedido_resuelve  FOREIGN KEY (id_usuario_resuelve) REFERENCES usuario (id_usuario)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT uq_pedido_pendiente UNIQUE (pendiente_de, id_rol),
+  CONSTRAINT ck_pedido_estado    CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
+  CONSTRAINT ck_pedido_resuelto  CHECK ((estado = 'pendiente' AND fecha_resolucion IS NULL
+                                                             AND id_usuario_resuelve IS NULL)
+                                     OR (estado <> 'pendiente' AND fecha_resolucion IS NOT NULL
+                                                               AND id_usuario_resuelve IS NOT NULL)),
+  CONSTRAINT ck_pedido_fechas    CHECK (fecha_resolucion IS NULL OR fecha_resolucion >= fecha_pedido),
+  CONSTRAINT ck_pedido_propio    CHECK (id_usuario_resuelve IS NULL OR id_usuario_resuelve <> id_usuario)
 ) ENGINE=InnoDB;
 
 
@@ -488,8 +540,11 @@ CREATE TABLE auditoria (
   CONSTRAINT pk_auditoria     PRIMARY KEY (id_auditoria),
   CONSTRAINT fk_audit_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
       ON DELETE SET NULL ON UPDATE CASCADE,
+  -- pedido_rol, aprobacion y rechazo son los pedidos de rol (tabla
+  -- pedido_rol): se suman con sql/migraciones/003_pedidos_de_rol.sql.
   CONSTRAINT ck_audit_accion  CHECK (accion IN ('alta', 'baja', 'modificacion',
-                                                'login_ok', 'login_error', 'logout'))
+                                                'login_ok', 'login_error', 'logout',
+                                                'pedido_rol', 'aprobacion', 'rechazo'))
 ) ENGINE=InnoDB;
 
 
@@ -561,6 +616,9 @@ GRANT SELECT ON sgdm.* TO 'sgdm_app'@'localhost';
 -- aplicacion borre una persona o un equipo con historial.
 GRANT INSERT, UPDATE         ON sgdm.usuario              TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.usuario_rol          TO 'sgdm_app'@'localhost';
+-- Pedidos de rol: sin DELETE. Un pedido no se borra, se resuelve: el
+-- historial de quien pidio que y quien lo aprobo queda entero.
+GRANT INSERT, UPDATE         ON sgdm.pedido_rol           TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE         ON sgdm.equipo               TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.integrante_equipo    TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.torneo               TO 'sgdm_app'@'localhost';

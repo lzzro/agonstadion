@@ -102,9 +102,9 @@ avisar "Rutas de los formularios ajustadas."
 #    direccion tambien cambia: en el hosting es el puente de
 #    controllers/. Se reescribe el archivo que la guarda.
 #
-#    perfil.php y rendimiento.php ya no hacen falta tocarlos: son
-#    desvios del lado del servidor al perfil real, en las dos
-#    instalaciones.
+#    perfil.php, rendimiento.php y admin.php ya no hacen falta
+#    tocarlos: son desvios del lado del servidor al perfil real y a la
+#    administracion real, en las dos instalaciones.
 # ---------------------------------------------------------------------
 for PAGINA in "$PUBLICO"/*.php; do
     sed -i "s|__DIR__ \. '/\.\./apps/config/pagina\.php'|__DIR__ . '/../stadion_app/config/pagina.php'|" "$PAGINA"
@@ -129,6 +129,7 @@ cat > "$PRIVADO/config/rutas_paginas.php" <<'RUTAS'
 
 $ruta_publica = '.';
 $ruta_perfil  = 'controllers/perfil.php';
+$ruta_admin   = 'controllers/admin.php';
 RUTAS
 avisar "Paginas apuntadas a stadion_app/ y a los puentes."
 
@@ -176,6 +177,7 @@ escribir_puente() {
 \$ruta_publica = '..';
 \$ruta_perfil  = 'perfil.php';
 \$ruta_salir   = 'salir.php';
+\$ruta_admin   = 'admin.php';
 
 # Donde se guardan las fotos de perfil y las portadas: la carpeta
 # subidas/ de public_html, al lado de esta. La que tiene el .htaccess
@@ -196,7 +198,8 @@ escribir_puente "registrar.php" "registroController.php" "alta de cuenta"
 escribir_puente "login.php"     "loginController.php"    "inicio de sesion"
 escribir_puente "perfil.php"    "perfilController.php"   "perfil"
 escribir_puente "salir.php"     "salirController.php"    "cierre de sesion"
-avisar "Cuatro puentes escritos."
+escribir_puente "admin.php"     "adminController.php"    "administracion"
+avisar "Cinco puentes escritos."
 
 # ---------------------------------------------------------------------
 # 6. La plantilla de configuracion propia del hosting.

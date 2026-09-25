@@ -63,6 +63,12 @@ function sesionVigente()
 # Ademas de vaciarla y borrarla del servidor, le pide al navegador que
 # tire la cookie: si no, seguiria mandando un identificador que ya no
 # corresponde a nada, y cada pagina abriria una sesion vacia con el.
+#
+# Y deja preparado un identificador nuevo, por si en el mismo pedido se
+# abre otra sesion (login.php lo hace, para el token de su formulario,
+# cuando la anterior acaba de vencer). Sin eso, la sesion nueva reusaria
+# el identificador de la cerrada, y el navegador, que acaba de recibir
+# la orden de tirar esa cookie, no la volveria a mandar.
 # ---------------------------------------------------------------------
 function cerrarSesion()
 {
@@ -77,6 +83,7 @@ function cerrarSesion()
         $cookie = session_get_cookie_params();
         setcookie(session_name(), '', time() - 3600, $cookie['path'],
                   $cookie['domain'], $cookie['secure'], $cookie['httponly']);
+        session_id(session_create_id());
     }
 }
 

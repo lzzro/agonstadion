@@ -24,6 +24,7 @@ $APLICACION = __DIR__ . '/../../stadion_app';
 $ruta_publica = '..';
 $ruta_perfil  = 'perfil.php';
 $ruta_salir   = 'salir.php';
+$ruta_admin   = 'admin.php';
 
 # Donde se guardan las fotos de perfil y las portadas: la carpeta
 # subidas/ de public_html, al lado de esta. La que tiene el .htaccess

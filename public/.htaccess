@@ -10,6 +10,7 @@
 DirectoryIndex index.php
 
 # Quien tenga guardada una direccion vieja (torneos.html, login.html...)
-# llega a la pagina nueva en vez de a un error. panel.html y admin.html
-# no estan en la lista porque siguen siendo .html.
-RedirectMatch 301 "^(.*/)(index|torneos|torneo|calendario|llave|crear|login|registro|perfil|rendimiento)\.html$" "$1$2.php"
+# llega a la pagina nueva en vez de a un error. admin.html es ahora
+# admin.php, que lleva a la administracion real. panel.html no esta en
+# la lista porque sigue siendo .html.
+RedirectMatch 301 "^(.*/)(index|torneos|torneo|calendario|llave|crear|login|registro|perfil|rendimiento|admin)\.html$" "$1$2.php"

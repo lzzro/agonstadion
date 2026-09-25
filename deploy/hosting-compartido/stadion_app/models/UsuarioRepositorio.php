@@ -212,6 +212,61 @@ class UsuarioRepositorio
         return true;
     }
 
+    # --- Listado para la administracion -------------------------------
+    # Todas las cuentas, con sus roles y la fecha de su ultimo inicio de
+    # sesion (la ultima fila login_ok de la auditoria, o null si nunca
+    # entro). Devuelve un arreglo de arreglos:
+    #   array('usuario' => Usuario con roles, 'ultimo_acceso' => fecha)
+    # Sin el hash de la clave: la administracion no lo necesita.
+    public function listarConRoles()
+    {
+        $sql = "SELECT u.id_usuario, u.correo, u.nombre, u.apellido, u.alias,
+                       u.activo, u.fecha_alta, u.foto_perfil,
+                       (SELECT MAX(a.fecha_hora) FROM auditoria a
+                         WHERE a.id_usuario = u.id_usuario AND a.accion = 'login_ok') AS ultimo_acceso
+                FROM usuario u
+                ORDER BY u.apellido, u.nombre, u.id_usuario";
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return null;
+        }
+        $sentencia->execute();
+        $resultado = $sentencia->get_result();
+
+        $cuentas = array();
+        while ($fila = $resultado->fetch_assoc()) {
+            $usuario = new Usuario($fila['id_usuario'], $fila['correo'], null,
+                                   $fila['nombre'], $fila['apellido'], $fila['alias'],
+                                   null, $fila['activo'], $fila['fecha_alta'],
+                                   $fila['foto_perfil']);
+            $cuentas[(int)$fila['id_usuario']] = array('usuario' => $usuario,
+                                                       'ultimo_acceso' => $fila['ultimo_acceso']);
+        }
+        $sentencia->close();
+
+        # Los roles de todas, en una sola consulta.
+        $sql = 'SELECT ur.id_usuario, r.id_rol, r.nombre, r.descripcion
+                FROM usuario_rol ur
+                    INNER JOIN rol r ON r.id_rol = ur.id_rol
+                ORDER BY r.nombre';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return null;
+        }
+        $sentencia->execute();
+        $resultado = $sentencia->get_result();
+        while ($fila = $resultado->fetch_assoc()) {
+            $id = (int)$fila['id_usuario'];
+            if (isset($cuentas[$id])) {
+                $cuentas[$id]['usuario']->agregarRol(new Rol(
+                    $fila['id_rol'], $fila['nombre'], $fila['descripcion']));
+            }
+        }
+        $sentencia->close();
+
+        return array_values($cuentas);
+    }
+
     public function existeCorreo($correo)
     {
         $sql = 'SELECT id_usuario FROM usuario WHERE correo = ?';

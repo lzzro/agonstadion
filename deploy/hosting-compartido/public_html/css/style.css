@@ -305,6 +305,31 @@ img.avatar { object-fit: cover; display: block; flex: none; }
 .perfil-cabecera { margin-top: 18px; }
 form.subida { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 form.subida input[type="file"] { max-width: 100%; }
+/* Las dos tarjetas del costado del perfil (La cuenta y Roles): cada
+   dato en su renglon, apilado, porque en la columna lateral no entran
+   dos columnas. Un correo largo se parte en vez de salirse. */
+.lista-apilada { list-style: none; margin: 0; padding: 0; }
+.lista-apilada li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--hair); min-width: 0; }
+.lista-apilada li:last-child { border-bottom: 0; }
+.lista-apilada small { color: var(--ink3); }
+.valor-cuenta { font-family: var(--serif); font-size: 18px; overflow-wrap: anywhere; }
+/* El pedido del rol de organizador, al pie de la tarjeta de Roles del
+   perfil: el boton del ancho de su texto, no de toda la tarjeta. */
+.pedido-rol { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hair); display: flex; flex-direction: column; gap: 10px; }
+.pedido-rol p { margin: 0; }
+form.pedir-rol { align-items: flex-start; }
+/* Los pedidos de rol de la administracion: un renglon por pedido, con
+   el mismo corte que los modulos (texto a la izquierda, acciones a la
+   derecha, y abajo si no entran). Aprobar y Rechazar van uno al lado
+   del otro; cada uno es su propio formulario con POST. */
+.pedido { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 0; border-bottom: 1px solid var(--hair); }
+.pedido-texto { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pedido-texto strong { font-weight: 500; }
+.pedido-dato { font-size: 13px; color: var(--ink3); overflow-wrap: anywhere; }
+.resolver-pedido { display: flex; flex-wrap: wrap; gap: 8px; }
+.resolver-pedido form { flex-direction: row; }
+/* Una fecha con su hora no se parte en dos renglones. */
+.fecha { white-space: nowrap; }
 /* Un selector de archivo vacio cuenta como "invalido" porque es
    obligatorio, y la regla general lo pintaria de rojo antes de que
    nadie haga nada. Aca va con el borde de siempre. */
