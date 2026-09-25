@@ -68,7 +68,7 @@
 <div class="tarjeta">
   <div class="fila" style="justify-content:space-between"><span class="etiqueta">Cuartos de final</span><span class="estado estado-en-vivo">En vivo</span></div>
   <h3>Liga Valorant · Otoño</h3>
-  <table><tr><td>Titanes CS</td><td class="num">2 – 0</td><td>Nova Esports</td></tr><tr><td>Vortex</td><td class="num">1 – 1</td><td>Aurora FC</td></tr><tr><td>Delta Gaming</td><td class="num">—</td><td>Ping Masters</td></tr></table>
+  <table class="en-vivo"><tr><td>Titanes CS</td><td class="num marcador">2 – 0</td><td>Nova Esports</td></tr><tr><td>Vortex</td><td class="num marcador">1 – 1</td><td>Aurora FC</td></tr><tr><td>Delta Gaming</td><td class="num marcador">—</td><td>Ping Masters</td></tr></table>
   <a href="torneo.php">Tabla completa →</a>
 </div>
 <div class="tarjeta">

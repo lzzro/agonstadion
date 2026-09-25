@@ -205,6 +205,32 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); font-weight: 500; padding: 8px; border-bottom: 1px solid var(--veta); }
 td { padding: 10px 8px; border-bottom: 1px solid var(--hair); }
 td.num { text-align: right; font-family: var(--serif); font-size: 18px; }
+/* Un marcador ("2 – 0", "1 – 1", o la raya de un partido sin empezar)
+   no se parte nunca: si falta lugar, se parten los nombres de los
+   equipos de al lado. Vale para la celda de la tabla (tarjeta en vivo
+   del inicio), para el marcador de Resultados del panel y para la hora
+   de las filas de partidos, que en un partido jugado lleva el resultado.
+   Los numeros van en tabular-nums para que "1 – 1" y "2 – 0" midan lo
+   mismo y la columna no baile de una fila a otra. */
+.marcador, .partido .hora { white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.marcador { text-align: center; padding-left: 10px; padding-right: 10px; }
+/* La tarjeta "en vivo" del inicio, en la columna lateral (desde 768 px),
+   tiene entre 140 y 250 px de ancho. Tres columnas (equipo, marcador,
+   equipo) no entran ahi: una palabra como "Esports" no se puede partir,
+   y con el marcador en un solo renglon la tabla se saldria de la
+   tarjeta. Ahi cada partido va en dos renglones: los dos equipos, uno
+   debajo del otro, a la izquierda, y el marcador a la derecha, centrado
+   entre los dos. En el telefono la tarjeta ocupa todo el ancho y sigue
+   en tres columnas. */
+@media (min-width: 768px) {
+  table.en-vivo, table.en-vivo tbody { display: block; }
+  table.en-vivo tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px;
+    align-items: center; padding: 10px 0; border-bottom: 1px solid var(--hair); }
+  table.en-vivo td { padding: 1px 0; border: 0; min-width: 0; }
+  table.en-vivo td:first-child { grid-column: 1; grid-row: 1; }
+  table.en-vivo td:last-child { grid-column: 1; grid-row: 2; }
+  table.en-vivo td.marcador { grid-column: 2; grid-row: 1 / span 2; padding: 0; }
+}
 tr.clasifica { background: var(--olivoT); }
 tr.clasifica td { border-bottom-color: var(--olivoB); }
 .tabla-scroll { overflow-x: auto; }
