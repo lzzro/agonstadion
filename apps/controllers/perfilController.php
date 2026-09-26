@@ -29,6 +29,9 @@
 #   portada    la imagen de portada
 #   pedir_rol  el pedido del rol de organizador, que despues aprueba o
 #              rechaza la administracion (ver adminController.php)
+#   crear_equipo  un equipo nuevo, con esta cuenta de capitan (ver
+#              EquipoRepositorio): con el, se pide lugar en una liga
+#              desde la pagina de la liga
 # Todos traen el token de config/csrf.php. Sin el, o con uno que no es
 # el de esta sesion, no se toca nada: se responde 403 con el aviso.
 # Las dos imagenes pasan por ImagenSubida, que decide si se aceptan.
@@ -37,7 +40,11 @@
 # se borra del disco: no quedan archivos de nadie dando vueltas.
 #
 # Ademas prepara lo que muestran las pestanas del perfil: los torneos
-# de la persona, sacados de la base (ver TorneoRepositorio).
+# de la persona y los equipos que capitanea, sacados de la base.
+#
+# ?aviso=organizador en la direccion: llega desde crear.php o el panel
+# sin el rol de organizador. La tarjeta de los roles lo explica al lado
+# del boton de pedirlo (y el titulo empieza con "Aviso ·").
 # =====================================================================
 
 require_once __DIR__ . '/../config/sesion.php';
@@ -48,6 +55,8 @@ require_once __DIR__ . '/../models/UsuarioRepositorio.php';
 require_once __DIR__ . '/../models/TorneoRepositorio.php';
 require_once __DIR__ . '/../models/ImagenSubida.php';
 require_once __DIR__ . '/../models/PedidoRolRepositorio.php';
+require_once __DIR__ . '/../models/Equipo.php';
+require_once __DIR__ . '/../models/EquipoRepositorio.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
@@ -66,6 +75,8 @@ if (!isset($carpeta_subidas)) { $carpeta_subidas = __DIR__ . '/../../public/subi
 $titulo  = 'Perfil';
 $mensaje = '';
 $errores = array();
+$errores_equipo = array();   # campo del equipo nuevo => mensaje
+$valores_equipo = array('nombre' => '', 'ciudad' => '');
 
 # --- 1. Sin sesion vigente no hay nada que mostrar -------------------
 if (!sesionVigente()) {
@@ -148,6 +159,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         # Los roles se vuelven a cargar abajo, completos.
         $usuario = $repositorio->buscarPorId($id_usuario);
+
+    } elseif ($accion === 'crear_equipo') {
+
+        # --- 3d. Un equipo nuevo, con esta cuenta de capitan ----------
+        # El capitan es siempre la cuenta de la sesion.
+        $valores_equipo['nombre'] = isset($_POST['nombre_equipo']) ? trim((string)$_POST['nombre_equipo']) : '';
+        $valores_equipo['ciudad'] = isset($_POST['ciudad_equipo']) ? trim((string)$_POST['ciudad_equipo']) : '';
+
+        $equipo = new Equipo(null, $valores_equipo['nombre'],
+                             ($valores_equipo['ciudad'] === '') ? null : $valores_equipo['ciudad'], $usuario);
+        $resultado = (new EquipoRepositorio($conexion))->crearConCapitan($equipo);
+
+        if (empty($resultado)) {
+            $mensaje = 'El equipo ' . $equipo->getNombre() . ' queda armado, con esta cuenta de capitán.';
+            $valores_equipo = array('nombre' => '', 'ciudad' => '');
+            $auditorias->registrar(new Auditoria(
+                null, $usuario, 'equipo', 'alta', $equipo->getIdEquipo(),
+                mb_substr('Equipo ' . $equipo->getNombre(), 0, 255), $ip));
+        } else {
+            foreach ($resultado as $error) {
+                if (strpos($error, 'ciudad') !== false) {
+                    $errores_equipo['ciudad'] = $error;
+                } else {
+                    $errores_equipo['nombre'] = $error;
+                }
+            }
+            $errores = $resultado;
+        }
 
     } elseif ($accion === 'foto' || $accion === 'portada') {
 
@@ -253,6 +292,13 @@ $repositorio->cargarRoles($usuario);
 # pedirlo (nunca lo pidio, o se lo rechazaron y puede volver a pedir).
 $pedido_organizador = $usuario->tieneRol('organizador') ? null
                     : $pedidos->ultimoDe($id_usuario, 'organizador');
+
+# El aviso de crear.php y del panel, solo si de verdad falta el rol.
+$aviso_organizador = isset($_GET['aviso']) && $_GET['aviso'] === 'organizador'
+                     && !$usuario->tieneRol('organizador');
+
+# Los equipos que capitanea, para la pestana Mis torneos.
+$equipos = (new EquipoRepositorio($conexion))->listarDeCapitan($usuario);
 
 # Los torneos de la persona, de la base. null si la consulta falla,
 # para que la vista no confunda "no se pudo leer" con "ninguno".

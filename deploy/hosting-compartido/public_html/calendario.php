@@ -1,4 +1,69 @@
-<?php require __DIR__ . '/../stadion_app/config/pagina.php'; ?>
+<?php
+require __DIR__ . '/../stadion_app/config/pagina.php';
+require_once $carpeta_app . '/models/EnfrentamientoRepositorio.php';
+require_once $carpeta_app . '/ligas.php';
+
+# =====================================================================
+# Calendario del sitio - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# Los partidos de una semana, de lunes a domingo, de todas las ligas
+# publicas. Todo sale de la base (EnfrentamientoRepositorio::entreDias).
+# El dia de la semana se calcula de la fecha, no se escribe a mano.
+#
+# calendario.php?semana=AAAA-MM-DD muestra la semana de ese dia. Sin
+# semana, la del partido en vivo; si no hay, la del proximo partido; y
+# si tampoco, la de hoy. "Semana anterior", "Hoy" y "Semana siguiente"
+# son enlaces comunes, sin JavaScript.
+#
+# Un partido sin hora va en el ultimo dia de su fecha, como "Horario a
+# confirmar". Los de una liga de muestra llevan la marca "De muestra".
+# =====================================================================
+
+$hoy = date('Y-m-d');
+$partidos = null;
+$lunes = null;
+
+$pedida = isset($_GET['semana']) ? (string)$_GET['semana'] : '';
+$conexion = conectarBD();
+if ($conexion !== null) {
+    $repositorio = new EnfrentamientoRepositorio($conexion);
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $pedida)
+        && checkdate((int)substr($pedida, 5, 2), (int)substr($pedida, 8, 2), (int)substr($pedida, 0, 4))) {
+        $lunes = lunesDe($pedida);
+    } else {
+        $destacado = $repositorio->diaDestacado(date('Y-m-d H:i:s'));
+        $lunes = lunesDe(($destacado === null) ? $hoy : $destacado);
+    }
+    $partidos = $repositorio->entreDias($lunes, sumarDias($lunes, 6));
+    $conexion->close();
+} else {
+    $lunes = lunesDe($hoy);
+}
+$domingo = sumarDias($lunes, 6);
+
+# Por dia, en orden, y lo que dice el resumen de la semana.
+$por_dia = array();
+$disciplinas = array();
+$torneos_semana = array();
+$en_vivo = 0;
+if (is_array($partidos)) {
+    foreach ($partidos as $p) {
+        $por_dia[$p['dia']][] = $p;
+        $disciplinas[$p['torneo']->getDisciplina()->getNombre()] = true;
+        $torneos_semana[(int)$p['torneo']->getIdTorneo()] = true;
+        if ($p['enfrentamiento']->estaEnVivo()) { $en_vivo++; }
+    }
+}
+
+# "Semana del 14 al 20 de septiembre", o "del 28 de septiembre al 4 de
+# octubre" si cruza de mes.
+if (substr($lunes, 5, 2) === substr($domingo, 5, 2)) {
+    $titulo_semana = 'Semana del ' . (int)substr($lunes, 8, 2) . ' al ' . fechaTexto($domingo);
+} else {
+    $titulo_semana = 'Semana del ' . fechaTexto($lunes) . ' al ' . fechaTexto($domingo);
+}
+$es_esta_semana = ($lunes === lunesDe($hoy));
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,8 +73,8 @@
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Calendario · Stadion</title>
   <link rel="icon" href="img/stadion.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>
@@ -22,42 +87,48 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php" class="activo" aria-current="page">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php" class="activo" aria-current="page">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.php">Organizadores</a></nav>
 <main id="contenido">
 <section>
   <p class="epigrafe" lang="grc">ἡμέραι</p>
-  <div class="fila" style="justify-content:space-between"><h1>Semana del 15 al 21 de septiembre</h1><span class="enlace-apagado" aria-disabled="true">Hoy</span></div>
-  <p class="intro">Cuatro días con partidos. El que está en vivo abre la lista.</p>
+  <h1><?php echo htmlspecialchars($titulo_semana); ?></h1>
+  <div class="fila semanas"><a href="calendario.php?semana=<?php echo sumarDias($lunes, -7); ?>"><span aria-hidden="true">←</span> Semana anterior</a><?php if ($es_esta_semana) { ?><span class="enlace-apagado" aria-disabled="true">Hoy</span><?php } else { ?><a href="calendario.php?semana=<?php echo lunesDe($hoy); ?>">Hoy</a><?php } ?><a href="calendario.php?semana=<?php echo sumarDias($lunes, 7); ?>">Semana siguiente <span aria-hidden="true">→</span></a></div>
+<?php if ($partidos === null) { ?>
+  <p class="intro">El calendario no se puede leer por ahora.</p>
+<?php } elseif (empty($partidos)) { ?>
+  <p class="intro">Ningún partido en esta semana.</p>
+<?php } else { ?>
+  <p class="intro"><?php echo mayuscula(plural(count($por_dia), 'día con partidos', 'días con partidos')); ?>.<?php if ($en_vivo > 0) { echo ($en_vivo === 1) ? ' Uno en vivo.' : ' ' . $en_vivo . ' en vivo.'; } ?></p>
+<?php } ?>
 </section>
+<?php if (!empty($disciplinas)) { ?>
 <section class="tarjeta">
   <span class="etiqueta">Disciplinas de la semana</span>
-  <p>Esports · Ajedrez · Tenis de mesa · Fútbol · Cartas</p>
+  <p><?php echo htmlspecialchars(implode(' · ', array_keys($disciplinas))); ?></p>
 </section>
+<?php } ?>
+<?php if (!empty($por_dia)) { ?>
 <section class="agenda">
 <h2 class="visualmente-oculto">Partidos de la semana</h2>
+<?php   foreach ($por_dia as $dia => $lista) { ?>
 <div class="agenda-dia">
-  <p class="etiqueta dia">Jueves 18 de septiembre</p>
-  <div class="partido"><span class="hora">19:00</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Titanes CS <span class="vs">vs</span> Vortex</span></span><span class="estado estado-en-vivo">En vivo</span></div>
-  <div class="partido"><span class="hora">20:30</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Nova Esports <span class="vs">vs</span> Delta Gaming</span></span></div>
-  <div class="partido"><span class="hora">21:00</span><span class="cruce-nombres"><span class="torneo">Abierto de Tenis de Mesa · Ronda 3</span><span class="lados">J. Alonso <span class="vs">vs</span> M. Bravo</span></span></div>
+  <p class="etiqueta dia"><?php echo htmlspecialchars(mayuscula(fechaConDia($dia))); ?></p>
+<?php     foreach ($lista as $p) {
+            $t = $p['torneo'];
+            $arriba = '<a href="torneo.php?id=' . (int)$t->getIdTorneo() . '">' . htmlspecialchars($t->getNombre()) . '</a> · '
+                    . htmlspecialchars($p['ronda']->getNombreVisible());
+            if ($p['enfrentamiento']->getFechaHora() === null) {
+                $arriba .= ' · Horario a confirmar';
+            }
+            if ($t->esDeMuestra()) {
+                $arriba .= ' ' . marcaMuestra();
+            }
+            filaPartido($p['enfrentamiento'], $arriba);
+          } ?>
 </div>
-<div class="agenda-dia">
-  <p class="etiqueta dia">Viernes 19 de septiembre</p>
-  <div class="partido"><span class="hora">18:00</span><span class="cruce-nombres"><span class="torneo"><a href="llave.php">Copa Interliceal de Ajedrez</a> · Semifinal</span><span class="lados">M. Ferreira <span class="vs">vs</span> C. Silva</span></span></div>
-  <div class="partido"><span class="hora">19:30</span><span class="cruce-nombres"><span class="torneo">Liga Barrial · Fecha 4</span><span class="lados">La Teja <span class="vs">vs</span> Cerro FC</span></span></div>
-</div>
-<div class="agenda-dia">
-  <p class="etiqueta dia">Sábado 20 de septiembre</p>
-  <div class="partido"><span class="hora">15:00</span><span class="cruce-nombres"><span class="torneo">Torneo LoL · Cuartos</span><span class="lados">Kraken <span class="vs">vs</span> Aurora</span></span></div>
-  <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Torneo LoL · Cuartos</span><span class="lados">Bruma <span class="vs">vs</span> Meteoro</span></span></div>
-  <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Aurora FC <span class="vs">vs</span> Halcones</span></span></div>
-</div>
-<div class="agenda-dia">
-  <p class="etiqueta dia">Domingo 21 de septiembre</p>
-  <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8 · Horario a confirmar</span><span class="lados">Liceo 3 <span class="vs">vs</span> Sur Gaming</span></span></div>
-  <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Magic Commander · Ronda 2 · Horario a confirmar</span><span class="lados">Mesa 1 <span class="vs">vs</span> Mesa 4</span></span></div>
-</div>
+<?php   } ?>
 </section>
+<?php } ?>
 </main>
 <aside>
 <div class="tarjeta">
@@ -68,46 +139,10 @@
 </div>
 <div class="tarjeta tarjeta-olivo">
   <span class="etiqueta">Esta semana</span>
-  <h3>10 partidos</h3>
-  <p>5 disciplinas · 6 torneos</p>
+  <h3><?php echo plural(is_array($partidos) ? count($partidos) : 0, 'partido', 'partidos'); ?></h3>
+  <p><?php echo plural(count($disciplinas), 'disciplina', 'disciplinas'); ?> · <?php echo plural(count($torneos_semana), 'torneo', 'torneos'); ?></p>
 </div>
 </aside>
-<footer>
-  <div class="marca-agon"><svg width="26" height="26" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <mask id="lente-mask">
-    <path d="M 100,34 A 81.06 81.06 0 0 1 100,166 A 81.06 81.06 0 0 1 100,34 Z" fill="white"/>
-    <rect x="94" y="87" width="12" height="26" rx="6" fill="black"/>
-  </mask>
-  <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
-</svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
-</footer>
-</div>
-<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
-  <g stroke="#8A8478" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
-  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
-</svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#14130F"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
-  <g stroke="#6E675A" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
-  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
-</svg>
-</button>
+<?php piePagina(true); ?>
 </body>
 </html>

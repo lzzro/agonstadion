@@ -17,6 +17,11 @@
 #                   administracion solo se muestra a quien tiene el rol.
 #   $carpeta_subidas  la carpeta de las imagenes en el disco, para leer
 #                   las medidas de la portada (la deja el controlador)
+#   $equipos        los equipos que capitanea la persona (Equipo), o
+#                   null si no se pudieron leer
+#   $errores_equipo, $valores_equipo   el formulario de equipo nuevo
+#   $aviso_organizador  true si llega de crear.php o del panel sin el
+#                   rol: la tarjeta de los roles lo explica
 #
 # Todo formulario lleva el token de config/csrf.php (campoCsrf()).
 #
@@ -52,10 +57,15 @@ if (!isset($ruta_salir))   { $ruta_salir   = 'salirController.php'; }
 if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 if (!isset($pedido_organizador)) { $pedido_organizador = null; }
 if (!isset($carpeta_subidas)) { $carpeta_subidas = __DIR__ . '/../public/subidas'; }
+if (!isset($equipos)) { $equipos = null; }
+if (!isset($errores_equipo)) { $errores_equipo = array(); }
+if (!isset($valores_equipo)) { $valores_equipo = array('nombre' => '', 'ciudad' => ''); }
+if (!isset($aviso_organizador)) { $aviso_organizador = false; }
 
 require_once __DIR__ . '/cabecera.php';
 require_once __DIR__ . '/config/csrf.php';
 require_once __DIR__ . '/models/ImagenSubida.php';
+require_once __DIR__ . '/config/recursos.php';
 
 # La fecha llega de la base como 2026-09-20 14:32:05. En pantalla va en
 # castellano y sin la hora, que a nadie le importa.
@@ -124,10 +134,10 @@ $estados = array(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
-  <title><?php if (!empty($errores)) { echo 'Aviso · '; } ?>Perfil · Stadion</title>
+  <title><?php if (!empty($errores) || $aviso_organizador) { echo 'Aviso · '; } ?>Perfil · Stadion</title>
   <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
-  <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
-  <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido" data-vista="datos">Saltar al contenido</a>
@@ -142,7 +152,7 @@ $estados = array(
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $usuario); ?>
 </header>
-<nav><a href="<?php echo $ruta_publica; ?>/index.php">Inicio</a><a href="<?php echo $ruta_publica; ?>/torneos.php">Torneos</a><a href="<?php echo $ruta_publica; ?>/calendario.php">Calendario</a><a href="<?php echo $ruta_publica; ?>/torneo.php#posiciones">Posiciones</a><a href="<?php echo $ruta_publica; ?>/panel.html">Organizadores</a></nav>
+<nav><a href="<?php echo $ruta_publica; ?>/index.php">Inicio</a><a href="<?php echo $ruta_publica; ?>/torneos.php">Torneos</a><a href="<?php echo $ruta_publica; ?>/calendario.php">Calendario</a><a href="<?php echo $ruta_publica; ?>/torneo.php#posiciones">Posiciones</a><a href="<?php echo $ruta_publica; ?>/panel.php">Organizadores</a></nav>
 <main id="contenido">
 <section>
 <?php if ($portada !== null) { ?>
@@ -220,6 +230,42 @@ $estados = array(
   </table>
   </div>
 <?php } ?>
+  </section>
+  <section class="tarjeta" id="mis-equipos">
+  <h2>Mis equipos</h2>
+<?php if ($equipos === null) { ?>
+  <p>La lista de equipos no se puede leer por ahora.</p>
+<?php } elseif (empty($equipos)) { ?>
+  <p>Ningún equipo con esta cuenta de capitán. Con un equipo, se pide lugar en una liga desde su página.</p>
+<?php } else { ?>
+  <ul class="lista-apilada">
+<?php   foreach ($equipos as $equipo) { ?>
+    <li><span><?php echo htmlspecialchars($equipo->getNombre()); ?></span><small><?php echo ($equipo->getCiudad() === null || $equipo->getCiudad() === '') ? 'Capitanía de esta cuenta' : htmlspecialchars($equipo->getCiudad()) . ' · capitanía de esta cuenta'; ?></small></li>
+<?php   } ?>
+  </ul>
+  <p><a href="<?php echo $ruta_publica; ?>/torneos.php">Ver las ligas con la inscripción abierta <span aria-hidden="true">→</span></a></p>
+<?php } ?>
+  <form class="crear-equipo" action="<?php echo htmlspecialchars($ruta_perfil); ?>#mis-torneos" method="post">
+    <input type="hidden" name="accion" value="crear_equipo">
+    <?php echo campoCsrf(); ?>
+    <div class="grilla">
+      <div class="campo">
+        <label>Nombre del equipo<input type="text" name="nombre_equipo" value="<?php echo htmlspecialchars($valores_equipo['nombre']); ?>" required minlength="2" maxlength="40" aria-describedby="ayuda-nombre-equipo<?php if (isset($errores_equipo['nombre'])) { echo ' error-nombre-equipo'; } ?>"<?php if (isset($errores_equipo['nombre'])) { echo ' aria-invalid="true"'; } ?>></label>
+        <p class="ayuda-campo" id="ayuda-nombre-equipo">Entre 2 y 40 caracteres, distinto de los equipos que ya existen.</p>
+<?php if (isset($errores_equipo['nombre'])) { ?>
+        <p class="error-campo" id="error-nombre-equipo"><?php echo htmlspecialchars($errores_equipo['nombre']); ?></p>
+<?php } ?>
+      </div>
+      <div class="campo">
+        <label>Ciudad<input type="text" name="ciudad_equipo" value="<?php echo htmlspecialchars($valores_equipo['ciudad']); ?>" maxlength="40" aria-describedby="ayuda-ciudad-equipo<?php if (isset($errores_equipo['ciudad'])) { echo ' error-ciudad-equipo'; } ?>"<?php if (isset($errores_equipo['ciudad'])) { echo ' aria-invalid="true"'; } ?>></label>
+        <p class="ayuda-campo" id="ayuda-ciudad-equipo">Opcional.</p>
+<?php if (isset($errores_equipo['ciudad'])) { ?>
+        <p class="error-campo" id="error-ciudad-equipo"><?php echo htmlspecialchars($errores_equipo['ciudad']); ?></p>
+<?php } ?>
+      </div>
+    </div>
+    <button class="btn" type="submit">Armar el equipo</button>
+  </form>
   </section>
 </div>
 
@@ -331,7 +377,7 @@ $estados = array(
   </ul>
   <p><small>El correo identifica la cuenta y no se cambia desde acá.</small></p>
 </div>
-<div class="tarjeta">
+<div class="tarjeta" id="roles">
   <span class="etiqueta">Roles</span>
 <?php
   $roles = $usuario->getRoles();
@@ -350,6 +396,11 @@ $estados = array(
       # administracion. Quien ya lo tiene no ve nada. ?>
 <?php if (!$usuario->tieneRol('organizador')) { ?>
   <div class="pedido-rol">
+<?php   # Llega de crear.php o del panel sin el rol: el aviso va aca, al
+        # lado del boton, que es a donde lleva el ancla #roles. ?>
+<?php   if ($aviso_organizador) { ?>
+    <p class="aviso-rol" role="alert">Crear y organizar ligas pide el rol de organizador. Se pide acá, y lo aprueba la administración.</p>
+<?php   } ?>
 <?php   if ($pedido_organizador !== null && $pedido_organizador->estaPendiente()) { ?>
     <p><strong>Organizador</strong> · pedido en revisión desde el <?php echo htmlspecialchars(fechaLarga($pedido_organizador->getFechaPedido(), $meses)); ?>.</p>
 <?php   } else { ?>

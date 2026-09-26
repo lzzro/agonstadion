@@ -13,8 +13,11 @@
 #      nota en la primera pagina que se abra despues de la media hora.
 #   2. Si hay sesion, lee la cuenta de la base: la cabecera muestra su
 #      foto, o sus iniciales, en un circulo que lleva al perfil.
-#   3. Deja preparada la direccion del perfil, que no es la misma en la
+#   3. Deja preparadas las direcciones del perfil, la administracion,
+#      el panel, crear liga y pedir lugar, que no son las mismas en la
 #      maquina local y en el hosting (ver config/rutas_paginas.php).
+#   4. Carga recurso() (config/recursos.php), que da la direccion del
+#      CSS y del JS con su version, y piePagina() (pie.php).
 #
 # Solo se abre la sesion si el navegador ya trae la cookie. Quien nunca
 # inicio sesion no recibe ninguna: no hay por que crearle una sesion
@@ -34,12 +37,19 @@ require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rutas_paginas.php';
 require_once __DIR__ . '/../models/UsuarioRepositorio.php';
+require_once __DIR__ . '/recursos.php';
 require_once __DIR__ . '/../cabecera.php';
+require_once __DIR__ . '/../pie.php';
 
 # La pagina cambia segun haya o no sesion: que el navegador no guarde
 # una copia. Sin esto, el boton de volver despues de cerrar la sesion
 # podria mostrar la cabecera con el nombre de quien ya salio.
 header('Cache-Control: no-store');
+
+# La carpeta de la aplicacion (apps/ en la maquina local, stadion_app/
+# en el hosting), para que las paginas que leen de la base carguen sus
+# modelos sin escribir la ruta a mano: es la carpeta de arriba de esta.
+$carpeta_app = dirname(__DIR__);
 
 # La cuenta de la sesion, leida de la base, para el circulo de la
 # cabecera. null si no hay sesion.

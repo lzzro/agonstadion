@@ -9,6 +9,11 @@
 # schema de NO guardar los puntos en tabla_posiciones. Los puntos se
 # calculan siempre a partir de estos parametros, asi que si el
 # organizador cambia el puntaje, la tabla de posiciones se acomoda sola.
+#
+# El criterio de desempate decide el orden entre dos con los mismos
+# puntos: 'diferencia' mira primero la diferencia de tantos y despues
+# los tantos a favor; 'favor', al reves. Si todo coincide, el orden es
+# alfabetico, para que la tabla salga siempre igual.
 # =====================================================================
 
 class ConfiguracionTorneo
@@ -21,6 +26,7 @@ class ConfiguracionTorneo
     private $admite_empate;
     private $clasifican_playoffs;
     private $ida_y_vuelta;
+    private $criterio_desempate;   # 'diferencia' o 'favor'
     private $rondas_previstas;
     private $reglas;
     #endregion
@@ -30,7 +36,8 @@ class ConfiguracionTorneo
     public function __construct($id_torneo, $puntos_victoria = 3, $puntos_empate = 1,
                                 $puntos_derrota = 0, $admite_empate = 1,
                                 $clasifican_playoffs = 0, $ida_y_vuelta = 0,
-                                $rondas_previstas = null, $reglas = null)
+                                $rondas_previstas = null, $reglas = null,
+                                $criterio_desempate = 'diferencia')
     {
         $this->id_torneo           = $id_torneo;
         $this->puntos_victoria     = (int)$puntos_victoria;
@@ -42,6 +49,7 @@ class ConfiguracionTorneo
         $this->rondas_previstas    = ($rondas_previstas === null || $rondas_previstas === '')
                                      ? null : (int)$rondas_previstas;
         $this->reglas              = $reglas;
+        $this->criterio_desempate  = $criterio_desempate;
     }
 
     public function getIdTorneo()          { return $this->id_torneo; }
@@ -61,6 +69,29 @@ class ConfiguracionTorneo
     public function getIdaYVuelta()        { return $this->ida_y_vuelta; }
     public function getRondasPrevistas()   { return $this->rondas_previstas; }
     public function getReglas()            { return $this->reglas; }
+    public function getCriterioDesempate() { return $this->criterio_desempate; }
+
+    # Los criterios de desempate, con su nombre para el formulario de
+    # crear.php. La clave es lo que se guarda en la base.
+    public static function criterios()
+    {
+        return array(
+            'diferencia' => 'Diferencia de tantos; si persiste, tantos a favor',
+            'favor'      => 'Tantos a favor; si persiste, diferencia de tantos'
+        );
+    }
+
+    # El criterio contado en una frase, con la unidad de la disciplina
+    # ("mapas", "goles", "tantos"): lo que muestra la pestana Reglas.
+    public function textoDesempate($unidad)
+    {
+        if ($this->criterio_desempate === 'favor') {
+            return 'Primero los ' . $unidad . ' a favor; si persiste, la diferencia de '
+                 . $unidad . ' (a favor menos en contra). Si todo coincide, el orden alfabético.';
+        }
+        return 'Primero la diferencia de ' . $unidad . ' (a favor menos en contra); si persiste, los '
+             . $unidad . ' a favor. Si todo coincide, el orden alfabético.';
+    }
 
     public function admiteEmpate()
     {
@@ -95,11 +126,28 @@ class ConfiguracionTorneo
         return (int)$partidos;
     }
 
+    # Cuantas fechas tiene una liga de esa cantidad de participantes: con
+    # un numero par, uno menos (cada uno juega en todas); con uno impar,
+    # tantas como participantes (en cada fecha uno queda libre). El doble
+    # si es de ida y vuelta.
+    public function rondasDeLiga($cantidad_participantes)
+    {
+        $cantidad = (int)$cantidad_participantes;
+        if ($cantidad < 2) {
+            return 0;
+        }
+        $rondas = ($cantidad % 2 === 0) ? $cantidad - 1 : $cantidad;
+        if ($this->esIdaYVuelta()) {
+            $rondas = $rondas * 2;
+        }
+        return $rondas;
+    }
+
     # Ordena un arreglo de objetos PosicionTabla como la tabla de la
-    # pantalla: por puntos, despues diferencia, despues favor. Es el
-    # mismo ORDER BY de la consulta de ejemplo del schema, y vive aca
-    # porque el orden depende de estos puntajes. El puesto de cada uno
-    # es su lugar en el arreglo devuelto.
+    # pantalla: por puntos, y entre iguales segun el criterio de
+    # desempate (ver la cabecera). Es el mismo orden de la consulta de
+    # ejemplo del schema, y vive aca porque depende de estos puntajes. El
+    # puesto de cada uno es su lugar en el arreglo devuelto.
     public function ordenarPosiciones($posiciones)
     {
         $ordenadas = $posiciones;
@@ -115,15 +163,32 @@ class ConfiguracionTorneo
                 $puntos_siguiente = $this->calcularPuntos($siguiente->getGanados(),
                                         $siguiente->getEmpatados(), $siguiente->getPerdidos());
 
+                # El primer y el segundo criterio, segun el desempate.
+                if ($this->criterio_desempate === 'favor') {
+                    $primero_actual    = $actual->getFavor();
+                    $primero_siguiente = $siguiente->getFavor();
+                    $segundo_actual    = $actual->getDiferencia();
+                    $segundo_siguiente = $siguiente->getDiferencia();
+                } else {
+                    $primero_actual    = $actual->getDiferencia();
+                    $primero_siguiente = $siguiente->getDiferencia();
+                    $segundo_actual    = $actual->getFavor();
+                    $segundo_siguiente = $siguiente->getFavor();
+                }
+
                 $va_despues = false;
                 if ($puntos_actual < $puntos_siguiente) {
                     $va_despues = true;
                 } elseif ($puntos_actual === $puntos_siguiente) {
-                    if ($actual->getDiferencia() < $siguiente->getDiferencia()) {
+                    if ($primero_actual < $primero_siguiente) {
                         $va_despues = true;
-                    } elseif ($actual->getDiferencia() === $siguiente->getDiferencia()
-                              && $actual->getFavor() < $siguiente->getFavor()) {
-                        $va_despues = true;
+                    } elseif ($primero_actual === $primero_siguiente) {
+                        if ($segundo_actual < $segundo_siguiente) {
+                            $va_despues = true;
+                        } elseif ($segundo_actual === $segundo_siguiente
+                                  && strcmp($actual->getNombreVisible(), $siguiente->getNombreVisible()) > 0) {
+                            $va_despues = true;
+                        }
                     }
                 }
 
@@ -155,6 +220,13 @@ class ConfiguracionTorneo
         }
         if ($this->puntos_empate < 0 || $this->puntos_empate > 10) {
             $errores[] = 'Los puntos por empate tienen que estar entre 0 y 10.';
+        }
+        if ($this->puntos_derrota < 0 || $this->puntos_derrota > 10) {
+            $errores[] = 'Los puntos por derrota tienen que estar entre 0 y 10.';
+        }
+        # Misma lista que la restriccion ck_config_desempate.
+        if (!array_key_exists($this->criterio_desempate, self::criterios())) {
+            $errores[] = 'El criterio de desempate no es uno de los previstos.';
         }
         if ($this->admite_empate !== 0 && $this->admite_empate !== 1) {
             $errores[] = 'La opcion de empate solo admite si o no.';

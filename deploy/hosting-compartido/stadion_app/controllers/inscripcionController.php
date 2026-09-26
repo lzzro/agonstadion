@@ -1,0 +1,126 @@
+<?php
+# =====================================================================
+# Controlador: pedir lugar en una liga
+# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# Recibe por POST el formulario "Pedir lugar" de torneo.php: el capitan
+# de un equipo pide que su equipo juegue una liga con la inscripcion
+# abierta. Lo acepta o lo rechaza quien organiza la liga, desde su
+# panel (ver panelController.php).
+#
+# Solo con sesion vigente (sin ella, a la pagina de acceso). Quien pide
+# es siempre la cuenta de la sesion, y el equipo tiene que ser uno que
+# esa cuenta capitanea: del formulario solo se leen el numero de la liga
+# y el del equipo, y los dos se comprueban contra la base. Un numero de
+# equipo ajeno cambiado a mano no pide nada.
+#
+# Al terminar vuelve a la pagina de la liga con un codigo en la
+# direccion (?aviso=...), que la pagina traduce a su mensaje: la
+# direccion nunca pone texto propio en la pantalla. El pedido queda en
+# la auditoria.
+#
+# El formulario trae el token de config/csrf.php: sin el, 403 y nada.
+# =====================================================================
+
+require_once __DIR__ . '/../config/sesion.php';
+require_once __DIR__ . '/../config/csrf.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/Usuario.php';
+require_once __DIR__ . '/../models/UsuarioRepositorio.php';
+require_once __DIR__ . '/../models/TorneoRepositorio.php';
+require_once __DIR__ . '/../models/EquipoRepositorio.php';
+require_once __DIR__ . '/../models/PedidoInscripcion.php';
+require_once __DIR__ . '/../models/PedidoInscripcionRepositorio.php';
+require_once __DIR__ . '/../models/Auditoria.php';
+require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
+
+if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
+if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
+
+$titulo  = 'Pedido de lugar';
+$mensaje = '';
+$errores = array();
+
+if (!sesionVigente()) {
+    header('Location: ' . $ruta_publica . '/login.php');
+    exit;
+}
+$id_usuario = (int)$_SESSION['id_usuario'];
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $errores[] = 'El pedido de lugar llega desde la página de la liga.';
+    include __DIR__ . '/../index.php';
+    exit;
+}
+if (!csrfValido()) {
+    $errores[] = rechazarCsrf();
+    include __DIR__ . '/../index.php';
+    exit;
+}
+
+$id_torneo = isset($_POST['id_torneo']) ? (int)$_POST['id_torneo'] : 0;
+$id_equipo = isset($_POST['id_equipo']) ? (int)$_POST['id_equipo'] : 0;
+
+$conexion = conectarBD();
+if ($conexion === null) {
+    $errores[] = $error_bd;
+    include __DIR__ . '/../index.php';
+    exit;
+}
+
+$cuentas = new UsuarioRepositorio($conexion);
+$capitan = $cuentas->buscarPorId($id_usuario);
+if ($capitan === null || !$capitan->estaActivo()) {
+    $conexion->close();
+    cerrarSesion();
+    header('Location: ' . $ruta_publica . '/login.php');
+    exit;
+}
+
+$torneos = new TorneoRepositorio($conexion);
+$torneo  = ($id_torneo > 0) ? $torneos->buscarPorId($id_torneo) : null;
+if ($torneo === null) {
+    $conexion->close();
+    $errores[] = 'Esa liga no existe.';
+    include __DIR__ . '/../index.php';
+    exit;
+}
+
+# El equipo, entre los que capitanea la cuenta de la sesion.
+$equipo  = null;
+$equipos = (new EquipoRepositorio($conexion))->listarDeCapitan($capitan);
+if (is_array($equipos)) {
+    foreach ($equipos as $propio) {
+        if ((int)$propio->getIdEquipo() === $id_equipo) {
+            $equipo = $propio;
+        }
+    }
+}
+
+# Cada mensaje del repositorio, con el codigo que entiende torneo.php.
+$codigos = array(
+    'La inscripción de esa liga está cerrada.'                => 'cerrada',
+    'La liga ya tiene su cupo completo.'                       => 'cupo',
+    'Ese equipo ya juega esta liga.'                           => 'ya-juega',
+    'Ese equipo ya tiene un pedido en revisión en esta liga.'  => 'en-revision'
+);
+
+if ($equipo === null) {
+    $codigo = 'sin-equipo';
+} else {
+    $pedido  = new PedidoInscripcion(null, $torneo, $equipo, $capitan);
+    $errores = (new PedidoInscripcionRepositorio($conexion))->crear($pedido);
+    if (empty($errores)) {
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+        (new AuditoriaRepositorio($conexion))->registrar(new Auditoria(null, $capitan,
+            'pedido_inscripcion', 'solicitud', $pedido->getIdPedidoInscripcion(),
+            mb_substr($equipo->getNombre() . ' en ' . $torneo->getNombre(), 0, 255), $ip));
+        $codigo = 'pedido-enviado';
+    } else {
+        $codigo = isset($codigos[$errores[0]]) ? $codigos[$errores[0]] : 'no-disponible';
+    }
+}
+
+$conexion->close();
+header('Location: ' . $ruta_publica . '/torneo.php?id=' . $id_torneo . '&aviso=' . $codigo);
+exit;

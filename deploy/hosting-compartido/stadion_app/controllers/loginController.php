@@ -21,6 +21,9 @@
 # fallan van sin id de usuario: en el detalle queda el correo que se
 # intento, que es lo unico que se sabe con certeza.
 #
+# Las cuentas de muestra (de_muestra = 1) se rechazan siempre, antes de
+# mirar la clave: ver Usuario::esDeMuestra().
+#
 # Al entrar se guarda ademas la hora de la ultima actividad. Con ella,
 # config/sesion.php cierra la sesion que queda media hora sin uso.
 #
@@ -71,7 +74,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
             $usuario = $repositorio->buscarPorCorreo($correo);
 
-            if ($usuario === null || !$usuario->verificarClave($clave)) {
+            if ($usuario !== null && $usuario->esDeMuestra()) {
+                # Las cuentas de muestra (las organizadoras de las ligas
+                # de muestra) no abren sesion con ninguna clave. Se
+                # rechazan antes de mirar la clave, aunque su hash tampoco
+                # la aceptaria: son dos cerrojos, no uno. Decir que es de
+                # muestra no revela nada: esas cuentas se ven en todas
+                # las paginas publicas.
+                $errores[] = 'Una cuenta de muestra no abre sesión.';
+                $auditorias->registrar(new Auditoria(
+                    null, null, 'usuario', 'login_error',
+                    $usuario->getIdUsuario(), 'Cuenta de muestra: ' . $correo_intentado, $ip));
+
+            } elseif ($usuario === null || !$usuario->verificarClave($clave)) {
                 $errores[] = 'El correo o la contrasena no coinciden.';
                 $auditorias->registrar(new Auditoria(
                     null, null, 'usuario', 'login_error', null, $correo_intentado, $ip));

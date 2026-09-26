@@ -43,6 +43,7 @@ if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
 if (!isset($persona_cabecera)) { $persona_cabecera = null; }
 
 require_once __DIR__ . '/cabecera.php';
+require_once __DIR__ . '/config/recursos.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -52,8 +53,8 @@ require_once __DIR__ . '/cabecera.php';
   <meta name="theme-color" content="#F3EEE3">
   <title><?php if (!empty($errores)) { echo 'Aviso · '; } ?><?php echo htmlspecialchars($titulo); ?> · Stadion</title>
   <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
-  <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
-  <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>

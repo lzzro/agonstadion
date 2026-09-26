@@ -19,8 +19,8 @@ tokenCsrf();
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Iniciar sesión · Stadion</title>
   <link rel="icon" href="img/stadion.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>

@@ -135,7 +135,7 @@ class UsuarioRepositorio
     {
         $sql = 'SELECT id_usuario, correo, hash_password, nombre, apellido,
                        alias, presentacion, activo, fecha_alta,
-                       foto_perfil, foto_portada
+                       foto_perfil, foto_portada, de_muestra
                 FROM usuario
                 WHERE correo = ?';
         $sentencia = $this->conexion->prepare($sql);
@@ -159,7 +159,7 @@ class UsuarioRepositorio
     {
         $sql = 'SELECT id_usuario, correo, hash_password, nombre, apellido,
                        alias, presentacion, activo, fecha_alta,
-                       foto_perfil, foto_portada
+                       foto_perfil, foto_portada, de_muestra
                 FROM usuario
                 WHERE id_usuario = ?';
         $sentencia = $this->conexion->prepare($sql);
@@ -221,7 +221,7 @@ class UsuarioRepositorio
     public function listarConRoles()
     {
         $sql = "SELECT u.id_usuario, u.correo, u.nombre, u.apellido, u.alias,
-                       u.activo, u.fecha_alta, u.foto_perfil,
+                       u.activo, u.fecha_alta, u.foto_perfil, u.de_muestra,
                        (SELECT MAX(a.fecha_hora) FROM auditoria a
                          WHERE a.id_usuario = u.id_usuario AND a.accion = 'login_ok') AS ultimo_acceso
                 FROM usuario u
@@ -238,7 +238,7 @@ class UsuarioRepositorio
             $usuario = new Usuario($fila['id_usuario'], $fila['correo'], null,
                                    $fila['nombre'], $fila['apellido'], $fila['alias'],
                                    null, $fila['activo'], $fila['fecha_alta'],
-                                   $fila['foto_perfil']);
+                                   $fila['foto_perfil'], null, $fila['de_muestra']);
             $cuentas[(int)$fila['id_usuario']] = array('usuario' => $usuario,
                                                        'ultimo_acceso' => $fila['ultimo_acceso']);
         }
@@ -377,7 +377,8 @@ class UsuarioRepositorio
             $fila['activo'],
             $fila['fecha_alta'],
             $fila['foto_perfil'],
-            $fila['foto_portada']
+            $fila['foto_portada'],
+            $fila['de_muestra']
         );
     }
 

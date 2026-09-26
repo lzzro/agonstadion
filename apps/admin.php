@@ -15,6 +15,8 @@
 #   $ruta_publica, $ruta_perfil, $ruta_admin   direcciones
 #
 # Reemplaza a la maqueta public/admin.html. Lo que habia ahi:
+#   (Las tres organizadoras de muestra de la migracion 005 figuran con
+#   la marca "De muestra" en vez de su estado: no inician sesion nunca.)
 #   Usuarios administrativos   REAL: todas las cuentas de la base, con
 #                              sus roles. Las cuentas inventadas de la
 #                              maqueta (Comunidad Vortice, Club Sur...)
@@ -44,6 +46,7 @@ if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 
 require_once __DIR__ . '/cabecera.php';
+require_once __DIR__ . '/config/recursos.php';
 require_once __DIR__ . '/config/csrf.php';
 
 # 2026-09-25 17:42:05 -> 25 sep 2026 · 17:42
@@ -71,7 +74,20 @@ $acciones = array(
     'logout'       => 'Cierre de sesión',
     'pedido_rol'   => 'Pedido de rol',
     'aprobacion'   => 'Aprobación de rol',
-    'rechazo'      => 'Rechazo de pedido de rol'
+    'rechazo'      => 'Rechazo de pedido de rol',
+    'inscripcion'  => 'Inscripción de equipo',
+    'solicitud'    => 'Pedido de inscripción',
+    'cierre'       => 'Cierre de inscripción',
+    'fixture'      => 'Armado de fixture'
+);
+# Las que se nombran distinto segun la tabla: el alta de una liga o de
+# un equipo no es el alta de una cuenta, y aprobar o rechazar un pedido
+# de inscripcion no es lo mismo que uno de rol.
+$acciones_por_tabla = array(
+    'alta|torneo'                    => 'Alta de liga',
+    'alta|equipo'                    => 'Alta de equipo',
+    'aprobacion|pedido_inscripcion'  => 'Aceptación de inscripción',
+    'rechazo|pedido_inscripcion'     => 'Rechazo de pedido de inscripción'
 );
 
 # Cuentas por rol, para el resumen del costado.
@@ -95,8 +111,8 @@ if (is_array($lista)) {
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title><?php if (!empty($errores)) { echo 'Aviso · '; } ?>Administración · Stadion</title>
   <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
-  <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
-  <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>
@@ -189,7 +205,7 @@ if (is_array($lista)) {
         <td><?php echo htmlspecialchars($u->getNombreCompletoVisible()); ?></td>
         <td><?php echo htmlspecialchars($u->getCorreo()); ?></td>
         <td><?php echo htmlspecialchars(empty($roles) ? 'Sin roles' : implode(' · ', $roles)); ?></td>
-        <td><?php if ($u->estaActivo()) { ?><span class="estado estado-inscripcion">Activa</span><?php } else { ?><span class="estado estado-cerrado">De baja</span><?php } ?></td>
+        <td><?php if ($u->esDeMuestra()) { ?><span class="muestra">De muestra</span><?php } elseif ($u->estaActivo()) { ?><span class="estado estado-inscripcion">Activa</span><?php } else { ?><span class="estado estado-cerrado">De baja</span><?php } ?></td>
         <td class="fecha"><?php echo ($cuenta['ultimo_acceso'] === null) ? 'Sin acceso' : htmlspecialchars(fechaRegistro($cuenta['ultimo_acceso'])); ?></td>
       </tr>
 <?php   } ?>
@@ -226,7 +242,15 @@ if (is_array($lista)) {
           } else {
               $quien = 'Sistema';
           }
-          $que = isset($acciones[$fila->getAccion()]) ? $acciones[$fila->getAccion()] : $fila->getAccion();
+          $clave = $fila->getAccion() . '|' . $fila->getTablaAfectada();
+          if ($clave === 'alta|torneo' && $fila->getIdRegistro() === null) {
+              # La carga de la migracion 005: sin cuenta y sin una liga sola.
+              $que = 'Carga de datos de muestra';
+          } elseif (isset($acciones_por_tabla[$clave])) {
+              $que = $acciones_por_tabla[$clave];
+          } else {
+              $que = isset($acciones[$fila->getAccion()]) ? $acciones[$fila->getAccion()] : $fila->getAccion();
+          }
           # Las cargas de imagen traen su propio nombre en el detalle
           # ("Carga de foto de perfil"); el resto lo suma al lado.
           if ($fila->getAccion() === 'modificacion' && !empty($fila->getDetalle())) {

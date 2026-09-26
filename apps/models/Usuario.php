@@ -13,6 +13,11 @@
 # La baja es logica (activo = 0), igual que en la base: el usuario de
 # base de datos de la aplicacion no tiene permiso de DELETE sobre esta
 # tabla, asi que darDeBaja() es la unica via.
+#
+# Una cuenta de muestra (de_muestra = 1) es una de las organizadoras de
+# las ligas de muestra de sql/migraciones/005_ligas.sql. No inicia
+# sesion nunca: el inicio de sesion la rechaza con esDeMuestra() antes
+# de mirar la clave (y, ademas, su hash no lo acepta password_verify).
 # =====================================================================
 
 require_once __DIR__ . '/Rol.php';
@@ -31,6 +36,7 @@ class Usuario
     private $fecha_alta;
     private $foto_perfil;    # nombre del archivo, o null si no hay
     private $foto_portada;   # idem
+    private $de_muestra;     # 1 si es una cuenta de muestra
     private $roles;          # arreglo de objetos Rol
     #endregion
 
@@ -38,7 +44,7 @@ class Usuario
 
     public function __construct($id_usuario, $correo, $hash_password, $nombre, $apellido,
                                 $alias = null, $presentacion = null, $activo = 1, $fecha_alta = null,
-                                $foto_perfil = null, $foto_portada = null)
+                                $foto_perfil = null, $foto_portada = null, $de_muestra = 0)
     {
         $this->id_usuario    = $id_usuario;
         $this->correo        = $correo;
@@ -51,6 +57,7 @@ class Usuario
         $this->fecha_alta    = $fecha_alta;
         $this->foto_perfil   = $foto_perfil;
         $this->foto_portada  = $foto_portada;
+        $this->de_muestra    = (int)$de_muestra;
         $this->roles         = array();
     }
 
@@ -114,6 +121,11 @@ class Usuario
     public function estaActivo()
     {
         return $this->activo === 1;
+    }
+
+    public function esDeMuestra()
+    {
+        return $this->de_muestra === 1;
     }
 
     # Baja logica, para no perder el historial de enfrentamientos.

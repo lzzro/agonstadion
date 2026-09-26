@@ -101,8 +101,8 @@ class Equipo
         $errores = array();
         if (empty($this->nombre)) {
             $errores[] = 'El equipo necesita un nombre.';
-        } elseif (mb_strlen($this->nombre) > 40) {
-            $errores[] = 'El nombre del equipo no puede pasar de 40 caracteres.';
+        } elseif (mb_strlen($this->nombre) < 2 || mb_strlen($this->nombre) > 40) {
+            $errores[] = 'El nombre del equipo lleva entre 2 y 40 caracteres.';
         }
         if (!empty($this->ciudad) && mb_strlen($this->ciudad) > 40) {
             $errores[] = 'La ciudad no puede pasar de 40 caracteres.';

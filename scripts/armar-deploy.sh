@@ -9,7 +9,8 @@
 #     deploy/hosting-compartido/
 #     ├── public_html/      -> va tal cual a public_html/ del hosting
 #     ├── stadion_app/      -> va AL LADO de public_html, no adentro
-#     └── sql/              -> NO se sube: el esquema para phpMyAdmin
+#     └── sql/              -> NO se sube: el esquema y las migraciones
+#                              para phpMyAdmin
 #
 # Existe para que la copia no se desincronice del original. Despues de
 # tocar cualquier cosa en public/ o en apps/, se corre esto y la copia
@@ -74,6 +75,16 @@ cp -r "$RAIZ/apps/." "$PRIVADO/"
 rm -f "$PRIVADO/config/database.local.php"
 avisar "Aplicacion copiada (sin la configuracion local)."
 
+# El CSS y el JS van con una marca de version que sale del contenido del
+# archivo (config/recursos.php). Para leerlo, recursos.php busca la
+# carpeta publica al lado de la aplicacion: en la maquina local es
+# public/, y en el hosting, public_html/.
+sed -i "s|\$carpeta  = __DIR__ \. '/\.\./\.\./public';|\$carpeta  = __DIR__ . '/../../public_html';|" "$PRIVADO/config/recursos.php"
+if ! grep -q "/../../public_html';" "$PRIVADO/config/recursos.php"; then
+    echo "ERROR: config/recursos.php de la copia no apunta a public_html/." >&2
+    exit 9
+fi
+
 if [ -e "$PRIVADO/config/database.local.php" ]; then
     echo "ERROR: la configuracion local se colo en la copia." >&2
     exit 9
@@ -128,9 +139,12 @@ cat > "$PRIVADO/config/rutas_paginas.php" <<'RUTAS'
 # public_html/controllers/.
 # =====================================================================
 
-$ruta_publica = '.';
-$ruta_perfil  = 'controllers/perfil.php';
-$ruta_admin   = 'controllers/admin.php';
+$ruta_publica     = '.';
+$ruta_perfil      = 'controllers/perfil.php';
+$ruta_admin       = 'controllers/admin.php';
+$ruta_crear       = 'controllers/crear.php';
+$ruta_panel       = 'controllers/panel.php';
+$ruta_inscripcion = 'controllers/inscripcion.php';
 RUTAS
 avisar "Paginas apuntadas a stadion_app/ y a los puentes."
 
@@ -175,10 +189,13 @@ escribir_puente() {
 
 # Donde estan el CSS, el JS y las paginas, vistos desde la direccion de
 # este archivo en el navegador (/controllers/...).
-\$ruta_publica = '..';
-\$ruta_perfil  = 'perfil.php';
-\$ruta_salir   = 'salir.php';
-\$ruta_admin   = 'admin.php';
+\$ruta_publica     = '..';
+\$ruta_perfil      = 'perfil.php';
+\$ruta_salir       = 'salir.php';
+\$ruta_admin       = 'admin.php';
+\$ruta_crear       = 'crear.php';
+\$ruta_panel       = 'panel.php';
+\$ruta_inscripcion = 'inscripcion.php';
 
 # Donde se guardan las fotos de perfil y las portadas: la carpeta
 # subidas/ de public_html, al lado de esta. La que tiene el .htaccess
@@ -200,7 +217,10 @@ escribir_puente "login.php"     "loginController.php"    "inicio de sesion"
 escribir_puente "perfil.php"    "perfilController.php"   "perfil"
 escribir_puente "salir.php"     "salirController.php"    "cierre de sesion"
 escribir_puente "admin.php"     "adminController.php"    "administracion"
-avisar "Cinco puentes escritos."
+escribir_puente "crear.php"       "crearController.php"       "crear una liga"
+escribir_puente "panel.php"       "panelController.php"       "panel del organizador"
+escribir_puente "inscripcion.php" "inscripcionController.php" "pedido de lugar en una liga"
+avisar "Ocho puentes escritos."
 
 # ---------------------------------------------------------------------
 # 6. La plantilla de configuracion propia del hosting.
@@ -343,9 +363,54 @@ fi
 avisar "Esquema para el hosting escrito: $TABLAS tablas, todas en utf8mb4."
 
 # ---------------------------------------------------------------------
+# 7b. Las migraciones, para el hosting.
+#
+#    Las de sql/migraciones/ se corren a mano en phpMyAdmin. Lo que solo
+#    corre en un servidor propio (el GRANT de sgdm_app) va marcado igual
+#    que en schema.sql, y la copia del hosting sale sin eso: ahi los
+#    permisos los da cPanel, y un GRANT da un error que en phpMyAdmin
+#    esconde los resultados de la migracion. La 003 es de antes de esta
+#    regla y su GRANT no esta marcado: en el hosting da el error
+#    esperable que explica su cabecera.
+#
+#    Tampoco se suben: se corren en phpMyAdmin desde esta carpeta.
+# ---------------------------------------------------------------------
+mkdir -p "$DESTINO/sql/migraciones"
+MIGRACIONES=0
+for MIGRACION in "$RAIZ"/sql/migraciones/*.sql; do
+    NOMBRE=$(basename "$MIGRACION")
+    {
+        echo "-- GENERADO por scripts/armar-deploy.sh a partir de sql/migraciones/$NOMBRE,"
+        echo "-- sin los bloques \"[solo servidor propio]\". Es la que se corre en el hosting."
+        awk -v desde='-- [solo servidor propio] desde aca' \
+            -v hasta='-- [solo servidor propio] hasta aca' '
+            { linea = $0; sub(/\r$/, "", linea) }
+            linea == desde { if (dentro) { mal = 1 } dentro = 1; next }
+            linea == hasta { if (!dentro) { mal = 1 } dentro = 0; next }
+            !dentro { print }
+            END { if (dentro) { mal = 1 } exit mal }' "$MIGRACION"
+    } > "$DESTINO/sql/migraciones/$NOMBRE" || { echo "ERROR: las marcas [solo servidor propio] de $NOMBRE no cierran." >&2; exit 9; }
+    MIGRACIONES=$((MIGRACIONES + 1))
+done
+# Desde la 005, ninguna copia del hosting trae permisos.
+for COPIA in "$DESTINO"/sql/migraciones/00[5-9]*.sql; do
+    [ -e "$COPIA" ] || continue
+    if tr -d '\r' < "$COPIA" | grep -v '^[[:space:]]*--' | grep -Eiq '^[[:space:]]*(GRANT|REVOKE|CREATE[[:space:]]+USER|USE)[[:space:]]'; then
+        echo "ERROR: $(basename "$COPIA") del hosting todavia trae GRANT, usuarios o USE." >&2
+        exit 9
+    fi
+done
+avisar "Migraciones para el hosting: $MIGRACIONES, sin los bloques de servidor propio."
+
+# ---------------------------------------------------------------------
 # 8. Comprobaciones: que no se haya colado nada que no deba estar.
 # ---------------------------------------------------------------------
 COLADOS=0
+# Las pruebas (tests/) son de la maquina local: no viajan nunca.
+if find "$DESTINO" -path '*/tests' -o -path '*/tests/*' | grep -q .; then
+    echo "ERROR: las pruebas (tests/) aparecen en la copia." >&2
+    COLADOS=1
+fi
 for PROHIBIDO in "database.local.php" "respaldo.local.cnf"; do
     if find "$DESTINO" -name "$PROHIBIDO" | grep -q .; then
         echo "ERROR: $PROHIBIDO aparece en la copia." >&2
@@ -370,5 +435,7 @@ echo "    $PRIVADO"
 echo "        -> sube AL LADO de public_html/, no adentro"
 echo "    $ESQUEMA_HOSTING"
 echo "        -> NO se sube: se importa en phpMyAdmin, en una base vacia"
+echo "    $DESTINO/sql/migraciones/"
+echo "        -> NO se sube: cada una se corre en phpMyAdmin, en orden"
 echo
 echo "El paso a paso completo: docs/deploy-hosting-compartido.md"

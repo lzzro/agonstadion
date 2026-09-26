@@ -3,7 +3,12 @@
 # Modelo: Disciplina   ->   tabla "disciplina" de sql/schema.sql
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
-# Catalogo: Esports, Ajedrez, Tenis de mesa, Futbol, Cartas.
+# Catalogo: Esports, Ajedrez, Tenis de mesa, Futbol, Cartas y Futbol 5
+# (con sus tildes en la base desde la migracion 005).
+#
+# getUnidad() dice como se llaman los tantos de un marcador en esa
+# disciplina, para las pestanas de la liga: "+9 de diferencia de mapas",
+# "goles a favor".
 # =====================================================================
 
 class Disciplina
@@ -31,6 +36,17 @@ class Disciplina
     }
 
     public function getNombre()       { return $this->nombre; }
+
+    public function getUnidad()
+    {
+        if ($this->nombre === 'Esports') {
+            return 'mapas';
+        }
+        if ($this->nombre === 'Fútbol' || $this->nombre === 'Fútbol 5') {
+            return 'goles';
+        }
+        return 'tantos';
+    }
 
     public function validar()
     {

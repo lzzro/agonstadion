@@ -1,4 +1,175 @@
-<?php require __DIR__ . '/../apps/config/pagina.php'; ?>
+<?php
+require __DIR__ . '/../apps/config/pagina.php';
+require_once $carpeta_app . '/models/TorneoRepositorio.php';
+require_once $carpeta_app . '/models/ParticipanteRepositorio.php';
+require_once $carpeta_app . '/models/FixtureRepositorio.php';
+require_once $carpeta_app . '/models/PosicionRepositorio.php';
+require_once $carpeta_app . '/models/EquipoRepositorio.php';
+require_once $carpeta_app . '/models/PedidoInscripcionRepositorio.php';
+require_once $carpeta_app . '/ligas.php';
+
+# =====================================================================
+# Detalle de una liga - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# torneo.php?id=N muestra la liga N; sin numero, la destacada
+# (TorneoRepositorio::idDestacado: la que tiene un partido en vivo, o la
+# que esta en curso desde hace mas tiempo). Es tambien el destino de
+# "Posiciones" en el menu: torneo.php#posiciones. Todo sale de la base:
+# los equipos, las fechas con sus partidos y resultados, la tabla (con
+# los puntajes y el desempate de la liga) y las reglas.
+#
+# Las cinco pestanas son las de siempre, sin JavaScript (:target):
+# Resumen, la de por defecto, va ultima (ver style.css). Lo que acompana
+# a la vista abierta va dos veces, con data-vista y data-fuera: "Saltar
+# al contenido" y, en la liga destacada, la entrada marcada del menu
+# (Torneos o Posiciones). En otra liga, Posiciones del menu lleva a la
+# destacada, asi que ahi el menu marca siempre Torneos.
+#
+# Con la inscripcion abierta, un capitan con sesion pide lugar para su
+# equipo (formulario a inscripcionController.php, con el token). La
+# vuelta trae un codigo (?aviso=...) que se traduce aca a su mensaje.
+#
+# Lo que organiza una cuenta de muestra lleva la marca "De muestra".
+# =====================================================================
+
+$torneo = null;
+$todos = array();          # participantes, con las bajas (figuran en lo que jugaron)
+$rondas = array();
+$tabla = array();
+$organizados = null;
+$equipos_propios = array();
+$ultimos = array();
+$destacado = null;
+$sin_base = false;
+
+$pedido_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$conexion = conectarBD();
+if ($conexion === null) {
+    $sin_base = true;
+} else {
+    $torneos   = new TorneoRepositorio($conexion);
+    $destacado = $torneos->idDestacado();
+    $id        = ($pedido_id > 0) ? $pedido_id : (int)$destacado;
+    $torneo    = ($id > 0) ? $torneos->buscarPorId($id) : null;
+    # Un borrador o un torneo cancelado no son publicos.
+    if ($torneo !== null && !in_array($torneo->getEstado(), array('inscripcion', 'en_curso', 'finalizado'))) {
+        $torneo = null;
+    }
+    if ($torneo !== null) {
+        $todos = (new ParticipanteRepositorio($conexion))->listarDeTorneo($id, true);
+        if ($todos === null) { $todos = array(); }
+        $rondas = (new FixtureRepositorio($conexion))->fechasDe($id, $todos);
+        if ($rondas === null) { $rondas = array(); }
+        if ($torneo->getConfiguracion() !== null) {
+            $tabla = (new PosicionRepositorio($conexion))->tablaDe($id, $todos, $torneo->getConfiguracion());
+            if ($tabla === null) { $tabla = array(); }
+        }
+        $organizados = $torneos->cantidadDeOrganizador($torneo->getOrganizador()->getIdUsuario());
+        if ($persona_sesion !== null && $torneo->tieneInscripcionAbierta()) {
+            $equipos_propios = (new EquipoRepositorio($conexion))->listarDeCapitan($persona_sesion);
+            if ($equipos_propios === null) { $equipos_propios = array(); }
+            $ultimos = (new PedidoInscripcionRepositorio($conexion))
+                           ->ultimosDeCapitan($id, $persona_sesion->getIdUsuario());
+        }
+    }
+    $conexion->close();
+}
+
+if ($torneo === null) {
+    http_response_code($sin_base ? 503 : 404);
+}
+
+# --- Lo que se calcula de lo leido ---------------------------------------
+$en_competencia = array();
+foreach ($todos as $p) {
+    if ($p->estaEnCompetencia()) { $en_competencia[(int)$p->getIdParticipante()] = $p; }
+}
+$en_vivo = null;       # el partido en vivo, si hay
+$proximo = null;       # el primero por jugar con dia y hora
+$cerradas = 0;
+$actual = null;        # la primera fecha sin cerrar
+foreach ($rondas as $ronda) {
+    if ($ronda->estaCerrada()) { $cerradas++; } elseif ($actual === null) { $actual = $ronda; }
+    foreach ($ronda->getEnfrentamientos() as $e) {
+        if ($e->estaEnVivo() && $en_vivo === null) { $en_vivo = $e; }
+        if ($e->getEstado() === 'programado' && $e->getFechaHora() !== null && !$e->esLibre()
+            && ($proximo === null || $e->getFechaHora() < $proximo['partido']->getFechaHora())) {
+            $proximo = array('partido' => $e, 'ronda' => $ronda);
+        }
+    }
+}
+
+$es_destacado = ($torneo !== null && (int)$torneo->getIdTorneo() === (int)$destacado);
+$config  = ($torneo === null) ? null : $torneo->getConfiguracion();
+$unidad  = ($torneo === null) ? 'tantos' : $torneo->getDisciplina()->getUnidad();
+$fechas  = count($rondas);
+
+# El aviso de la vuelta de "Pedir lugar": array(es error, texto).
+$avisos_lugar = array(
+    'pedido-enviado' => array(false, 'El pedido queda en revisión. Lo resuelve quien organiza la liga.'),
+    'sin-equipo'     => array(true, 'El lugar lo pide el capitán del equipo, con su propia cuenta.'),
+    'cerrada'        => array(true, 'La inscripción de esta liga está cerrada.'),
+    'cupo'           => array(true, 'La liga ya tiene su cupo completo.'),
+    'ya-juega'       => array(true, 'Ese equipo ya juega esta liga.'),
+    'en-revision'    => array(true, 'Ese equipo ya tiene un pedido en revisión en esta liga.'),
+    'no-disponible'  => array(true, 'El pedido no se puede registrar por ahora.')
+);
+$aviso = (isset($_GET['aviso']) && isset($avisos_lugar[$_GET['aviso']])) ? $avisos_lugar[$_GET['aviso']] : null;
+
+# Lo que dice la etiqueta de arriba del nombre.
+$avance = '';
+if ($torneo !== null) {
+    if ($torneo->tieneInscripcionAbierta()) {
+        $avance = count($en_competencia) . ' de ' . $torneo->getMaxParticipantes() . ' equipos';
+    } elseif ($fechas === 0) {
+        $avance = 'fixture por armar';
+    } elseif ($actual === null) {
+        $avance = plural($fechas, 'fecha', 'fechas');
+    } else {
+        $avance = 'Fecha ' . $actual->getNumero() . ' de ' . $fechas;
+    }
+}
+
+# Las fechas de la liga, en palabras.
+$periodo = '';
+if ($torneo !== null) {
+    if (!empty($torneo->getFechaInicio()) && !empty($torneo->getFechaFin())) {
+        $periodo = fechaTexto($torneo->getFechaInicio()) . ' – ' . fechaTexto($torneo->getFechaFin());
+    } elseif (!empty($torneo->getFechaInicio())) {
+        $periodo = 'desde el ' . fechaTexto($torneo->getFechaInicio(), true);
+    } else {
+        $periodo = 'inicio a definir';
+    }
+}
+
+# Los equipos del capitan de la sesion: cuales pueden pedir lugar, y en
+# que quedo cada uno.
+$puede_pedir = array();
+$situacion = array();
+foreach ($equipos_propios as $equipo) {
+    $id_e = (int)$equipo->getIdEquipo();
+    $juega = false;
+    foreach ($en_competencia as $p) {
+        if ($p->esEquipo() && (int)$p->getEquipo()->getIdEquipo() === $id_e) { $juega = true; }
+    }
+    $ultimo = isset($ultimos[$id_e]) ? $ultimos[$id_e] : null;
+    if ($juega) {
+        $situacion[] = $equipo->getNombre() . ': juega esta liga.';
+    } elseif ($ultimo !== null && $ultimo->estaPendiente()) {
+        $situacion[] = $equipo->getNombre() . ': pedido en revisión desde el ' . fechaTexto($ultimo->getFechaPedido()) . '.';
+    } else {
+        if ($ultimo !== null && $ultimo->estaRechazado()) {
+            $situacion[] = $equipo->getNombre() . ': pedido rechazado el ' . fechaTexto($ultimo->getFechaResolucion()) . '. Puede pedirse otra vez.';
+        }
+        $puede_pedir[] = $equipo;
+    }
+}
+$cupo_lleno = ($torneo !== null && count($en_competencia) >= $torneo->getMaxParticipantes());
+
+# El titulo: "Aviso ·" si hay un aviso de error.
+$titulo_pagina = ($torneo === null) ? 'Torneo no encontrado' : $torneo->getNombre();
+$nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,17 +177,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
-  <title>Liga Valorant · Otoño · Stadion</title>
+  <title><?php if ($aviso !== null && $aviso[0]) { echo 'Aviso · '; } ?><?php echo htmlspecialchars($titulo_pagina); ?> · Stadion</title>
   <link rel="icon" href="img/stadion.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
+<?php if ($torneo === null) { ?>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+<?php } else { ?>
 <a class="saltar" href="#contenido" data-vista="resumen">Saltar al contenido</a>
 <a class="saltar" href="#calendario" data-vista="calendario">Saltar al contenido</a>
 <a class="saltar" href="#posiciones" data-vista="posiciones">Saltar al contenido</a>
 <a class="saltar" href="#participantes" data-vista="participantes">Saltar al contenido</a>
 <a class="saltar" href="#reglas" data-vista="reglas">Saltar al contenido</a>
+<?php } ?>
 <div class="pagina">
 <header>
   <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -26,153 +201,255 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo" aria-current="true" data-fuera="posiciones">Torneos</a><a href="torneos.php" data-vista="posiciones">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones" data-fuera="posiciones">Posiciones</a><a href="torneo.php#posiciones" class="activo" aria-current="page" data-vista="posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<?php if ($es_destacado) { ?>
+<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo" aria-current="true" data-fuera="posiciones">Torneos</a><a href="torneos.php" data-vista="posiciones">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones" data-fuera="posiciones">Posiciones</a><a href="torneo.php#posiciones" class="activo" aria-current="page" data-vista="posiciones">Posiciones</a><a href="panel.php">Organizadores</a></nav>
+<?php } else { ?>
+<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo" aria-current="true">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.php">Organizadores</a></nav>
+<?php } ?>
 <main id="contenido">
+<?php if ($torneo === null) { ?>
+<section>
+  <p class="etiqueta">Torneos</p>
+<?php   if ($sin_base) { ?>
+  <h1>Torneo fuera de alcance</h1>
+  <p class="intro">Los torneos no se pueden leer por ahora.</p>
+<?php   } else { ?>
+  <h1>Sin torneo con ese número</h1>
+  <p class="intro">Ninguna competencia pública lleva ese número.</p>
+<?php   } ?>
+  <p><a href="torneos.php">Ver los torneos públicos <span aria-hidden="true">→</span></a></p>
+</section>
+<?php } else { ?>
 <div class="torneo-zona">
 <section>
-  <p class="etiqueta">Torneos / Esports</p>
-  <div class="fila"><span class="etiqueta">Liga · Esports · Ronda 7 de 11</span><span class="estado estado-en-vivo">En vivo</span></div>
-  <h1>Liga Valorant · Otoño</h1>
-  <p class="intro">Organiza <strong>Comunidad Vórtice</strong> · 12 equipos · 22 de agosto – 26 de octubre · Montevideo (online)</p>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Seguir torneo</span><span class="enlace-apagado" aria-disabled="true">Inscribir equipo</span></div>
+  <p class="etiqueta">Torneos / <?php echo htmlspecialchars($torneo->getDisciplina()->getNombre()); ?></p>
+  <div class="fila"><span class="etiqueta"><?php echo htmlspecialchars($torneo->getModulo()->getNombre() . ' · ' . $torneo->getDisciplina()->getNombre() . ' · ' . $avance); ?></span><?php echo chipLigaHtml($torneo, $en_vivo !== null); ?></div>
+  <h1><?php echo $nom; ?></h1>
+  <p class="intro">Organiza <strong><?php echo htmlspecialchars($torneo->getOrganizador()->getNombreCompletoVisible()); ?></strong> · <?php echo plural(count($en_competencia), 'equipo', 'equipos'); ?> · <?php echo htmlspecialchars($periodo); ?><?php if (!empty($torneo->getSede())) { echo ' · ' . htmlspecialchars($torneo->getSede()); } ?></p>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Seguir torneo</span><?php if ($torneo->esDeMuestra()) { echo marcaMuestra(); } ?></div>
+<?php   if ($aviso !== null) { ?>
+<?php     if ($aviso[0]) { ?>
+  <div role="alert"><ul class="avisos"><li><?php echo htmlspecialchars($aviso[1]); ?></li></ul></div>
+<?php     } else { ?>
+  <p class="intro" role="status"><?php echo htmlspecialchars($aviso[1]); ?></p>
+<?php     } ?>
+<?php   } ?>
+<?php   if ($torneo->tieneInscripcionAbierta()) { ?>
+  <div class="pedir-lugar">
+<?php     if ($cupo_lleno) { ?>
+    <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small>La liga tiene su cupo completo.</small></p>
+<?php     } elseif ($persona_sesion === null) { ?>
+    <p><a class="btn" href="login.php">Iniciar sesión para pedir lugar</a></p>
+<?php     } elseif (empty($equipos_propios)) { ?>
+    <p><a class="btn" href="<?php echo htmlspecialchars($ruta_perfil); ?>#mis-torneos">Armar un equipo para pedir lugar</a></p>
+    <p><small>El lugar lo pide el capitán, con un equipo armado en su perfil.</small></p>
+<?php     } else { ?>
+<?php       foreach ($situacion as $linea) { ?>
+    <p><small><?php echo htmlspecialchars($linea); ?></small></p>
+<?php       } ?>
+<?php       if (!empty($puede_pedir)) { ?>
+    <form class="pedir-lugar" action="<?php echo htmlspecialchars($ruta_inscripcion); ?>" method="post">
+      <input type="hidden" name="id_torneo" value="<?php echo (int)$torneo->getIdTorneo(); ?>">
+      <?php echo campoCsrf(); ?>
+      <div class="campo">
+        <label>Equipo<select name="id_equipo" required aria-describedby="ayuda-pedir-lugar">
+<?php         foreach ($puede_pedir as $equipo) { ?>
+          <option value="<?php echo (int)$equipo->getIdEquipo(); ?>"><?php echo htmlspecialchars($equipo->getNombre()); ?></option>
+<?php         } ?>
+        </select></label>
+        <p class="ayuda-campo" id="ayuda-pedir-lugar">Lo acepta o lo rechaza quien organiza la liga.</p>
+      </div>
+      <button class="btn btn-primario" type="submit">Pedir lugar<span class="visualmente-oculto"> en <?php echo $nom; ?></span></button>
+    </form>
+<?php       } ?>
+<?php     } ?>
+  </div>
+<?php   } ?>
 </section>
 <div class="vista" id="calendario">
   <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario" class="activo" aria-current="page">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Calendario del torneo</h2>
+<?php   if (empty($rondas)) { ?>
+  <p><?php echo $torneo->tieneInscripcionAbierta() ? 'El fixture se arma al cerrar la inscripción.' : 'El fixture está por armarse.'; ?></p>
+<?php   } else { ?>
   <div class="agenda">
+<?php     foreach ($rondas as $ronda) {
+            $como = $ronda->estaCerrada() ? 'cerrada' : (($ronda->getEstado() === 'en_curso') ? 'en curso' : 'por jugar'); ?>
   <div class="agenda-dia">
-    <p class="etiqueta dia">Ronda 8 · en curso</p>
-    <div class="partido"><span class="hora">19:00</span><span class="cruce-nombres"><span class="torneo">Jueves 18 de septiembre</span><span class="lados">Titanes CS <span class="vs">vs</span> Vortex</span></span><span class="estado estado-en-vivo">En vivo</span></div>
-    <div class="partido"><span class="hora">20:30</span><span class="cruce-nombres"><span class="torneo">Jueves 18 de septiembre</span><span class="lados">Nova Esports <span class="vs">vs</span> Delta Gaming</span></span></div>
-    <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Sábado 20 de septiembre</span><span class="lados">Aurora FC <span class="vs">vs</span> Halcones</span></span></div>
-    <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Domingo 21 de septiembre · Horario a confirmar</span><span class="lados">Liceo 3 <span class="vs">vs</span> Sur Gaming</span></span></div>
+    <p class="etiqueta dia"><?php echo htmlspecialchars($ronda->getNombreVisible()) . ' · ' . $como; ?></p>
+<?php       foreach ($ronda->getEnfrentamientos() as $e) {
+              if ($e->getFechaHora() !== null) {
+                  $arriba = mayuscula(fechaConDia($e->getFechaHora()));
+              } elseif (!empty($ronda->getFechaFin())) {
+                  $arriba = mayuscula(fechaConDia($ronda->getFechaFin())) . ' · Horario a confirmar';
+              } else {
+                  $arriba = 'Día y hora a confirmar';
+              }
+              filaPartido($e, htmlspecialchars($arriba));
+            } ?>
   </div>
-  <div class="agenda-dia">
-    <p class="etiqueta dia">Ronda 9 · programada</p>
-    <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="lados">Enfrentamientos por confirmar.</span></span></div>
+<?php     } ?>
   </div>
-  <div class="agenda-dia">
-    <p class="etiqueta dia">Ronda 10 · programada</p>
-    <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="lados">Enfrentamientos por confirmar.</span></span></div>
-  </div>
-  <div class="agenda-dia">
-    <p class="etiqueta dia">Ronda 11 · programada</p>
-    <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="lados">Enfrentamientos por confirmar.</span></span></div>
-  </div>
-  </div>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Las rondas jugadas quedan en la tabla de posiciones.</span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Las fechas jugadas quedan en la tabla de posiciones.</span>
+<?php   } ?>
   </section>
 </div>
 <div class="vista" id="posiciones">
   <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones" class="activo" aria-current="page">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Tabla de posiciones</h2>
+<?php   if (empty($tabla)) { ?>
+  <p>La tabla se arma con el fixture.</p>
+<?php   } else {
+          $clasifican = ($config === null) ? 0 : $config->getClasificanPlayoffs(); ?>
   <div class="tabla-scroll" tabindex="0" role="region" aria-label="Tabla de posiciones">
   <table>
     <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Dif</th><th>Pts</th></tr></thead>
-    <tbody><tr class="clasifica"><td class="num">1</td><td>Titanes CS</td><td>7</td><td>6</td><td>0</td><td>1</td><td>+9</td><td class="num">18</td></tr><tr class="clasifica"><td class="num">2</td><td>Nova Esports</td><td>7</td><td>5</td><td>0</td><td>2</td><td>+6</td><td class="num">15</td></tr><tr class="clasifica"><td class="num">3</td><td>Vortex</td><td>7</td><td>4</td><td>1</td><td>2</td><td>+3</td><td class="num">13</td></tr><tr class="clasifica"><td class="num">4</td><td>Delta Gaming</td><td>7</td><td>4</td><td>0</td><td>3</td><td>+1</td><td class="num">12</td></tr><tr><td class="num">5</td><td>Aurora FC</td><td>7</td><td>3</td><td>1</td><td>3</td><td>0</td><td class="num">10</td></tr><tr><td class="num">6</td><td>Halcones</td><td>7</td><td>3</td><td>0</td><td>4</td><td>-1</td><td class="num">9</td></tr><tr><td class="num">7</td><td>Ping Masters</td><td>7</td><td>2</td><td>2</td><td>3</td><td>-2</td><td class="num">8</td></tr><tr><td class="num">8</td><td>Liceo 3</td><td>7</td><td>2</td><td>1</td><td>4</td><td>-3</td><td class="num">7</td></tr></tbody>
+    <tbody><?php foreach ($tabla as $i => $fila) { ?><tr<?php if ($i < $clasifican) { echo ' class="clasifica"'; } ?>><td class="num"><?php echo $i + 1; ?></td><td><?php echo htmlspecialchars($fila->getNombreVisible()); ?></td><td><?php echo $fila->getPartidosJugados(); ?></td><td><?php echo $fila->getGanados(); ?></td><td><?php echo $fila->getEmpatados(); ?></td><td><?php echo $fila->getPerdidos(); ?></td><td><?php echo conSigno($fila->getDiferencia()); ?></td><td class="num"><?php echo $fila->getPuntos($config); ?></td></tr><?php } ?></tbody>
   </table>
   </div>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">En verde: clasifican a playoffs · Victoria 3 pts · Empate 1 pt</span>
-</section>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php if ($clasifican > 0) { echo 'En verde: clasifican a playoffs · '; } ?>Victoria <?php echo $config->getPuntosVictoria(); ?> pts · Empate <?php echo $config->getPuntosEmpate(); ?> pt<?php echo ($config->getPuntosEmpate() === 1) ? '' : 's'; ?> · Dif: diferencia de <?php echo $unidad; ?></span>
+<?php   } ?>
+  </section>
 </div>
 <div class="vista" id="participantes">
   <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes" class="activo" aria-current="page">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Participantes</h2>
+<?php   if (empty($en_competencia)) { ?>
+  <p>Sin equipos anotados.</p>
+<?php   } else {
+          $con_capitan = 0;
+          foreach ($en_competencia as $p) { if ($p->esEquipo() && $p->getEquipo()->getCapitan() !== null) { $con_capitan++; } } ?>
   <div class="tabla-scroll" tabindex="0" role="region" aria-label="Participantes">
   <table>
-    <thead><tr><th>Equipo</th><th>Ciudad</th><th>Capitán</th></tr></thead>
-    <tbody><tr><td>Titanes CS</td><td>Montevideo</td><td>L. Martiarena</td></tr><tr><td>Nova Esports</td><td>Ciudad de la Costa</td><td>G. Etcheverry</td></tr><tr><td>Vortex</td><td>Montevideo</td><td>F. Bentancor</td></tr><tr><td>Delta Gaming</td><td>Las Piedras</td><td>R. Olivera</td></tr><tr><td>Aurora FC</td><td>Canelones</td><td>V. Techera</td></tr><tr><td>Halcones</td><td>Pando</td><td>H. Cardozo</td></tr><tr><td>Ping Masters</td><td>Montevideo</td><td>S. Viera</td></tr><tr><td>Liceo 3</td><td>Montevideo</td><td>A. Falero</td></tr></tbody>
+    <thead><tr><th>Equipo</th><th>Ciudad</th><?php if ($con_capitan > 0) { ?><th>Capitán</th><?php } ?></tr></thead>
+    <tbody><?php foreach ($en_competencia as $p) {
+      $equipo = $p->getEquipo();
+      $ciudad = ($equipo === null || $equipo->getCiudad() === null || $equipo->getCiudad() === '') ? '—' : $equipo->getCiudad(); ?><tr><td><?php echo htmlspecialchars($p->getNombreVisible()); ?></td><td><?php echo htmlspecialchars($ciudad); ?></td><?php if ($con_capitan > 0) { ?><td><?php echo ($equipo !== null && $equipo->getCapitan() !== null) ? htmlspecialchars($equipo->getCapitan()->getNombreCompletoVisible()) : '—'; ?></td><?php } ?></tr><?php } ?></tbody>
   </table>
   </div>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Ocho equipos · un capitán por equipo</span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo mayuscula(plural(count($en_competencia), 'equipo', 'equipos')); ?><?php if ($torneo->tieneInscripcionAbierta()) { echo ' de ' . $torneo->getMaxParticipantes() . ' lugares'; } ?></span>
+<?php   } ?>
   </section>
 </div>
 <div class="vista" id="reglas">
   <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas" class="activo" aria-current="page">Reglas</a></div>
   <section class="tarjeta">
   <h2>Reglas</h2>
+<?php   if ($config === null) { ?>
+  <p>Las reglas de esta liga no se pueden leer por ahora.</p>
+<?php   } else {
+          $reglas = array();
+          $reglas['Formato'] = 'Liga de ' . ($torneo->tieneInscripcionAbierta() ? 'hasta ' . $torneo->getMaxParticipantes() : count($en_competencia))
+                             . ' equipos, todos contra todos, ' . vueltasTexto($config) . '.';
+          $reglas['Puntaje'] = $config->getPuntosVictoria() . ' puntos la victoria, ' . $config->getPuntosEmpate()
+                             . ' el empate y ' . $config->getPuntosDerrota() . ' la derrota.';
+          $reglas['Desempate'] = $config->textoDesempate($unidad);
+          if ($config->getClasificanPlayoffs() > 0) {
+              $reglas['Playoffs'] = 'Clasifican los ' . $config->getClasificanPlayoffs() . ' primeros de la tabla.';
+          }
+          if (!empty($config->getReglas())) {
+              $reglas['Partidos'] = $config->getReglas();
+          } ?>
   <table>
     <tbody>
-      <tr><th scope="row" class="etiqueta">Formato</th><td>Liga de doce equipos, todos contra todos, una vuelta.</td></tr>
-      <tr><th scope="row" class="etiqueta">Puntaje</th><td>Tres puntos la victoria, uno el empate, ninguno la derrota.</td></tr>
-      <tr><th scope="row" class="etiqueta">Desempate</th><td>Primero la diferencia entre mapas ganados y perdidos; si persiste, los mapas ganados.</td></tr>
-      <tr><th scope="row" class="etiqueta">Ausencia</th><td>Un equipo que no se presenta a la hora pactada pierde el enfrentamiento por walkover, sin necesidad de jugarlo.</td></tr>
+<?php     foreach ($reglas as $rotulo => $texto) { ?>
+      <tr><th scope="row" class="etiqueta"><?php echo $rotulo; ?></th><td><?php echo htmlspecialchars($texto); ?></td></tr>
+<?php     } ?>
     </tbody>
   </table>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Cuatro reglas · las mismas para toda la liga</span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo mayuscula(plural(count($reglas), 'regla', 'reglas')); ?> · las mismas para toda la liga</span>
+<?php   } ?>
   </section>
 </div>
 <div class="vista" id="resumen">
   <div class="pestanas"><a href="#resumen" class="activo" aria-current="page">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Resumen</h2>
-  <p class="intro">Once rondas a una vuelta: cada equipo se cruza una vez con cada rival, y la tabla decide quiénes llegan a los playoffs. Siete rondas quedan atrás; la octava está en juego.</p>
+  <p class="intro"><?php
+    if ($torneo->tieneInscripcionAbierta()) {
+        echo 'Todos contra todos, ' . vueltasTexto($config) . '. La inscripción sigue abierta: '
+           . count($en_competencia) . ' de ' . $torneo->getMaxParticipantes() . ' lugares ocupados. '
+           . (empty($torneo->getFechaInicio()) ? 'La fecha de inicio queda a definir.'
+                                              : 'La primera fecha, el ' . htmlspecialchars(fechaConDia($torneo->getFechaInicio())) . '.');
+    } elseif ($fechas === 0) {
+        echo 'Inscripción cerrada con ' . plural(count($en_competencia), 'equipo', 'equipos') . '. El fixture está por armarse.';
+    } else {
+        echo plural($fechas, 'fecha', 'fechas') . ', ' . vueltasTexto($config) . ': cada equipo se cruza '
+           . ($config !== null && $config->esIdaYVuelta() ? 'dos veces' : 'una vez') . ' con cada rival. ';
+        if ($actual === null) {
+            echo 'Todas las fechas quedan atrás.';
+        } elseif ($cerradas === 0) {
+            echo 'La primera fecha está en juego.';
+        } else {
+            echo plural($cerradas, 'fecha cerrada', 'fechas cerradas') . '; la ' . $actual->getNumero() . ' en juego.';
+        }
+        if ($config !== null && $config->getClasificanPlayoffs() > 0) {
+            echo ' Los ' . $config->getClasificanPlayoffs() . ' primeros de la tabla llegan a los playoffs.';
+        }
+    } ?></p>
   </section>
+<?php   if ($en_vivo !== null) { ?>
+  <section class="tarjeta">
+  <div class="fila" style="justify-content:space-between"><span class="etiqueta">Ahora</span><span class="estado estado-en-vivo">En vivo</span></div>
+  <h3><?php echo htmlspecialchars($en_vivo->getTitulo()); ?></h3>
+  </section>
+<?php   } ?>
+<?php   if ($proximo !== null) { ?>
   <section class="tarjeta">
   <span class="etiqueta">Próximo enfrentamiento</span>
-  <h3>Nova Esports vs Delta Gaming</h3>
-  <p>Ronda 8 · jueves 18 de septiembre, 20:30</p>
+  <h3><?php echo htmlspecialchars($proximo['partido']->getTitulo()); ?></h3>
+  <p><?php echo htmlspecialchars($proximo['ronda']->getNombreVisible() . ' · ' . fechaConDia($proximo['partido']->getFechaHora()) . ', ' . horaTexto($proximo['partido']->getFechaHora())); ?></p>
   <p><a href="#calendario">Ver el calendario del torneo <span aria-hidden="true">→</span></a></p>
   </section>
+<?php   } ?>
+<?php   if (!empty($tabla) && $tabla[0]->getPartidosJugados() > 0) {
+          $primero = $tabla[0];
+          $marca = array();
+          if ($primero->getGanados() > 0)   { $marca[] = plural($primero->getGanados(), 'ganado', 'ganados'); }
+          if ($primero->getEmpatados() > 0) { $marca[] = plural($primero->getEmpatados(), 'empatado', 'empatados'); }
+          if ($primero->getPerdidos() > 0)  { $marca[] = plural($primero->getPerdidos(), 'perdido', 'perdidos'); } ?>
   <section class="tarjeta">
   <span class="etiqueta">Al frente de la tabla</span>
-  <h3>Titanes CS</h3>
-  <p>18 puntos en 7 rondas · 6 ganados, 1 perdido · +9 de diferencia de mapas</p>
+  <h3><?php echo htmlspecialchars($primero->getNombreVisible()); ?></h3>
+  <p><?php echo plural($primero->getPuntos($config), 'punto', 'puntos'); ?> en <?php echo plural($primero->getPartidosJugados(), 'fecha', 'fechas'); ?> · <?php echo implode(', ', $marca); ?> · <?php echo conSigno($primero->getDiferencia()); ?> de diferencia de <?php echo $unidad; ?></p>
   <p><a href="#posiciones">Ver la tabla completa <span aria-hidden="true">→</span></a></p>
   </section>
+<?php   } ?>
 </div>
 </div>
+<?php } ?>
 </main>
+<?php if ($torneo !== null) { ?>
 <aside>
 <div class="tarjeta">
   <span class="etiqueta">Reglas en breve</span>
-  <p>Todos contra todos, una vuelta. Mejor de 3 mapas. Victoria 3 pts, empate 1 pt. Los 4 primeros clasifican a playoffs.</p>
+  <p><?php
+    $breve = 'Todos contra todos, ' . vueltasTexto($config) . '.';
+    if ($config !== null) {
+        if (!empty($config->getReglas())) {
+            $oraciones = explode('. ', $config->getReglas());
+            $breve .= ' ' . rtrim($oraciones[0], '.') . '.';
+        }
+        $breve .= ' Victoria ' . $config->getPuntosVictoria() . ' pts, empate ' . $config->getPuntosEmpate()
+                . ' pt' . (($config->getPuntosEmpate() === 1) ? '' : 's') . '.';
+        if ($config->getClasificanPlayoffs() > 0) {
+            $breve .= ' Los ' . $config->getClasificanPlayoffs() . ' primeros clasifican a playoffs.';
+        }
+    }
+    echo htmlspecialchars($breve); ?></p>
 </div>
 <div class="tarjeta tarjeta-olivo">
-  <span class="etiqueta">Organizador</span>
-  <h3>Comunidad Vórtice</h3>
-  <p>7 torneos organizados · desde 2024</p>
+  <div class="fila" style="justify-content:space-between"><span class="etiqueta">Organizador</span><?php if ($torneo->esDeMuestra()) { echo marcaMuestra(); } ?></div>
+  <h3><?php echo htmlspecialchars($torneo->getOrganizador()->getNombreCompletoVisible()); ?></h3>
+  <p><?php if ($organizados !== null) { echo plural($organizados, 'torneo organizado', 'torneos organizados'); } ?><?php
+     $alta = $torneo->getOrganizador()->getFechaAlta();
+     if (!empty($alta)) { echo ' · desde ' . substr($alta, 0, 4); } ?></p>
 </div>
 </aside>
-<footer>
-  <div class="marca-agon"><svg width="26" height="26" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <mask id="lente-mask">
-    <path d="M 100,34 A 81.06 81.06 0 0 1 100,166 A 81.06 81.06 0 0 1 100,34 Z" fill="white"/>
-    <rect x="94" y="87" width="12" height="26" rx="6" fill="black"/>
-  </mask>
-  <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
-</svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
-</footer>
-</div>
-<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
-  <g stroke="#8A8478" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
-  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
-</svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#14130F"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
-  <g stroke="#6E675A" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
-  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
-</svg>
-</button>
+<?php } ?>
+<?php piePagina(true); ?>
 </body>
 </html>

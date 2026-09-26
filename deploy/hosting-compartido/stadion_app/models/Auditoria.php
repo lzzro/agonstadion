@@ -88,7 +88,8 @@ class Auditoria
 
         # Misma lista que la restriccion ck_audit_accion.
         $acciones = array('alta', 'baja', 'modificacion', 'login_ok', 'login_error', 'logout',
-                          'pedido_rol', 'aprobacion', 'rechazo');
+                          'pedido_rol', 'aprobacion', 'rechazo',
+                          'inscripcion', 'solicitud', 'cierre', 'fixture');
         if (!in_array($this->accion, $acciones)) {
             $errores[] = 'La accion registrada no es una de las previstas.';
         }

@@ -13,6 +13,9 @@
 # de los puentes de controllers/: lo escribe scripts/armar-deploy.sh.
 # =====================================================================
 
-$ruta_publica = '.';
-$ruta_perfil  = '../apps/controllers/perfilController.php';
-$ruta_admin   = '../apps/controllers/adminController.php';
+$ruta_publica     = '.';
+$ruta_perfil      = '../apps/controllers/perfilController.php';
+$ruta_admin       = '../apps/controllers/adminController.php';
+$ruta_crear       = '../apps/controllers/crearController.php';
+$ruta_panel       = '../apps/controllers/panelController.php';
+$ruta_inscripcion = '../apps/controllers/inscripcionController.php';

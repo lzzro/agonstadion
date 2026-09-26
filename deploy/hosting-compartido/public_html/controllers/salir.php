@@ -21,10 +21,13 @@ $APLICACION = __DIR__ . '/../../stadion_app';
 
 # Donde estan el CSS, el JS y las paginas, vistos desde la direccion de
 # este archivo en el navegador (/controllers/...).
-$ruta_publica = '..';
-$ruta_perfil  = 'perfil.php';
-$ruta_salir   = 'salir.php';
-$ruta_admin   = 'admin.php';
+$ruta_publica     = '..';
+$ruta_perfil      = 'perfil.php';
+$ruta_salir       = 'salir.php';
+$ruta_admin       = 'admin.php';
+$ruta_crear       = 'crear.php';
+$ruta_panel       = 'panel.php';
+$ruta_inscripcion = 'inscripcion.php';
 
 # Donde se guardan las fotos de perfil y las portadas: la carpeta
 # subidas/ de public_html, al lado de esta. La que tiene el .htaccess

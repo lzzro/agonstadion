@@ -22,6 +22,13 @@
 -- occidental. La base que ya quedo en latin1 se convierte con
 -- sql/migraciones/004_utf8mb4.sql.
 --
+-- DATOS DE MUESTRA: este archivo crea la estructura y los catalogos, y
+-- nada mas. Las tres ligas de muestra que muestran las paginas publicas
+-- (con sus cuentas organizadoras, equipos, partidos y resultados) las
+-- carga sql/migraciones/005_ligas.sql, que en una base nueva se corre
+-- despues de este archivo: ahi encuentra la estructura hecha y solo
+-- agrega los datos. Asi los datos de muestra viven en un solo lugar.
+--
 -- [solo servidor propio] desde aca
 -- HOSTING COMPARTIDO: este archivo no se importa tal cual en un hosting.
 -- Ahi no se puede crear la base ni usuarios por SQL, y los bloques
@@ -36,7 +43,8 @@
 -- -------------------------------------------------------------------
 -- rol (id_rol, nombre, descripcion)
 -- usuario (id_usuario, correo, hash_password, nombre, apellido, alias,
---          presentacion, activo, fecha_alta, foto_perfil, foto_portada)
+--          presentacion, activo, fecha_alta, foto_perfil, foto_portada,
+--          de_muestra)
 -- usuario_rol (id_usuario*, id_rol*, fecha_asignacion)
 -- pedido_rol (id_pedido_rol, id_usuario*, id_rol*, estado, fecha_pedido,
 --             fecha_resolucion, id_usuario_resuelve*)
@@ -50,9 +58,12 @@
 --         max_participantes, sede, estado, fecha_creacion)
 -- configuracion_torneo (id_torneo*, puntos_victoria, puntos_empate,
 --         puntos_derrota, admite_empate, clasifican_playoffs,
---         ida_y_vuelta, rondas_previstas, reglas)
+--         ida_y_vuelta, criterio_desempate, rondas_previstas, reglas)
 -- participante (id_participante, id_torneo, id_usuario, id_equipo,
 --         estado, fecha_inscripcion)
+-- pedido_inscripcion (id_pedido_inscripcion, id_torneo, id_equipo,
+--         id_usuario, estado, fecha_pedido, fecha_resolucion,
+--         id_usuario_resuelve)
 -- ronda (id_ronda, id_torneo, numero, nombre, fecha_inicio, fecha_fin, estado)
 -- enfrentamiento (id_enfrentamiento, id_ronda, numero, id_participante_local,
 --         id_participante_visitante, fecha_hora, lugar, estado)
@@ -140,6 +151,7 @@ DROP TABLE IF EXISTS tabla_posiciones;
 DROP TABLE IF EXISTS resultado;
 DROP TABLE IF EXISTS enfrentamiento;
 DROP TABLE IF EXISTS ronda;
+DROP TABLE IF EXISTS pedido_inscripcion;
 DROP TABLE IF EXISTS participante;
 DROP TABLE IF EXISTS configuracion_torneo;
 DROP TABLE IF EXISTS torneo;
@@ -197,6 +209,13 @@ CREATE TABLE usuario (
   -- minusculas. NULL es "sin imagen".
   foto_perfil   VARCHAR(40)  NULL,
   foto_portada  VARCHAR(40)  NULL,
+  -- Cuenta de muestra: una de las organizadoras de las ligas de muestra
+  -- (sql/migraciones/005_ligas.sql). No inicia sesion nunca: su
+  -- hash_password no es un hash (password_verify() la rechaza con
+  -- cualquier clave) y, ademas, el inicio de sesion rechaza de_muestra = 1
+  -- antes de mirar la clave. Las paginas publicas marcan "De muestra" lo
+  -- que organiza una cuenta asi.
+  de_muestra    TINYINT(1)   NOT NULL DEFAULT 0,
   CONSTRAINT pk_usuario     PRIMARY KEY (id_usuario),
   CONSTRAINT uq_usuario_cor UNIQUE (correo),
   CONSTRAINT uq_usuario_ali UNIQUE (alias),
@@ -204,7 +223,8 @@ CREATE TABLE usuario (
   CONSTRAINT ck_usuario_foto    CHECK (foto_perfil IS NULL
                                     OR BINARY foto_perfil REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$'),
   CONSTRAINT ck_usuario_portada CHECK (foto_portada IS NULL
-                                    OR BINARY foto_portada REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$')
+                                    OR BINARY foto_portada REGEXP '^[0-9a-f]{32}[.](jpg|png|webp)$'),
+  CONSTRAINT ck_usuario_muestra CHECK (de_muestra IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Un usuario puede tener mas de un rol (jugador y organizador a la vez),
@@ -353,7 +373,12 @@ CREATE TABLE torneo (
   id_tipo_torneo         INT UNSIGNED NOT NULL,
   id_modulo              INT UNSIGNED NOT NULL,
   id_usuario_organizador INT UNSIGNED NOT NULL,
-  fecha_inicio           DATE         NOT NULL,
+  -- Opcional: una liga nace con la inscripcion abierta y la fecha de
+  -- inicio puede quedar a definir. Como un UNIQUE admite varios NULL,
+  -- uq_torneo_nom no frena dos torneos del mismo nombre sin fecha: que
+  -- no haya dos ligas vigentes con el mismo nombre lo cuida la
+  -- aplicacion (TorneoRepositorio::nombreEnUso).
+  fecha_inicio           DATE         NULL,
   fecha_fin              DATE         NULL,
   max_participantes      SMALLINT UNSIGNED NOT NULL DEFAULT 16,
   sede                   VARCHAR(80)  NULL,
@@ -386,6 +411,10 @@ CREATE TABLE configuracion_torneo (
   admite_empate       TINYINT(1)   NOT NULL DEFAULT 1,
   clasifican_playoffs TINYINT UNSIGNED NOT NULL DEFAULT 0,
   ida_y_vuelta        TINYINT(1)   NOT NULL DEFAULT 0,
+  -- Desempate entre dos con los mismos puntos: 'diferencia' mira primero
+  -- la diferencia de tantos (goles, mapas) y despues los tantos a favor;
+  -- 'favor', al reves.
+  criterio_desempate  VARCHAR(10)  NOT NULL DEFAULT 'diferencia',
   rondas_previstas    TINYINT UNSIGNED NULL,
   reglas              TEXT         NULL,
   CONSTRAINT pk_config        PRIMARY KEY (id_torneo),
@@ -400,7 +429,8 @@ CREATE TABLE configuracion_torneo (
   -- distingue al que gana. El tope de 10 es el mismo de validar().
   -- En una base creada antes de esta restriccion se agrega con
   -- sql/migraciones/001_check_puntos_victoria.sql.
-  CONSTRAINT ck_config_victoria CHECK (puntos_victoria BETWEEN 1 AND 10)
+  CONSTRAINT ck_config_victoria CHECK (puntos_victoria BETWEEN 1 AND 10),
+  CONSTRAINT ck_config_desempate CHECK (criterio_desempate IN ('diferencia', 'favor'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -446,6 +476,41 @@ CREATE TABLE participante (
   CONSTRAINT ck_part_competidor CHECK ((id_usuario IS NOT NULL AND id_equipo IS NULL)
                                     OR (id_usuario IS NULL AND id_equipo IS NOT NULL)),
   CONSTRAINT ck_part_estado     CHECK (estado IN ('inscripto', 'confirmado', 'baja', 'descalificado'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Pedidos de inscripcion: el capitan de un equipo pide lugar en una liga
+-- con la inscripcion abierta, y quien la organiza lo acepta o lo
+-- rechaza. Aceptar es agregar la fila de participante. Es el mismo
+-- esquema que pedido_rol: un pedido resuelto tiene fecha y responsable
+-- (ck_pinsc_resuelto), y un solo pendiente por equipo y liga con la
+-- columna calculada pendiente_de y su UNIQUE (ver pedido_rol).
+CREATE TABLE pedido_inscripcion (
+  id_pedido_inscripcion INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_torneo             INT UNSIGNED NOT NULL,
+  id_equipo             INT UNSIGNED NOT NULL,
+  id_usuario            INT UNSIGNED NOT NULL,   -- quien pide: el capitan
+  estado                VARCHAR(10)  NOT NULL DEFAULT 'pendiente',
+  fecha_pedido          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_resolucion      DATETIME     NULL,
+  id_usuario_resuelve   INT UNSIGNED NULL,
+  pendiente_de          INT UNSIGNED GENERATED ALWAYS AS
+                          (IF(estado = 'pendiente', id_equipo, NULL)) STORED,
+  CONSTRAINT pk_pedido_inscripcion PRIMARY KEY (id_pedido_inscripcion),
+  CONSTRAINT fk_pinsc_torneo       FOREIGN KEY (id_torneo) REFERENCES torneo (id_torneo)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_pinsc_equipo       FOREIGN KEY (id_equipo) REFERENCES equipo (id_equipo)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_pinsc_usuario      FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_pinsc_resuelve     FOREIGN KEY (id_usuario_resuelve) REFERENCES usuario (id_usuario)
+      ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT uq_pinsc_pendiente    UNIQUE (pendiente_de, id_torneo),
+  CONSTRAINT ck_pinsc_estado       CHECK (estado IN ('pendiente', 'aceptado', 'rechazado')),
+  CONSTRAINT ck_pinsc_resuelto     CHECK ((estado = 'pendiente' AND fecha_resolucion IS NULL
+                                                               AND id_usuario_resuelve IS NULL)
+                                       OR (estado <> 'pendiente' AND fecha_resolucion IS NOT NULL
+                                                                 AND id_usuario_resuelve IS NOT NULL)),
+  CONSTRAINT ck_pinsc_fechas       CHECK (fecha_resolucion IS NULL OR fecha_resolucion >= fecha_pedido)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -581,9 +646,14 @@ CREATE TABLE auditoria (
       ON DELETE SET NULL ON UPDATE CASCADE,
   -- pedido_rol, aprobacion y rechazo son los pedidos de rol (tabla
   -- pedido_rol): se suman con sql/migraciones/003_pedidos_de_rol.sql.
+  -- aprobacion y rechazo sirven tambien para los pedidos de inscripcion.
+  -- inscripcion (un equipo entra a una liga), solicitud (un capitan pide
+  -- lugar), cierre (de la inscripcion) y fixture se suman con
+  -- sql/migraciones/005_ligas.sql.
   CONSTRAINT ck_audit_accion  CHECK (accion IN ('alta', 'baja', 'modificacion',
                                                 'login_ok', 'login_error', 'logout',
-                                                'pedido_rol', 'aprobacion', 'rechazo'))
+                                                'pedido_rol', 'aprobacion', 'rechazo',
+                                                'inscripcion', 'solicitud', 'cierre', 'fixture'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -608,7 +678,7 @@ INSERT INTO rol (nombre, descripcion) VALUES
   ('arbitro',       'Carga resultados de los enfrentamientos');
 
 INSERT INTO disciplina (nombre) VALUES
-  ('Esports'), ('Ajedrez'), ('Tenis de mesa'), ('Futbol'), ('Cartas');
+  ('Esports'), ('Ajedrez'), ('Tenis de mesa'), ('Fútbol'), ('Cartas'), ('Fútbol 5');
 
 INSERT INTO tipo_torneo (nombre, compite_equipo, descripcion) VALUES
   ('Individual', 0, 'Compiten personas'),
@@ -616,7 +686,7 @@ INSERT INTO tipo_torneo (nombre, compite_equipo, descripcion) VALUES
 
 INSERT INTO modulo_competencia (nombre, descripcion) VALUES
   ('Liga',                'Todos contra todos, calendario completo desde el inicio'),
-  ('Eliminacion directa', 'Llaves, el que pierde queda fuera'),
+  ('Eliminación directa', 'Llaves, el que pierde queda fuera'),
   ('Suizo',               'Emparejamiento por puntaje, sin repetir rivales');
 
 
@@ -662,6 +732,8 @@ GRANT INSERT, UPDATE, DELETE ON sgdm.usuario_rol          TO 'sgdm_app'@'localho
 -- Pedidos de rol: sin DELETE. Un pedido no se borra, se resuelve: el
 -- historial de quien pidio que y quien lo aprobo queda entero.
 GRANT INSERT, UPDATE         ON sgdm.pedido_rol           TO 'sgdm_app'@'localhost';
+-- Pedidos de inscripcion: igual, sin DELETE.
+GRANT INSERT, UPDATE         ON sgdm.pedido_inscripcion   TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE         ON sgdm.equipo               TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.integrante_equipo    TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.torneo               TO 'sgdm_app'@'localhost';

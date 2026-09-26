@@ -165,13 +165,13 @@ nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color
 nav a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
 
 /* ---------- Lo que acompaña a la vista abierta ----------
-   En las paginas con pestañas (torneo.php, panel.html y el perfil) la
+   En las paginas con pestañas (torneo.php y el perfil) la
    misma direccion muestra una vista u otra segun el ancla. Hay dos
    cosas escritas en el HTML que tienen que acompañarla, y el HTML no
    puede cambiar solo:
 
      - la entrada marcada del menu, con su aria-current: en la ficha de
-       torneo, Torneos o Posiciones; en el panel, cualquiera de las seis;
+       la liga destacada, Torneos o Posiciones;
      - el destino de "Saltar al contenido": si llevara siempre a
        #contenido, cambiaria el ancla y la vista abierta volveria a la de
        por defecto.
@@ -189,16 +189,8 @@ body:not(:has(#posiciones:target)) [data-vista="posiciones"],
 body:not(:has(#participantes:target)) [data-vista="participantes"],
 body:not(:has(#reglas:target)) [data-vista="reglas"],
 body:not(:has(#mis-torneos:target)) [data-vista="mis-torneos"],
-body:not(:has(#resultados:target)) [data-vista="resultados"],
-body:not(:has(#reportes:target)) [data-vista="reportes"],
-body:not(:has(#configuracion:target)) [data-vista="configuracion"],
 body:not(:has(#rendimiento:target)) [data-vista="rendimiento"],
 body:has(#posiciones:target) [data-fuera="posiciones"],
-body:has(#mis-torneos:target) [data-fuera="mis-torneos"],
-body:has(#participantes:target) [data-fuera="participantes"],
-body:has(#resultados:target) [data-fuera="resultados"],
-body:has(#reportes:target) [data-fuera="reportes"],
-body:has(#configuracion:target) [data-fuera="configuracion"],
 /* Las vistas por defecto (resumen y datos) estan abiertas mientras
    ninguna otra vista sea el ancla. */
 body:has(.vista:not(#resumen):target) [data-vista="resumen"],
@@ -344,6 +336,26 @@ input[type="checkbox"]:user-invalid:not(:focus) { outline: 1px dashed var(--ink)
    con la etiqueta. El campo y su ayuda van juntos en .campo, pegados. */
 .campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .ayuda-campo { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink2); }
+/* Un campo que el servidor devuelve mal completado lleva aria-invalid, y
+   se dibuja igual que con :user-invalid: borde punteado en ink. Su
+   mensaje va debajo, en ink y con la raya de 2px de los avisos (nunca
+   en cinabrio), y el campo lo nombra con aria-describedby. */
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-style: dashed; border-color: var(--ink); }
+.error-campo { margin: 0; padding-left: 10px; border-left: 2px solid var(--ink); font-size: 13px; line-height: 1.4; color: var(--ink); }
+/* Una casilla con su texto al lado, en letra comun (la confirmacion de
+   "Rehacer el fixture"). */
+label.casilla { flex-direction: row; align-items: center; gap: 10px; font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+label.casilla input { width: 16px; height: 16px; flex: none; accent-color: var(--olivo); }
+/* Los formularios de una sola accion de las ligas: el boton a su ancho,
+   a la izquierda, no estirado a lo ancho de la tarjeta. */
+form.anotar-equipo, form.accion-liga, form.pedir-lugar, form.crear-equipo { align-items: flex-start; }
+form.anotar-equipo .campo, form.pedir-lugar .campo { width: 100%; max-width: 420px; }
+form.crear-equipo .grilla { width: 100%; }
+div.pedir-lugar { display: flex; flex-direction: column; gap: 8px; }
+div.pedir-lugar p { margin: 0; }
+.pasos-liga { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+/* "Semana anterior · Hoy · Semana siguiente" del calendario. */
+.semanas { gap: 8px 18px; font-size: 14px; }
 fieldset { border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .opciones { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -453,6 +465,14 @@ form.pedir-rol { align-items: flex-start; }
 .muestra { display: inline-block; width: fit-content; white-space: nowrap; font-size: 10px; letter-spacing: .16em;
   text-transform: uppercase; color: var(--ink3); border: 1px dashed var(--ink3); padding: 3px 7px; }
 .datos .muestra { display: block; margin-top: 8px; }
+/* Sobre olivo palido, en ink2: ink3 no llega al contraste minimo ahi
+   (lo mismo que la etiqueta de .tarjeta-olivo). */
+.tarjeta-olivo .muestra { color: var(--ink2); border-color: var(--ink2); }
+/* Al lado del nombre de la liga, en un renglon del calendario. */
+.partido .torneo .muestra { margin-left: 6px; letter-spacing: .12em; }
+/* El aviso de la tarjeta de roles del perfil, al lado del boton de
+   pedir el rol: la misma raya de los avisos. */
+.aviso-rol { padding-left: 10px; border-left: 2px solid var(--ink); color: var(--ink); }
 .pestanas { display: flex; gap: 24px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); overflow-x: auto; }
 .pestanas a, .pestanas .enlace-apagado { padding: 12px 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); white-space: nowrap; border-bottom: 1.5px solid transparent; }
 .pestanas a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
@@ -486,27 +506,21 @@ form.pedir-rol { align-items: flex-start; }
    marcada. Por eso la barra que se ve es siempre la de la vista que
    esta abierta, sin que nada tenga que cambiarle la clase. */
 .vista { display: flex; flex-direction: column; gap: 28px; }
-/* #calendario, #posiciones y #reglas son de torneo.php; #resultados,
-   #reportes y #configuracion, de panel.html; #participantes, de las
-   dos; #mis-torneos, de panel.html y del perfil; #rendimiento, del
-   perfil.
-   En torneo.php y panel.html la vista por defecto se llama #resumen y
-   va ultima, asi que la misma mecanica sirve para las dos. En el
-   perfil la vista por defecto es #datos, tambien ultima: tiene sus
+/* #calendario, #posiciones, #participantes y #reglas son de torneo.php;
+   #mis-torneos y #rendimiento, del perfil. (Las vistas del viejo
+   panel.html, #resultados, #reportes y #configuracion, se fueron con la
+   maqueta: el panel real es una sola pagina que se recorre.)
+   En torneo.php la vista por defecto se llama #resumen y va ultima. En
+   el perfil la vista por defecto es #datos, tambien ultima: tiene sus
    propias reglas para apagarse, mas abajo. */
-#calendario, #posiciones, #participantes, #reglas, #mis-torneos, #resultados,
-#reportes, #configuracion, #rendimiento { display: none; }
+#calendario, #posiciones, #participantes, #reglas, #mis-torneos,
+#rendimiento { display: none; }
 #calendario:target, #posiciones:target, #participantes:target,
-#reglas:target, #mis-torneos:target, #resultados:target,
-#reportes:target, #configuracion:target, #rendimiento:target { display: flex; }
+#reglas:target, #mis-torneos:target, #rendimiento:target { display: flex; }
 #calendario:target ~ #resumen,
 #posiciones:target ~ #resumen,
 #participantes:target ~ #resumen,
-#reglas:target ~ #resumen,
-#mis-torneos:target ~ #resumen,
-#resultados:target ~ #resumen,
-#reportes:target ~ #resumen,
-#configuracion:target ~ #resumen { display: none; }
+#reglas:target ~ #resumen { display: none; }
 #mis-torneos:target ~ #datos,
 #rendimiento:target ~ #datos { display: none; }
 /* La zona del torneo no separa la cabecera de las pestañas: van

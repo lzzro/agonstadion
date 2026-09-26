@@ -85,6 +85,14 @@ class Enfrentamiento
         return $this->local->getNombreVisible() . ' vs ' . $this->visitante->getNombreVisible();
     }
 
+    # El resultado tal como esta guardado, al leerlo de la base: ya paso
+    # las restricciones de la tabla, y el estado del enfrentamiento es el
+    # de la base. Para uno nuevo, asignarResultado().
+    public function cargarResultado(Resultado $resultado)
+    {
+        $this->resultado = $resultado;
+    }
+
     # Carga el resultado y deja el enfrentamiento como jugado.
     public function asignarResultado(Resultado $resultado)
     {

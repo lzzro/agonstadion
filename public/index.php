@@ -1,4 +1,64 @@
-<?php require __DIR__ . '/../apps/config/pagina.php'; ?>
+<?php
+require __DIR__ . '/../apps/config/pagina.php';
+require_once $carpeta_app . '/models/TorneoRepositorio.php';
+require_once $carpeta_app . '/models/ParticipanteRepositorio.php';
+require_once $carpeta_app . '/models/FixtureRepositorio.php';
+require_once $carpeta_app . '/models/CatalogoRepositorio.php';
+require_once $carpeta_app . '/ligas.php';
+
+# =====================================================================
+# Inicio - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# La portada. Los numeros, las tarjetas de torneos y el recuadro del
+# costado salen de la base, igual que en torneos.php y torneo.php: nada
+# escrito a mano. Los torneos que organiza una cuenta de muestra llevan
+# la marca "De muestra".
+#
+#   Torneos activos   los que tienen la inscripcion abierta o estan en
+#                     curso
+#   Participantes     los inscriptos en los torneos publicos
+#   Formatos          los del catalogo (liga, eliminacion, suizo)
+#
+# El recuadro del costado es la fecha en juego de la liga destacada (la
+# misma de "Posiciones" en el menu), con sus primeros partidos.
+# =====================================================================
+
+$lista = null;
+$formatos = null;
+$destacada = null;
+$fecha_destacada = null;
+$conexion = conectarBD();
+if ($conexion !== null) {
+    $torneos = new TorneoRepositorio($conexion);
+    $lista = $torneos->listarPublicos();
+    $formatos = (new CatalogoRepositorio($conexion))->cantidadModulos();
+    $id_destacada = $torneos->idDestacado();
+    if ($id_destacada !== null) {
+        $destacada = $torneos->buscarPorId($id_destacada);
+        $todos = (new ParticipanteRepositorio($conexion))->listarDeTorneo($id_destacada, true);
+        $rondas = ($todos === null) ? null : (new FixtureRepositorio($conexion))->fechasDe($id_destacada, $todos);
+        if (is_array($rondas)) {
+            foreach ($rondas as $ronda) {
+                if ($fecha_destacada === null && !$ronda->estaCerrada()) { $fecha_destacada = $ronda; }
+            }
+        }
+    }
+    $conexion->close();
+}
+
+$activos = 0;
+$participantes = 0;
+$en_vivo_destacada = false;
+if (is_array($lista)) {
+    foreach ($lista as $fila) {
+        $participantes += $fila['inscriptos'];
+        if ($fila['torneo']->tieneInscripcionAbierta() || $fila['torneo']->estaEnCurso()) { $activos++; }
+        if ($destacada !== null && (int)$fila['torneo']->getIdTorneo() === (int)$destacada->getIdTorneo()) {
+            $en_vivo_destacada = $fila['en_vivo'];
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,8 +68,8 @@
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Inicio · Stadion</title>
   <link rel="icon" href="img/stadion.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>
@@ -22,40 +82,38 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php" class="activo" aria-current="page">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php" class="activo" aria-current="page">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.php">Organizadores</a></nav>
 <main id="contenido">
 <section>
   <p class="epigrafe" lang="grc">ἀγών · στάδιον</p>
   <h1>Toda competencia merece un <em>estadio.</em></h1>
   <p class="intro">Liga, eliminación directa o sistema suizo. Esports, ajedrez, tenis de mesa o fútbol: inscripciones, enfrentamientos, resultados y posiciones en un solo lugar.</p>
   <div class="fila"><a class="btn btn-primario" href="crear.php">Organizar un torneo</a><a class="btn" href="torneos.php">Ver torneos públicos</a></div>
-  <div class="datos"><div><strong>312</strong><span class="etiqueta">Torneos activos</span></div><div><strong>4.860</strong><span class="etiqueta">Participantes</span></div><div><strong>3</strong><span class="etiqueta">Formatos</span></div></div>
+<?php if (is_array($lista)) { ?>
+  <div class="datos"><div><strong><?php echo $activos; ?></strong><span class="etiqueta">Torneos activos</span></div><div><strong><?php echo $participantes; ?></strong><span class="etiqueta">Participantes</span></div><div><strong><?php echo (int)$formatos; ?></strong><span class="etiqueta">Formatos</span></div></div>
+<?php } ?>
 </section>
 <section>
-  <h2>Torneos en curso</h2>
+  <h2>Torneos en marcha</h2>
+<?php if ($lista === null) { ?>
+  <p>Los torneos no se pueden leer por ahora.</p>
+<?php } elseif (empty($lista)) { ?>
+  <p>Ninguna competencia a la vista. Toda liga empieza con un nombre y un cupo.</p>
+<?php } else { ?>
   <div class="grilla">
+<?php   foreach (array_slice($lista, 0, 3) as $fila) {
+          $t   = $fila['torneo'];
+          $nom = htmlspecialchars($t->getNombre()); ?>
   <article class="tarjeta">
-    <span class="estado estado-en-vivo">En vivo</span>
-    <h3>Liga Valorant Otoño</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">12 equipos · Ronda 7 de 11</p>
-    <div class="barra"><span style="width:64%"></span></div>
-    <a href="torneo.php">Ver torneo<span class="visualmente-oculto"> Liga Valorant Otoño</span> <span aria-hidden="true">→</span></a>
+    <div class="fila"><?php echo chipLigaHtml($t, $fila['en_vivo']); ?><span class="etiqueta"><?php echo htmlspecialchars($t->getModulo()->getNombre() . ' · ' . $t->getDisciplina()->getNombre()); ?></span></div>
+    <h3><?php echo $nom; ?></h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;"><?php echo htmlspecialchars(avanceLiga($fila)); ?></p>
+    <div class="barra"><span style="width:<?php echo porcentajeLiga($fila); ?>%"></span></div>
+    <div class="fila" style="justify-content:space-between"><a href="torneo.php?id=<?php echo (int)$t->getIdTorneo(); ?>">Ver torneo<span class="visualmente-oculto"> <?php echo $nom; ?></span> <span aria-hidden="true">→</span></a><?php if ($t->esDeMuestra()) { echo marcaMuestra(); } ?></div>
   </article>
-  <article class="tarjeta">
-    <span class="etiqueta">Eliminación · Ajedrez</span>
-    <h3>Copa Interliceal de Ajedrez</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">16 participantes · Cuartos</p>
-    <div class="barra"><span style="width:50%"></span></div>
-    <a href="llave.php">Ver torneo<span class="visualmente-oculto"> Copa Interliceal de Ajedrez</span> <span aria-hidden="true">→</span></a>
-  </article>
-  <article class="tarjeta">
-    <span class="etiqueta">Suizo · Tenis de mesa</span>
-    <h3>Abierto de Tenis de Mesa</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">24 jugadores · Ronda 3 de 5</p>
-    <div class="barra"><span style="width:60%"></span></div>
-    <span class="enlace-apagado" aria-disabled="true">Ver torneo<span class="visualmente-oculto"> Abierto de Tenis de Mesa</span> <span aria-hidden="true">→</span></span>
-  </article>
+<?php   } ?>
   </div>
+<?php } ?>
 </section>
 <section>
   <h2>Cada contienda sigue su propia ley.</h2>
@@ -67,54 +125,25 @@
 </section>
 </main>
 <aside>
+<?php if ($destacada !== null && $fecha_destacada !== null) {
+        $partidos = array_slice($fecha_destacada->getEnfrentamientos(), 0, 3); ?>
 <div class="tarjeta">
-  <div class="fila" style="justify-content:space-between"><span class="etiqueta">Cuartos de final</span><span class="estado estado-en-vivo">En vivo</span></div>
-  <h3>Liga Valorant · Otoño</h3>
-  <table class="en-vivo"><tr><td>Titanes CS</td><td class="num marcador">2 – 0</td><td>Nova Esports</td></tr><tr><td>Vortex</td><td class="num marcador">1 – 1</td><td>Aurora FC</td></tr><tr><td>Delta Gaming</td><td class="num marcador">—</td><td>Ping Masters</td></tr></table>
-  <a href="torneo.php#posiciones">Tabla completa <span aria-hidden="true">→</span></a>
+  <div class="fila" style="justify-content:space-between"><span class="etiqueta"><?php echo htmlspecialchars($fecha_destacada->getNombreVisible()); ?></span><?php echo $en_vivo_destacada ? '<span class="estado estado-en-vivo">En vivo</span>' : chipLigaHtml($destacada, false); ?></div>
+  <h3><?php echo htmlspecialchars($destacada->getNombre()); ?></h3>
+  <table class="en-vivo"><?php foreach ($partidos as $e) {
+      $r = $e->getResultado();
+      if ($r !== null) { $centro = $r->getPuntajeLocal() . ' – ' . $r->getPuntajeVisitante(); }
+      elseif (!$e->estaEnVivo() && horaTexto($e->getFechaHora()) !== '') { $centro = horaTexto($e->getFechaHora()); }
+      else { $centro = '—'; } ?><tr><td><?php echo htmlspecialchars($e->getLocal()->getNombreVisible()); ?></td><td class="num marcador"><?php echo $centro; ?></td><td><?php echo $e->esLibre() ? 'libre' : htmlspecialchars($e->getVisitante()->getNombreVisible()); ?></td></tr><?php } ?></table>
+  <div class="fila" style="justify-content:space-between"><a href="torneo.php?id=<?php echo (int)$destacada->getIdTorneo(); ?>#posiciones">Tabla completa<span class="visualmente-oculto"> de <?php echo htmlspecialchars($destacada->getNombre()); ?></span> <span aria-hidden="true">→</span></a><?php if ($destacada->esDeMuestra()) { echo marcaMuestra(); } ?></div>
 </div>
+<?php } ?>
 <div class="tarjeta">
   <span class="etiqueta">Por qué olivo</span>
   <p><em>«¿Contra qué clase de hombres nos has traído a luchar? Hombres que no compiten por riquezas, sino por la virtud.»</em></p>
   <span class="etiqueta">Heródoto, Historias VIII</span>
 </div>
 </aside>
-<footer>
-  <div class="marca-agon"><svg width="26" height="26" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <mask id="lente-mask">
-    <path d="M 100,34 A 81.06 81.06 0 0 1 100,166 A 81.06 81.06 0 0 1 100,34 Z" fill="white"/>
-    <rect x="94" y="87" width="12" height="26" rx="6" fill="black"/>
-  </mask>
-  <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
-</svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
-</footer>
-</div>
-<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
-  <g stroke="#8A8478" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
-  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
-</svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#14130F"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
-  <g stroke="#6E675A" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
-  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
-</svg>
-</button>
+<?php piePagina(true); ?>
 </body>
 </html>

@@ -11,6 +11,13 @@
 # Un torneo con inscriptos no se borra, se cancela: es la misma
 # decision que las acciones referenciales de la tabla, donde
 # participante retiene al torneo con ON DELETE RESTRICT.
+#
+# Una liga (fase 2 del motor de torneos) nace con la inscripcion abierta
+# y un cupo de 4 a 32 equipos (validarLiga). La fecha de inicio es
+# opcional: puede quedar a definir. Cerrar la inscripcion la pone en
+# curso, y pide al menos 4 inscriptos, los mismos que necesita el
+# fixture (ver Fixture.php): con menos, la liga quedaria en curso sin
+# poder armar su calendario.
 # =====================================================================
 
 require_once __DIR__ . '/Disciplina.php';
@@ -110,6 +117,23 @@ class Torneo
         return $this->estado === 'cancelado';
     }
 
+    public function tieneInscripcionAbierta()
+    {
+        return $this->estado === 'inscripcion';
+    }
+
+    public function esLiga()
+    {
+        return $this->modulo->getNombre() === 'Liga';
+    }
+
+    # De muestra: lo organiza una de las cuentas de muestra de la
+    # migracion 005. Las paginas lo marcan en pantalla.
+    public function esDeMuestra()
+    {
+        return $this->organizador->esDeMuestra();
+    }
+
     # --- Transiciones de estado ---
     # Las reglas de que estado puede pasar a cual son del dominio, asi
     # que viven en el modelo y no en el controlador. Cada una devuelve
@@ -156,6 +180,27 @@ class Torneo
         }
         if ($this->getCantidadParticipantes() < 2) {
             $errores[] = 'El torneo necesita al menos 2 participantes para comenzar.';
+        }
+
+        if (empty($errores)) {
+            $this->estado = 'en_curso';
+        }
+        return $errores;
+    }
+
+    # De 'inscripcion' a 'en_curso' en una liga: cierra la inscripcion.
+    # Pide 4 inscriptos, el minimo del fixture. $cantidad es la cuenta de
+    # la base (el repositorio la hace dentro de la transaccion); si no
+    # viene, vale la de los participantes cargados.
+    public function cerrarInscripcion($cantidad = null)
+    {
+        $errores  = array();
+        $cantidad = ($cantidad === null) ? $this->getCantidadParticipantes() : (int)$cantidad;
+
+        if ($this->estado !== 'inscripcion') {
+            $errores[] = 'La inscripción de esta liga ya está cerrada.';
+        } elseif ($cantidad < 4) {
+            $errores[] = 'Con menos de 4 equipos la inscripción sigue abierta.';
         }
 
         if (empty($errores)) {
@@ -271,8 +316,10 @@ class Torneo
             $errores[] = 'El maximo de participantes tiene que estar entre 2 y 128.';
         }
 
-        if (empty($this->fecha_inicio)) {
-            $errores[] = 'La fecha de inicio es obligatoria.';
+        # La fecha de inicio es opcional, pero si viene tiene que ser una
+        # fecha que exista, con la forma de la base (2026-10-04).
+        if (!empty($this->fecha_inicio) && !self::fechaValida($this->fecha_inicio)) {
+            $errores[] = 'La fecha de inicio no es una fecha válida.';
         }
 
         # Misma regla que ck_torneo_fechas.
@@ -291,6 +338,30 @@ class Torneo
         }
 
         return $errores;
+    }
+
+    # Las reglas propias de una liga, ademas de las de validar(): el
+    # cupo va de 4 a 32 equipos (el formulario de crear.php dice lo
+    # mismo), y la liga es por equipos.
+    public function validarLiga()
+    {
+        $errores = $this->validar();
+        if ($this->max_participantes < 4 || $this->max_participantes > 32) {
+            $errores[] = 'El cupo de una liga va de 4 a 32 equipos.';
+        }
+        if (!$this->tipo_torneo->competeEquipo()) {
+            $errores[] = 'Una liga es por equipos.';
+        }
+        return $errores;
+    }
+
+    # Una fecha AAAA-MM-DD que existe en el calendario (no 2026-02-30).
+    public static function fechaValida($fecha)
+    {
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (string)$fecha, $partes)) {
+            return false;
+        }
+        return checkdate((int)$partes[2], (int)$partes[3], (int)$partes[1]);
     }
 
     #endregion

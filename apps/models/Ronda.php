@@ -94,6 +94,14 @@ class Ronda
         return array('Quedan enfrentamientos sin resultado en esta ronda.');
     }
 
+    # Un enfrentamiento tal como esta guardado, al leer la ronda de la
+    # base: sin volver a validarlo (un equipo dado de baja despues sigue
+    # figurando en lo que jugo). Para uno nuevo, agregarEnfrentamiento().
+    public function cargarEnfrentamiento(Enfrentamiento $enfrentamiento)
+    {
+        $this->enfrentamientos[] = $enfrentamiento;
+    }
+
     public function agregarEnfrentamiento(Enfrentamiento $enfrentamiento)
     {
         $errores = $enfrentamiento->validar();

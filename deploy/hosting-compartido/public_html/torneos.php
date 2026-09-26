@@ -1,4 +1,53 @@
-<?php require __DIR__ . '/../stadion_app/config/pagina.php'; ?>
+<?php
+require __DIR__ . '/../stadion_app/config/pagina.php';
+require_once $carpeta_app . '/models/TorneoRepositorio.php';
+require_once $carpeta_app . '/ligas.php';
+
+# =====================================================================
+# Torneos publicos - Stadion (Agon) - Lucas Martiarena
+# ---------------------------------------------------------------------
+# Todo sale de la base (TorneoRepositorio::listarPublicos): los torneos
+# con la inscripcion abierta, en curso o finalizados, con su estado, su
+# organizador y su avance. Nada escrito a mano. Lo que organiza una
+# cuenta de muestra (las ligas de la migracion 005) lleva la marca "De
+# muestra".
+#
+# "Proximas fechas" junta dos cosas que tienen dia: el cierre de la
+# fecha en juego de cada liga, y el comienzo de las que todavia tienen
+# la inscripcion abierta. Solo lo que es de hoy en adelante.
+# =====================================================================
+
+$lista = null;
+$conexion = conectarBD();
+if ($conexion !== null) {
+    $lista = (new TorneoRepositorio($conexion))->listarPublicos();
+    $conexion->close();
+}
+
+$en_vivo  = 0;
+$hoy      = date('Y-m-d');
+$proximas = array();
+if (is_array($lista)) {
+    foreach ($lista as $fila) {
+        $t = $fila['torneo'];
+        if ($fila['en_vivo']) { $en_vivo++; }
+        if ($t->estaEnCurso() && $fila['actual'] !== null && !empty($fila['fin_actual'])
+            && diasEntre($hoy, $fila['fin_actual']) >= 0) {
+            $proximas[$fila['fin_actual'] . '|' . count($proximas)] = array('dia' => $fila['fin_actual'],
+                'torneo' => $t, 'que' => 'Fecha ' . $fila['actual'], 'verbo' => 'cierra');
+        }
+        if ($t->tieneInscripcionAbierta() && !empty($t->getFechaInicio())
+            && diasEntre($hoy, $t->getFechaInicio()) >= 0) {
+            $proximas[$t->getFechaInicio() . '|' . count($proximas)] = array('dia' => $t->getFechaInicio(),
+                'torneo' => $t, 'que' => 'Inicio', 'verbo' => 'empieza');
+        }
+    }
+    # De la mas cercana a la mas lejana (la clave empieza con el dia), y
+    # solo las tres primeras.
+    ksort($proximas);
+    $proximas = array_slice($proximas, 0, 3);
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,8 +57,8 @@
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Torneos · Stadion</title>
   <link rel="icon" href="img/stadion.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/tema.js"></script>
+  <link rel="stylesheet" href="<?php echo recurso($ruta_publica, 'css/style.css'); ?>">
+  <script src="<?php echo recurso($ruta_publica, 'js/tema.js'); ?>"></script>
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>
@@ -22,65 +71,47 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo" aria-current="page">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo" aria-current="page">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.php">Organizadores</a></nav>
 <main id="contenido">
 <section>
   <p class="epigrafe" lang="grc">ἀγῶνες</p>
   <h1>Torneos</h1>
-  <p class="intro">312 competencias públicas · 27 en vivo ahora mismo</p>
+<?php if (is_array($lista)) { ?>
+  <p class="intro"><?php echo plural(count($lista), 'competencia pública', 'competencias públicas'); ?> · <?php echo $en_vivo; ?> en vivo</p>
+<?php } ?>
 </section>
 <section>
   <h2 class="visualmente-oculto">Competencias públicas</h2>
+<?php if ($lista === null) { ?>
+  <p>La lista de torneos no se puede leer por ahora.</p>
+<?php } elseif (empty($lista)) { ?>
+  <p>Ninguna competencia a la vista. Toda liga empieza con un nombre y un cupo.</p>
+<?php } else { ?>
   <div class="grilla">
+<?php   foreach ($lista as $fila) {
+          $t   = $fila['torneo'];
+          $nom = htmlspecialchars($t->getNombre()); ?>
   <article class="tarjeta">
-    <span class="estado estado-en-vivo">En vivo</span>
-    <h3>Liga Valorant Otoño</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Comunidad Vórtice · 12 equipos · Ronda 7 de 11</p>
-    <div class="barra"><span style="width:64%"></span></div>
-    <a href="torneo.php">Ver torneo<span class="visualmente-oculto"> Liga Valorant Otoño</span> <span aria-hidden="true">→</span></a>
+    <div class="fila"><?php echo chipLigaHtml($t, $fila['en_vivo']); ?><span class="etiqueta"><?php echo htmlspecialchars($t->getModulo()->getNombre() . ' · ' . $t->getDisciplina()->getNombre()); ?></span></div>
+    <h3><?php echo $nom; ?></h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;"><?php echo htmlspecialchars($t->getOrganizador()->getNombreCompletoVisible() . ' · ' . avanceLiga($fila)); ?></p>
+    <div class="barra"><span style="width:<?php echo porcentajeLiga($fila); ?>%"></span></div>
+    <div class="fila" style="justify-content:space-between"><a href="torneo.php?id=<?php echo (int)$t->getIdTorneo(); ?>">Ver torneo<span class="visualmente-oculto"> <?php echo $nom; ?></span> <span aria-hidden="true">→</span></a><?php if ($t->esDeMuestra()) { echo marcaMuestra(); } ?></div>
   </article>
-  <article class="tarjeta">
-    <div class="fila"><span class="estado estado-en-juego">En juego</span><span class="etiqueta">Eliminación · Ajedrez</span></div>
-    <h3>Copa Interliceal de Ajedrez</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Liceo N.º 3 · 16 participantes · Cuartos</p>
-    <div class="barra"><span style="width:50%"></span></div>
-    <a href="llave.php">Ver torneo<span class="visualmente-oculto"> Copa Interliceal de Ajedrez</span> <span aria-hidden="true">→</span></a>
-  </article>
-  <article class="tarjeta">
-    <span class="estado estado-en-vivo">En vivo</span>
-    <h3>Abierto de Tenis de Mesa</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Club Sur · 24 jugadores · Ronda 3 de 5</p>
-    <div class="barra"><span style="width:60%"></span></div>
-    <span class="enlace-apagado" aria-disabled="true">Ver torneo<span class="visualmente-oculto"> Abierto de Tenis de Mesa</span> <span aria-hidden="true">→</span></span>
-  </article>
-  <article class="tarjeta">
-    <div class="fila"><span class="estado estado-en-juego">En juego</span><span class="etiqueta">Liga · Fútbol 5</span></div>
-    <h3>Liga Barrial del Cerro</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Centro Juvenil Cerro · 10 equipos · Fecha 4 de 9</p>
-    <div class="barra"><span style="width:44%"></span></div>
-    <span class="enlace-apagado" aria-disabled="true">Ver torneo<span class="visualmente-oculto"> Liga Barrial del Cerro</span> <span aria-hidden="true">→</span></span>
-  </article>
-  <article class="tarjeta">
-    <span class="estado estado-en-vivo">En vivo</span>
-    <h3>Torneo LoL Clasificatorio</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Agón Comunidad · 16 equipos · Cuartos</p>
-    <div class="barra"><span style="width:50%"></span></div>
-    <span class="enlace-apagado" aria-disabled="true">Ver torneo<span class="visualmente-oculto"> Torneo LoL Clasificatorio</span> <span aria-hidden="true">→</span></span>
-  </article>
-  <article class="tarjeta">
-    <div class="fila"><span class="estado estado-en-juego">En juego</span><span class="etiqueta">Suizo · Cartas</span></div>
-    <h3>Abierto de Magic Commander</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">Tienda El Dado · 40 jugadores · Ronda 1 de 6</p>
-    <div class="barra"><span style="width:17%"></span></div>
-    <span class="enlace-apagado" aria-disabled="true">Ver torneo<span class="visualmente-oculto"> Abierto de Magic Commander</span> <span aria-hidden="true">→</span></span>
-  </article>
+<?php   } ?>
   </div>
+<?php } ?>
 </section>
 </main>
 <aside>
 <div class="tarjeta">
-  <span class="etiqueta">Próximos cierres</span>
-  <table><tr><td>Copa Interliceal · Cuartos<br><small>cierra hoy</small></td><td class="num">0 d</td></tr><tr><td>Liga Valorant · R7<br><small>cierra el domingo</small></td><td class="num">2 d</td></tr><tr><td>Tenis de Mesa · R3<br><small>cierra el martes</small></td><td class="num">4 d</td></tr></table>
+  <span class="etiqueta">Próximas fechas</span>
+<?php if (empty($proximas)) { ?>
+  <p>Ninguna fecha a la vista.</p>
+<?php } else { ?>
+  <table><?php foreach ($proximas as $p) {
+    $dias = diasEntre($hoy, $p['dia']); ?><tr><td><?php echo htmlspecialchars($p['torneo']->getNombre() . ' · ' . $p['que']); ?><br><small><?php echo $p['verbo'] . ' ' . (($dias === 0) ? 'hoy' : 'el ' . htmlspecialchars(fechaConDia($p['dia']))); ?></small></td><td class="num"><?php echo $dias; ?> d</td></tr><?php } ?></table>
+<?php } ?>
 </div>
 <div class="tarjeta tarjeta-contraste">
   <span class="etiqueta">Para organizadores</span>
@@ -89,42 +120,6 @@
   <a class="btn" href="crear.php">Crear torneo</a>
 </div>
 </aside>
-<footer>
-  <div class="marca-agon"><svg width="26" height="26" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <mask id="lente-mask">
-    <path d="M 100,34 A 81.06 81.06 0 0 1 100,166 A 81.06 81.06 0 0 1 100,34 Z" fill="white"/>
-    <rect x="94" y="87" width="12" height="26" rx="6" fill="black"/>
-  </mask>
-  <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
-</svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
-</footer>
-</div>
-<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
-  <g stroke="#8A8478" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
-  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
-</svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="33" cy="33" r="32" fill="#14130F"/>
-  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
-  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
-  <g stroke="#6E675A" stroke-width="1.1">
-    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
-    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
-  </g>
-  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
-  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
-  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
-</svg>
-</button>
+<?php piePagina(true); ?>
 </body>
 </html>
