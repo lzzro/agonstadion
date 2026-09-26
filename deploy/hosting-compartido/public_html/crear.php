@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Nuevo torneo · Stadion</title>
   <link rel="icon" href="img/stadion.png">
@@ -11,6 +12,7 @@
   <script src="js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -20,12 +22,12 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html" class="activo">Organizadores</a></nav>
-<main>
+<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html" class="activo" aria-current="true">Organizadores</a></nav>
+<main id="contenido">
 <section>
   <p class="etiqueta">Panel / Mis torneos</p>
   <h1>Nuevo torneo</h1>
-  <div class="pasos"><span class="hecho">✓ Datos</span><span class="activo">2 Formato</span><span>3 Participantes</span><span>4 Calendario</span><span>5 Publicar</span></div>
+  <div class="pasos"><span class="hecho">✓ Datos</span><span class="activo" aria-current="step">2 Formato</span><span>3 Participantes</span><span>4 Calendario</span><span>5 Publicar</span></div>
 </section>
 <form action="#" method="post">
   <fieldset>
@@ -51,7 +53,7 @@
     </div>
   </fieldset>
   <label>Reglas (texto libre)<textarea name="reglas" rows="4" placeholder="Mejor de 3 mapas. Desempate por diferencia y luego resultado directo."></textarea></label>
-  <div class="fila" style="justify-content:space-between"><a class="btn" href="#">← Volver</a><div class="fila"><button class="btn" type="button">Guardar borrador</button><button class="btn btn-primario" type="submit">Continuar →</button></div></div>
+  <div class="fila" style="justify-content:space-between"><a class="btn" href="panel.html#mis-torneos"><span aria-hidden="true">←</span> Volver</a><button class="btn btn-primario" type="submit">Continuar <span aria-hidden="true">→</span></button></div>
 </form>
 </main>
 <aside>
@@ -59,9 +61,9 @@
   <span class="etiqueta">Resumen del torneo</span>
   <table><tr><td>Formato</td><td>Liga · una vuelta</td></tr><tr><td>Participantes</td><td>16 como máximo</td></tr><tr><td>Inicio</td><td>por definir</td></tr></table>
 </div>
-<div class="tarjeta" style="background:var(--olivoT)">
+<div class="tarjeta tarjeta-olivo">
   <span class="etiqueta" style="color:var(--olivo)">Lo que se va a generar</span>
-  <h3 style="font-size:34px">120</h3>
+  <p style="margin:0;font-family:var(--serif);font-size:34px;font-weight:500;line-height:1.1">120</p>
   <p>enfrentamientos, en 15 rondas, si inscribís 16 participantes. El calendario se arma solo al publicar.</p>
 </div>
 </aside>
@@ -73,11 +75,11 @@
   </mask>
   <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -89,7 +91,7 @@
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>

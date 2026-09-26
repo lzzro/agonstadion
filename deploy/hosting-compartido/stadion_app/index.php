@@ -13,6 +13,11 @@
 # Todo lo que viene del formulario se imprime con htmlspecialchars: sin
 # eso, un nombre con etiquetas HTML se ejecutaria en la pagina.
 #
+# Con errores, el titulo de la pestana empieza con "Aviso ·": la pagina
+# llega entera del servidor, asi que el role="alert" de la lista no se
+# anuncia solo, y el titulo es lo primero que lee el lector de pantalla.
+# El perfil y la administracion hacen lo mismo.
+#
 # Las rutas del CSS, del JS y de los enlaces son relativas a la
 # direccion del controlador, que es la que queda en el navegador. Esa
 # direccion cambia segun donde este instalado el sitio:
@@ -44,12 +49,14 @@ require_once __DIR__ . '/cabecera.php';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?php echo htmlspecialchars($titulo); ?> · Stadion</title>
+  <meta name="theme-color" content="#F3EEE3">
+  <title><?php if (!empty($errores)) { echo 'Aviso · '; } ?><?php echo htmlspecialchars($titulo); ?> · Stadion</title>
   <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
   <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
   <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="<?php echo $ruta_publica; ?>/index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -59,21 +66,23 @@ require_once __DIR__ . '/cabecera.php';
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_cabecera); ?>
 </header>
-<main>
+<main id="contenido">
 <section>
   <p class="etiqueta">Acceso</p>
   <h1><?php echo htmlspecialchars($titulo); ?></h1>
 
 <?php if (!empty($errores)) { ?>
+  <div role="alert">
   <ul class="avisos">
 <?php   foreach ($errores as $error) { ?>
     <li><?php echo htmlspecialchars($error); ?></li>
 <?php   } ?>
   </ul>
+  </div>
 <?php } ?>
 
 <?php if ($mensaje !== '') { ?>
-  <p class="intro"><?php echo htmlspecialchars($mensaje); ?></p>
+  <p class="intro" role="status"><?php echo htmlspecialchars($mensaje); ?></p>
 <?php } ?>
 
   <div class="fila">
@@ -96,5 +105,31 @@ require_once __DIR__ . '/cabecera.php';
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
 </footer>
 </div>
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
+  <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
+  <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
+  <g stroke="#8A8478" stroke-width="1.1">
+    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
+    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l-2.8,2.8"/>
+  </g>
+  <path d="M33,17 A16,16 0 0,0 33,49 Z" fill="#1E1C18"/>
+  <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
+  <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
+</svg>
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="33" cy="33" r="32" fill="#14130F"/>
+  <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
+  <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
+  <g stroke="#6E675A" stroke-width="1.1">
+    <path d="M33,2.6 v4"/><path d="M33,59.4 v4"/><path d="M2.6,33 h4"/><path d="M59.4,33 h4"/>
+    <path d="M11.5,11.5 l2.8,2.8"/><path d="M54.5,54.5 l-2.8,-2.8"/><path d="M11.5,54.5 l2.8,-2.8"/><path d="M54.5,11.5 l2.8,2.8"/>
+  </g>
+  <path d="M33,17 A16,16 0 0,1 33,49 Z" fill="#EDE7DA"/>
+  <circle cx="33" cy="33" r="16" fill="none" stroke="#EDE7DA" stroke-width="1.6"/>
+  <path d="M25,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#8CA368"/>
+</svg>
+</button>
 </body>
 </html>

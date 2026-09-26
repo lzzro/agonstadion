@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Copa Interliceal de Ajedrez · Stadion</title>
   <link rel="icon" href="img/stadion.png">
@@ -11,6 +12,7 @@
   <script src="js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -20,16 +22,16 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
-<main>
+<nav><a href="index.php">Inicio</a><a href="torneos.php" class="activo" aria-current="true">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<main id="contenido">
 <section>
-  <p class="epigrafe">κλῆρος</p>
+  <p class="epigrafe" lang="grc">κλῆρος</p>
   <p class="etiqueta">Torneos / Ajedrez</p>
   <div class="fila"><span class="etiqueta">Eliminación directa · Ajedrez</span><span class="estado estado-en-juego">Cuartos en juego</span></div>
   <h1>Copa Interliceal de Ajedrez</h1>
   <p class="intro">Organiza <strong>Liceo N.º 3</strong> · 16 participantes · Partidas a 25 min + 10 s</p>
-  <div class="fila"><a class="btn" href="#">Seguir torneo</a><a class="btn btn-primario" href="#">Descargar llave</a></div>
-  <div class="pestanas"><a href="#">Resumen</a><a href="#" class="activo">Llave</a><a href="#">Participantes</a><a href="#">Reglas</a></div>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Seguir torneo</span><span class="enlace-apagado" aria-disabled="true">Descargar llave</span></div>
+  <div class="pestanas"><span class="enlace-apagado" aria-disabled="true">Resumen</span><a href="llave.php" class="activo" aria-current="page">Llave</a><span class="enlace-apagado" aria-disabled="true">Participantes</span><span class="enlace-apagado" aria-disabled="true">Reglas</span></div>
 </section>
 <section>
   <h2>Llave del torneo</h2>
@@ -63,13 +65,13 @@
   <span class="etiqueta">Próxima partida</span>
   <h3>Semifinal</h3>
   <table><tr><td>M. Ferreira</td><td class="etiqueta">VIE 18:00</td><td>C. Silva</td></tr></table>
-  <p><a href="calendario.php">Ver el calendario completo →</a></p>
+  <p><a href="calendario.php">Ver el calendario completo <span aria-hidden="true">→</span></a></p>
 </div>
 <div class="tarjeta">
   <span class="etiqueta">Reglas en breve</span>
   <p>Eliminación directa a una partida. 25 minutos por jugador, con 10 segundos de incremento por jugada. En caso de tablas, una partida relámpago define el cruce.</p>
 </div>
-<div class="tarjeta" style="background:var(--olivoT)">
+<div class="tarjeta tarjeta-olivo">
   <span class="etiqueta">Organizador</span>
   <h3>Liceo N.º 3</h3>
   <p>4 torneos organizados · desde 2025</p>
@@ -83,11 +85,11 @@
   </mask>
   <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -99,7 +101,7 @@
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>

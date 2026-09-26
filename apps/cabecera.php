@@ -43,13 +43,17 @@ function inicialesPersona(Usuario $persona)
 #                dice a quien lleva: entonces no se anuncia dos veces.
 # La foto solo se usa si su nombre tiene la forma de los que genera el
 # sistema; si no, van las iniciales, como si no hubiera foto.
+# La foto lleva width y height con el lado del circulo (30 en la
+# cabecera, 96 en el perfil): el navegador reserva el lugar antes de
+# bajarla. El CSS manda igual sobre el tamano (34 desde 768 px).
 function circuloPersona(Usuario $persona, $ruta_publica, $clase, $decorativo)
 {
     $foto = $persona->getFotoPerfil();
     if (ImagenSubida::nombreValido($foto)) {
-        $alt = $decorativo ? '' : 'Foto de perfil';
+        $alt  = $decorativo ? '' : 'Foto de perfil';
+        $lado = (strpos($clase, 'avatar-chico') !== false) ? 30 : 96;
         return '<img class="' . $clase . '" src="' . htmlspecialchars($ruta_publica)
-             . '/subidas/' . $foto . '" alt="' . $alt . '">';
+             . '/subidas/' . $foto . '" width="' . $lado . '" height="' . $lado . '" alt="' . $alt . '">';
     }
     $anuncio = $decorativo ? ' aria-hidden="true"' : ' role="img" aria-label="Sin foto de perfil"';
     return '<span class="' . $clase . ' avatar-vacio"' . $anuncio . '>'

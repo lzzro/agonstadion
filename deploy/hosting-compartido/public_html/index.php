@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Inicio · Stadion</title>
   <link rel="icon" href="img/stadion.png">
@@ -11,6 +12,7 @@
   <script src="js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -20,10 +22,10 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php" class="activo">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
-<main>
+<nav><a href="index.php" class="activo" aria-current="page">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<main id="contenido">
 <section>
-  <p class="epigrafe">ἀγών · στάδιον</p>
+  <p class="epigrafe" lang="grc">ἀγών · στάδιον</p>
   <h1>Toda competencia merece un <em>estadio.</em></h1>
   <p class="intro">Liga, eliminación directa o sistema suizo. Esports, ajedrez, tenis de mesa o fútbol: inscripciones, enfrentamientos, resultados y posiciones en un solo lugar.</p>
   <div class="fila"><a class="btn btn-primario" href="crear.php">Organizar un torneo</a><a class="btn" href="torneos.php">Ver torneos públicos</a></div>
@@ -37,21 +39,21 @@
     <h3>Liga Valorant Otoño</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">12 equipos · Ronda 7 de 11</p>
     <div class="barra"><span style="width:64%"></span></div>
-    <a href="torneo.php">Ver torneo →</a>
+    <a href="torneo.php">Ver torneo<span class="visualmente-oculto"> Liga Valorant Otoño</span> <span aria-hidden="true">→</span></a>
   </article>
   <article class="tarjeta">
     <span class="etiqueta">Eliminación · Ajedrez</span>
     <h3>Copa Interliceal</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">32 participantes · Octavos</p>
     <div class="barra"><span style="width:40%"></span></div>
-    <a href="torneo.php">Ver torneo →</a>
+    <a href="llave.php">Ver torneo<span class="visualmente-oculto"> Copa Interliceal</span> <span aria-hidden="true">→</span></a>
   </article>
   <article class="tarjeta">
     <span class="etiqueta">Suizo · Tenis de mesa</span>
     <h3>Abierto de Tenis de Mesa</h3>
     <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">24 jugadores · Ronda 3 de 5</p>
     <div class="barra"><span style="width:60%"></span></div>
-    <a href="torneo.php">Ver torneo →</a>
+    <span class="enlace-apagado" aria-disabled="true">Ver torneo<span class="visualmente-oculto"> Abierto de Tenis de Mesa</span> <span aria-hidden="true">→</span></span>
   </article>
   </div>
 </section>
@@ -69,11 +71,11 @@
   <div class="fila" style="justify-content:space-between"><span class="etiqueta">Cuartos de final</span><span class="estado estado-en-vivo">En vivo</span></div>
   <h3>Liga Valorant · Otoño</h3>
   <table class="en-vivo"><tr><td>Titanes CS</td><td class="num marcador">2 – 0</td><td>Nova Esports</td></tr><tr><td>Vortex</td><td class="num marcador">1 – 1</td><td>Aurora FC</td></tr><tr><td>Delta Gaming</td><td class="num marcador">—</td><td>Ping Masters</td></tr></table>
-  <a href="torneo.php">Tabla completa →</a>
+  <a href="torneo.php#posiciones">Tabla completa <span aria-hidden="true">→</span></a>
 </div>
 <div class="tarjeta">
   <span class="etiqueta">Por qué olivo</span>
-  <p><em>"¿Contra qué clase de hombres nos has traído a luchar? Hombres que no compiten por riquezas, sino por la virtud."</em></p>
+  <p><em>«¿Contra qué clase de hombres nos has traído a luchar? Hombres que no compiten por riquezas, sino por la virtud.»</em></p>
   <span class="etiqueta">Heródoto, Historias VIII</span>
 </div>
 </aside>
@@ -85,11 +87,11 @@
   </mask>
   <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -101,7 +103,7 @@
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>

@@ -15,6 +15,8 @@
 #                   (ver apps/index.php). La de salida es para "Cerrar
 #                   sesion", que vive aca, debajo del nombre; la de
 #                   administracion solo se muestra a quien tiene el rol.
+#   $carpeta_subidas  la carpeta de las imagenes en el disco, para leer
+#                   las medidas de la portada (la deja el controlador)
 #
 # Todo formulario lleva el token de config/csrf.php (campoCsrf()).
 #
@@ -49,6 +51,7 @@ if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_salir))   { $ruta_salir   = 'salirController.php'; }
 if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 if (!isset($pedido_organizador)) { $pedido_organizador = null; }
+if (!isset($carpeta_subidas)) { $carpeta_subidas = __DIR__ . '/../public/subidas'; }
 
 require_once __DIR__ . '/cabecera.php';
 require_once __DIR__ . '/config/csrf.php';
@@ -82,6 +85,16 @@ if (!empty($alta)) {
 # genera el sistema. La foto la resuelve circuloPersona(), con el mismo
 # control (ver apps/cabecera.php).
 $portada = ImagenSubida::nombreValido($usuario->getFotoPortada()) ? $usuario->getFotoPortada() : null;
+# Sus medidas reales, para el width y el height de la etiqueta: con
+# ellos el navegador reserva el lugar antes de bajar la imagen. Si el
+# archivo no se puede leer, la etiqueta va sin medidas, como antes.
+$medidas_portada = '';
+if ($portada !== null) {
+    $datos_portada = @getimagesize($carpeta_subidas . '/' . $portada);
+    if ($datos_portada !== false) {
+        $medidas_portada = ' width="' . (int)$datos_portada[0] . '" height="' . (int)$datos_portada[1] . '"';
+    }
+}
 
 
 # Cantidad de torneos: la misma lista de la pestana, contada. Un torneo
@@ -109,13 +122,17 @@ $estados = array(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
-  <title>Perfil · Stadion</title>
+  <title><?php if (!empty($errores)) { echo 'Aviso · '; } ?>Perfil · Stadion</title>
   <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
   <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
   <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido" data-vista="datos">Saltar al contenido</a>
+<a class="saltar" href="#mis-torneos" data-vista="mis-torneos">Saltar al contenido</a>
+<a class="saltar" href="#rendimiento" data-vista="rendimiento">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="<?php echo $ruta_publica; ?>/index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -126,17 +143,17 @@ $estados = array(
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $usuario); ?>
 </header>
 <nav><a href="<?php echo $ruta_publica; ?>/index.php">Inicio</a><a href="<?php echo $ruta_publica; ?>/torneos.php">Torneos</a><a href="<?php echo $ruta_publica; ?>/calendario.php">Calendario</a><a href="<?php echo $ruta_publica; ?>/torneo.php#posiciones">Posiciones</a><a href="<?php echo $ruta_publica; ?>/panel.html">Organizadores</a></nav>
-<main>
+<main id="contenido">
 <section>
 <?php if ($portada !== null) { ?>
-  <div class="portada portada-con-imagen"><img src="<?php echo $ruta_publica; ?>/subidas/<?php echo $portada; ?>" alt=""></div>
+  <div class="portada portada-con-imagen"><img src="<?php echo $ruta_publica; ?>/subidas/<?php echo $portada; ?>"<?php echo $medidas_portada; ?> alt=""></div>
 <?php } else { ?>
   <div class="portada" aria-hidden="true"></div>
 <?php } ?>
   <div class="perfil-cabecera">
     <?php echo circuloPersona($usuario, $ruta_publica, 'avatar', false); ?>
     <div>
-      <p class="epigrafe">ἀθλητής</p>
+      <p class="epigrafe" lang="grc">ἀθλητής</p>
       <h1 style="font-size:36px"><?php echo htmlspecialchars($usuario->getNombreCompletoVisible()); ?></h1>
       <p class="intro"><?php
         $linea = array();
@@ -158,15 +175,17 @@ $estados = array(
 </section>
 
 <?php if (!empty($errores)) { ?>
+<div role="alert">
 <ul class="avisos">
 <?php   foreach ($errores as $error) { ?>
   <li><?php echo htmlspecialchars($error); ?></li>
 <?php   } ?>
 </ul>
+</div>
 <?php } ?>
 
 <?php if ($mensaje !== '') { ?>
-<p class="intro"><?php echo htmlspecialchars($mensaje); ?></p>
+<p class="intro" role="status"><?php echo htmlspecialchars($mensaje); ?></p>
 <?php } ?>
 
 <div class="datos">
@@ -176,16 +195,16 @@ $estados = array(
 </div>
 
 <div class="vista" id="mis-torneos">
-  <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos" class="activo">Mis torneos</a><a href="#rendimiento">Rendimiento</a></div>
+  <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos" class="activo" aria-current="page">Mis torneos</a><a href="#rendimiento">Rendimiento</a></div>
   <section class="tarjeta">
   <h2>Mis torneos</h2>
 <?php if ($inscripciones === null) { ?>
   <p>La lista de torneos no se puede leer por ahora.</p>
 <?php } elseif (empty($inscripciones)) { ?>
   <p>Ningún torneo a nombre de esta cuenta.</p>
-  <p><a href="<?php echo $ruta_publica; ?>/torneos.php">Ver los torneos públicos →</a></p>
+  <p><a href="<?php echo $ruta_publica; ?>/torneos.php">Ver los torneos públicos <span aria-hidden="true">→</span></a></p>
 <?php } else { ?>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mis torneos">
   <table>
     <thead><tr><th>Torneo</th><th>Disciplina</th><th>Estado</th><th>Participación</th><th>Inicio</th></tr></thead>
     <tbody>
@@ -205,7 +224,7 @@ $estados = array(
 </div>
 
 <div class="vista" id="rendimiento">
-  <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento" class="activo">Rendimiento</a></div>
+  <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento" class="activo" aria-current="page">Rendimiento</a></div>
   <section class="tarjeta">
   <div class="fila" style="justify-content:space-between"><h2>Rendimiento físico</h2><span class="muestra">De muestra</span></div>
   <div class="grilla">
@@ -262,7 +281,7 @@ $estados = array(
 </div>
 
 <div class="vista" id="datos">
-  <div class="pestanas"><a href="#datos" class="activo">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento">Rendimiento</a></div>
+  <div class="pestanas"><a href="#datos" class="activo" aria-current="page">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento">Rendimiento</a></div>
   <section class="tarjeta">
   <h2>Datos del perfil</h2>
   <form class="datos-perfil" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post">
@@ -271,7 +290,10 @@ $estados = array(
     <div class="grilla">
       <label>Nombre<input type="text" name="nombre" value="<?php echo htmlspecialchars($usuario->getNombre()); ?>" required minlength="2" maxlength="40"></label>
       <label>Apellido<input type="text" name="apellido" value="<?php echo htmlspecialchars($usuario->getApellido()); ?>" required minlength="2" maxlength="40"></label>
-      <label>Alias en juego<input type="text" name="alias" value="<?php echo htmlspecialchars((string)$usuario->getAlias()); ?>" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo"></label>
+      <div class="campo">
+        <label>Alias en juego<input type="text" name="alias" value="<?php echo htmlspecialchars((string)$usuario->getAlias()); ?>" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo" aria-describedby="ayuda-alias" spellcheck="false" autocapitalize="off"></label>
+        <p class="ayuda-campo" id="ayuda-alias">Letras, números y guion bajo; hasta 20 caracteres.</p>
+      </div>
     </div>
     <label>Presentación<textarea name="presentacion" rows="3" maxlength="300"><?php echo htmlspecialchars((string)$usuario->getPresentacion()); ?></textarea></label>
     <div class="fila" style="justify-content:flex-end"><button class="btn" type="reset">Descartar</button><button class="btn btn-primario" type="submit">Guardar cambios</button></div>
@@ -345,7 +367,7 @@ $estados = array(
   </div>
 <?php } ?>
 <?php if ($usuario->tieneRol('administrador')) { ?>
-  <p><a href="<?php echo htmlspecialchars($ruta_admin); ?>">Administración →</a></p>
+  <p><a href="<?php echo htmlspecialchars($ruta_admin); ?>">Administración <span aria-hidden="true">→</span></a></p>
 <?php } ?>
 </div>
 </aside>
@@ -359,8 +381,8 @@ $estados = array(
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -372,7 +394,7 @@ $estados = array(
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>

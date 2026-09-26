@@ -1,5 +1,9 @@
 /* Stadion · Agón · Maquetado mobile-first (Grid + Flexbox) — Programación Fullstack, 1.ª entrega */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&family=Jost:wght@400;500;600&display=swap');
+/* GFS Didot va solo en los epígrafes griegos (.epigrafe): Cormorant
+   Garamond no trae las letras griegas y el navegador las tomaba de otra
+   fuente. display=swap vale para las tres: mientras la fuente llega, el
+   texto se ve con la de respaldo. */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&family=GFS+Didot&family=Jost:wght@400;500;600&display=swap');
 
 :root {
   --pent: #F3EEE3;  /* mármol pentélico: fondo */
@@ -8,21 +12,36 @@
   --hair: #E3DDD0;
   --ink: #1E1C18;   /* negro de hueso */
   --ink2: #5B564C;
-  --ink3: #8A8478;
+  --ink3: #706B61;   /* 4,58:1 sobre --pent y 5,03:1 sobre --pario */
   --olivo: #4F5F35; /* kotinos */
   --olivo2: #75865A;
+  --olivoH: #697851; /* hover del botón primario: --pario encima da 4,53:1 */
   --olivoT: #E6EAD9;
   --cinabrio: #A63A2B; /* solo "en vivo" */
   --olivoB: #E3DDD0;   /* borde de la fila destacada */
-  --enjuego: #B9975C;  /* estado "en juego" */
+  --enjuego: #836838;  /* estado "en juego": 4,53:1 sobre --pent */
   --vencedor: #3F4A2C; /* estado "vencedor" */
-  --cerrado: #8A8478;  /* estado "cerrado" */
+  --cerrado: #706B61;  /* estado "cerrado": igual que --ink3 */
+  --campo: #706B61;    /* borde de los campos: igual que --ink3 */
   --serif: 'Cormorant Garamond', Georgia, serif;
   --sans: 'Jost', 'Segoe UI', sans-serif;
+  --griego: 'GFS Didot', 'Cormorant Garamond', Georgia, serif; /* solo epígrafes */
   color-scheme: light;
 }
 
-/* ---------- Modo noche ----------
+/* ---------- Contraste mínimo ----------
+   De día, todo par de colores cumple WCAG 2.2 AA: 4,5:1 para el texto
+   (3:1 si es grande) y 3:1 para los bordes de los campos y las formas
+   que hacen falta para entender la pantalla (el punto o el cuadrado de
+   un estado). De noche también, salvo el borde de los campos (--campo,
+   ver el bloque de noche).
+   Cuatro colores de día bajan por eso: --ink3 y --cerrado (antes
+   #8A8478, 3,21:1), --enjuego (antes #B9975C, 2,37:1) y el borde de
+   los campos, que era --veta (1,47:1) y ahora es --campo. El hover del
+   botón primario tiene su propio tono, --olivoH, porque --olivo2 con
+   texto --pario encima daba 3,76:1; --olivo2 sigue igual en el resto.
+
+   ---------- Modo noche ----------
    Solo se redefinen los colores: la tipografía, las medidas y la
    retícula son las mismas. Cada valor sale de los bocetos; los cuatro
    marcados como "derivado" se sacaron conservando el matiz y el croma
@@ -39,12 +58,17 @@
   --ink3: #A79F8C;
   --olivo: #8CA368;    /* kotinos de noche */
   --olivo2: #B9CB9C;   /* derivado: mantiene la distancia con --olivo */
+  --olivoH: #B9CB9C;   /* igual que --olivo2: de noche el hover ya pasaba */
   --olivoT: #232A1B;
   --olivoB: #3A4430;
   --cinabrio: #D4614E; /* brasa */
   --enjuego: #AD8B50;  /* derivado */
   --vencedor: #A7B593; /* derivado */
   --cerrado: #A79F8C;  /* igual que --ink3: de día son el mismo color */
+  --campo: #3A362E;    /* igual que --veta: el borde de noche no cambia.
+                          Da 1,47:1 sobre --pario, debajo de 3:1:
+                          pendiente de decisión de Lucas (el modo noche
+                          quedó sin tocar en la ronda de contraste). */
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -53,6 +77,28 @@ body { background: var(--pent); color: var(--ink); font-family: var(--sans); fon
 a { color: var(--ink); text-decoration: none; }
 a:hover { color: var(--olivo); }
 img { max-width: 100%; }
+/* La negrita del sitio es el peso medio, nunca la pesada: la jerarquía
+   la dan las versalitas y el tamaño (ver DESIGN.md). */
+strong, b { font-weight: 500; }
+
+/* ---------- Saltar al contenido ----------
+   El primer enlace de cada página. No se ve hasta que le llega el foco
+   con Tab; entonces aparece arriba a la izquierda, con la forma de un
+   botón, y lleva a <main id="contenido">, salteando la cabecera y el
+   menú. */
+.saltar { position: absolute; top: 12px; left: 12px; z-index: 30;
+  font-size: 14px; letter-spacing: .08em; padding: 11px 18px; border-radius: 2px;
+  border: 1px solid var(--ink); background: var(--pario); color: var(--ink); }
+.saltar:focus-visible { outline: 2px solid var(--olivo); outline-offset: 3px; }
+/* Texto que lee el lector de pantalla y no se ve: el nombre del torneo
+   al lado de "Ver torneo", por ejemplo. Mientras no tiene el foco, el
+   enlace de saltar usa lo mismo. */
+.visualmente-oculto, .saltar:not(:focus) {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* El destino de un ancla (una vista de pestañas, una sección de la
+   administración, el contenido) no queda pegado al borde de arriba. */
+main, .vista, main > section[id] { scroll-margin-top: 16px; }
 
 /* ---------- Estructura general: Grid con áreas, igual que en clase ---------- */
 .pagina {
@@ -113,46 +159,61 @@ header {
 nav { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 20px; background: var(--pario); border-bottom: 1px solid var(--hair); }
 nav a { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); padding: 6px 0; border-bottom: 1.5px solid transparent; }
 /* ---------- La entrada marcada del menu ----------
-   En casi todas las paginas la marca va escrita a mano en el HTML, que
-   es la convencion del proyecto. La ficha de torneo no puede: la misma
-   direccion muestra Resumen o Posiciones segun el ancla, y la entrada
-   marcada tiene que acompañar. Sin ancla es el detalle de un torneo, y
-   marca Torneos igual que llave.php; con #posiciones marca Posiciones,
-   que es a donde apunta ese enlace del menu.
+   La marca va escrita a mano en el HTML: class="activo" para el ojo y
+   aria-current para el lector de pantalla, en la misma entrada. Es la
+   convencion del proyecto, y el menu marca a lo sumo una entrada.
+   aria-current="page" cuando el enlace lleva a la pagina que esta
+   abierta, y "true" cuando marca la seccion de la que la pagina
+   depende (Torneos en el detalle de un torneo, Organizadores en crear). */
+nav a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
 
-   El combinador ~ de las pestañas no sirve para esto: alcanza hermanos
-   posteriores, y el bloque de posiciones no es hermano del menu sino
-   nieto de .pagina, porque vive dentro de main. :has() mira hacia
-   adentro desde .pagina, que es el unico elemento que llega a los dos.
+/* ---------- Lo que acompaña a la vista abierta ----------
+   En las paginas con pestañas (torneo.php, panel.html y el perfil) la
+   misma direccion muestra una vista u otra segun el ancla. Hay dos
+   cosas escritas en el HTML que tienen que acompañarla, y el HTML no
+   puede cambiar solo:
 
-   El panel del organizador tiene el mismo caso y se resuelve igual. Su
-   menu es propio de la pagina, no el compartido del sitio, asi que se
-   evaluo si alcanzaba con algo mas simple: no alcanza. El menu sigue
-   siendo hijo de .pagina y las vistas siguen siendo nietas, de modo
-   que el ~ tampoco llega. La alternativa sin :has() era un elemento
-   invisible, puesto ahi solo para que el ancla lo apunte, mas reglas
-   que apaguen la marca por defecto. Mas piezas y mas dificil de
-   explicar que reusar el selector que el proyecto ya declara.
+     - la entrada marcada del menu, con su aria-current: en la ficha de
+       torneo, Torneos o Posiciones; en el panel, cualquiera de las seis;
+     - el destino de "Saltar al contenido": si llevara siempre a
+       #contenido, cambiaria el ancla y la vista abierta volveria a la de
+       por defecto.
 
-   La apariencia no se repite: los selectores nuevos se suman a
-   la misma regla de siempre. */
-nav a.activo,
-.ficha-torneo:has(#posiciones:target) nav a[href$="#posiciones"],
-.ficha-torneo:not(:has(#posiciones:target)) nav a[href="torneos.php"],
-.panel-organizador:has(#mis-torneos:target) nav a[href="#mis-torneos"],
-.panel-organizador:has(#participantes:target) nav a[href="#participantes"],
-.panel-organizador:has(#resultados:target) nav a[href="#resultados"],
-.panel-organizador:has(#reportes:target) nav a[href="#reportes"],
-.panel-organizador:has(#configuracion:target) nav a[href="#configuracion"],
-.panel-organizador:not(:has(#mis-torneos:target)):not(:has(#participantes:target)):not(:has(#resultados:target)):not(:has(#reportes:target)):not(:has(#configuracion:target)) nav a[href="#resumen"]
-  { color: var(--ink); border-bottom-color: var(--olivo); }
+   Por eso esos enlaces van dos veces en el HTML, cada copia con lo suyo
+   escrito, y el CSS deja ver una sola:
+
+     data-vista="x"   se ve solo con la vista x abierta;
+     data-fuera="x"   se ve con cualquier otra.
+
+   display: none saca a la copia apagada tambien del teclado y del
+   lector de pantalla: para los dos hay un solo enlace, el correcto. */
+body:not(:has(#calendario:target)) [data-vista="calendario"],
+body:not(:has(#posiciones:target)) [data-vista="posiciones"],
+body:not(:has(#participantes:target)) [data-vista="participantes"],
+body:not(:has(#reglas:target)) [data-vista="reglas"],
+body:not(:has(#mis-torneos:target)) [data-vista="mis-torneos"],
+body:not(:has(#resultados:target)) [data-vista="resultados"],
+body:not(:has(#reportes:target)) [data-vista="reportes"],
+body:not(:has(#configuracion:target)) [data-vista="configuracion"],
+body:not(:has(#rendimiento:target)) [data-vista="rendimiento"],
+body:has(#posiciones:target) [data-fuera="posiciones"],
+body:has(#mis-torneos:target) [data-fuera="mis-torneos"],
+body:has(#participantes:target) [data-fuera="participantes"],
+body:has(#resultados:target) [data-fuera="resultados"],
+body:has(#reportes:target) [data-fuera="reportes"],
+body:has(#configuracion:target) [data-fuera="configuracion"],
+/* Las vistas por defecto (resumen y datos) estan abiertas mientras
+   ninguna otra vista sea el ancla. */
+body:has(.vista:not(#resumen):target) [data-vista="resumen"],
+body:not(:has(.vista:not(#resumen):target)) [data-fuera="resumen"],
+body:has(.vista:not(#datos):target) [data-vista="datos"] { display: none; }
 
 /* ---------- Botones, etiquetas, tarjetas ---------- */
 .btn { display: inline-block; font-size: 14px; letter-spacing: .08em; padding: 11px 18px; border-radius: 2px; border: 1px solid var(--ink); color: var(--ink); background: transparent; cursor: pointer; font-family: var(--sans); }
 .btn-primario { background: var(--olivo); border-color: var(--olivo); color: var(--pario); }
-.btn-primario:hover { background: var(--olivo2); color: var(--pario); }
+.btn-primario:hover { background: var(--olivoH); color: var(--pario); }
 .etiqueta { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink3); }
-.epigrafe { font-family: var(--serif); font-size: 14px; letter-spacing: .28em; color: var(--ink3); }
+.epigrafe { font-family: var(--griego); font-size: 14px; letter-spacing: .28em; color: var(--ink3); }
 
 /* ---------- Estado del torneo: color Y forma juntos ----------
    Nunca solo el color: quien no distingue el rojo del verde reconoce
@@ -186,6 +247,11 @@ nav a.activo,
 .tarjeta-contraste .etiqueta { color: #B9975C; }
 .tarjeta-contraste .btn { background: #FBF9F4; color: #1E1C18; border-color: #FBF9F4; align-self: flex-start; }
 .tarjeta h3 { margin: 0; font-family: var(--serif); font-size: 22px; font-weight: 500; }
+/* Tarjeta sobre olivo pálido (Organizador, Esta semana, Lo que se va a
+   generar). La etiqueta va en --ink2 y no en --ink3: --ink3 sobre
+   --olivoT da 4,32:1, apenas por debajo del mínimo de 4,5. */
+.tarjeta-olivo { background: var(--olivoT); }
+.tarjeta-olivo .etiqueta { color: var(--ink2); }
 .barra { height: 2px; background: var(--hair); }
 .barra span { display: block; height: 2px; background: var(--olivo); }
 
@@ -201,9 +267,15 @@ h2 { margin: 0; font-family: var(--serif); font-size: 28px; font-weight: 500; }
 .datos strong { display: block; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1; }
 
 /* ---------- Tablas ---------- */
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+/* Cifras de ancho fijo en toda la tabla: las columnas de numeros (PJ,
+   G, Pts, inscriptos) quedan alineadas de una fila a otra. En el texto
+   no cambia nada. */
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 th { text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); font-weight: 500; padding: 8px; border-bottom: 1px solid var(--veta); }
 td { padding: 10px 8px; border-bottom: 1px solid var(--hair); }
+/* Rótulo de fila (la tabla de Reglas del torneo): un <th scope="row">
+   para el lector de pantalla, con el aspecto de una celda más. */
+tbody th { font-weight: 400; padding: 10px 8px; border-bottom-color: var(--hair); }
 td.num { text-align: right; font-family: var(--serif); font-size: 18px; }
 /* Un marcador ("2 – 0", "1 – 1", o la raya de un partido sin empezar)
    no se parte nunca: si falta lugar, se parten los nombres de los
@@ -234,13 +306,47 @@ td.marcador { text-align: center; padding-left: 10px; padding-right: 10px; }
 tr.clasifica { background: var(--olivoT); }
 tr.clasifica td { border-bottom-color: var(--olivoB); }
 .tabla-scroll { overflow-x: auto; }
+/* position: relative hace que el texto oculto de las celdas (el nombre
+   del torneo al lado de "Administrar", el "Acción" del encabezado) quede
+   adentro del marco. Sin esto se ubica respecto de la página, en la
+   columna que en el teléfono queda fuera de la pantalla, y la página
+   entera se ensanchaba. */
+.tabla-scroll { position: relative; }
+/* El marco se puede enfocar con Tab (tabindex="0" en el HTML, con su
+   nombre en aria-label): en el teléfono es la única forma de correr una
+   tabla ancha sin mouse. El foco se ve como en el resto del sitio. */
+.tabla-scroll:focus-visible { outline: 2px solid var(--olivo); outline-offset: 2px; }
 
 /* ---------- Formularios ---------- */
 form { display: flex; flex-direction: column; gap: 16px; }
 label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink3); }
-input, select, textarea { font-family: var(--sans); font-size: 15px; padding: 12px; border: 1px solid var(--veta); background: var(--pario); color: var(--ink); border-radius: 2px; }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--olivo); outline-offset: 1px; }
-input:invalid:not(:placeholder-shown) { border-color: var(--cinabrio); }
+input, select, textarea { font-family: var(--sans); font-size: 15px; padding: 12px; border: 1px solid var(--campo); background: var(--pario); color: var(--ink); border-radius: 2px; }
+/* :focus-within cubre el ícono de calendario del campo de fecha: el Tab
+   se detiene en él por separado, y ahí el campo no cuenta como :focus. */
+input:focus, input:focus-within, select:focus, textarea:focus { outline: 2px solid var(--olivo); outline-offset: 1px; }
+/* El texto de ejemplo ("tu@correo.com") en --ink3: el gris que pone el
+   navegador por su cuenta (#757575) no llega a 4,5:1 sobre --pario, ni
+   de día ni de noche. Sigue siendo más claro que el valor escrito, que
+   va en --ink. */
+::placeholder { color: var(--ink3); opacity: 1; }
+/* Un campo mal completado: el borde pasa a punteado y a --ink. Es el
+   mismo idioma que el resto del sitio para "lo que falta" (el contorno
+   punteado de los graficos y de la marca De muestra), y cambia la forma,
+   no solo el color. El cinabrio queda para "en vivo", como manda
+   DESIGN.md: nunca en errores.
+   :user-invalid solo se prende despues de que la persona toca el campo
+   o intenta enviar el formulario. :invalid, en cambio, marcaba de
+   entrada cualquier campo obligatorio vacio sin texto de ejemplo (la
+   fecha de crear.php, el selector de archivos del perfil). */
+input:user-invalid, select:user-invalid, textarea:user-invalid { border-style: dashed; border-color: var(--ink); }
+/* La casilla nativa no dibuja el borde del autor: lleva el mismo
+   punteado como contorno. Con el foco, gana el contorno de foco. */
+input[type="checkbox"]:user-invalid:not(:focus) { outline: 1px dashed var(--ink); outline-offset: 2px; }
+/* Una ayuda debajo de un campo ("Minimo 10 caracteres."): el campo la
+   nombra con aria-describedby, asi el lector de pantalla la lee junto
+   con la etiqueta. El campo y su ayuda van juntos en .campo, pegados. */
+.campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ayuda-campo { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink2); }
 fieldset { border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .opciones { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -255,6 +361,15 @@ legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .acceso .panel { padding: 24px 20px; display: flex; flex-direction: column; gap: 18px; justify-content: center; }
 .acceso .panel-marmol { background: var(--pent); }
 .acceso .panel-form { background: var(--pario); }
+/* El formulario de acceso es el <main> de la pagina (el destino de
+   "Saltar al contenido"). Aca no hay areas con nombre: sin esto, la
+   regla general main { grid-area: main } lo mandaria a una fila nueva. */
+.acceso main { grid-area: auto; }
+/* El panel de mármol es la cabecera de la página (la marca y el título):
+   un <header>, para que el lector de pantalla lo encuentre como tal.
+   Acá no lleva nada de la cabecera de las otras páginas: ni su área de
+   la grilla, ni el centrado, ni el borde de abajo. */
+.acceso header { grid-area: auto; align-items: stretch; flex-wrap: nowrap; border-bottom: 0; }
 
 /* ---------- Acceso en pantalla angosta ----------
    En un teléfono, el epígrafe, el título y el párrafo del panel de
@@ -330,14 +445,10 @@ form.pedir-rol { align-items: flex-start; }
 .resolver-pedido form { flex-direction: row; }
 /* Una fecha con su hora no se parte en dos renglones. */
 .fecha { white-space: nowrap; }
-/* Un selector de archivo vacio cuenta como "invalido" porque es
-   obligatorio, y la regla general lo pintaria de rojo antes de que
-   nadie haga nada. Aca va con el borde de siempre. */
-form.subida input[type="file"]:invalid { border-color: var(--veta); }
 /* En la grilla de datos del perfil, que los campos se achiquen con su
    columna en vez de salirse de la tarjeta (mismo caso que el de las
    tablas: un hijo de grid no baja de su contenido sin min-width: 0). */
-.datos-perfil .grilla > label { min-width: 0; }
+.datos-perfil .grilla > label, .datos-perfil .grilla > .campo { min-width: 0; }
 .datos-perfil .grilla input { width: 100%; min-width: 0; }
 /* Marca de lo que no sale de la base. Mismo idioma que los graficos del
    panel: contorno punteado para lo que falta. Chica y en gris, para que
@@ -346,7 +457,7 @@ form.subida input[type="file"]:invalid { border-color: var(--veta); }
   text-transform: uppercase; color: var(--ink3); border: 1px dashed var(--ink3); padding: 3px 7px; }
 .datos .muestra { display: block; margin-top: 8px; }
 .pestanas { display: flex; gap: 24px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); overflow-x: auto; }
-.pestanas a { padding: 12px 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); white-space: nowrap; border-bottom: 1.5px solid transparent; }
+.pestanas a, .pestanas .enlace-apagado { padding: 12px 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); white-space: nowrap; border-bottom: 1.5px solid transparent; }
 .pestanas a.activo { color: var(--ink); border-bottom-color: var(--olivo); }
 /* ---------- Pestañas que cambian de contenido, sin JavaScript ----------
 
@@ -369,7 +480,10 @@ form.subida input[type="file"]:invalid { border-color: var(--veta); }
    prende la que coincide con el ancla, y ancla hay una sola.
 
    Cambiar cual es la vista por defecto es mover su bloque al final del
-   HTML y correr los nombres de estas tres reglas. Nada mas.
+   HTML, correr los nombres de estas tres reglas y los del bloque "Lo
+   que acompaña a la vista abierta" (mas arriba), y en el HTML pasar las
+   copias del menu y de "Saltar al contenido" (data-vista, data-fuera y
+   el href="#contenido") a la vista nueva.
 
    Cada vista lleva su propia barra de pestañas, con su entrada
    marcada. Por eso la barra que se ve es siempre la de la vista que
@@ -404,7 +518,10 @@ form.subida input[type="file"]:invalid { border-color: var(--veta); }
 
 .pasos { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 14px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
 .pasos .hecho { color: var(--olivo); }
-.pasos .activo { color: var(--ink); }
+.pasos .activo { color: var(--ink); border-bottom: 1.5px solid var(--olivo); padding-bottom: 2px; }
+/* El paso en curso se distingue por el subrayado en olivo, como la
+   pestaña activa, y no solo por el color; en el HTML lleva
+   aria-current="step". */
 
 /* ---------- Agenda del calendario ----------
    Cada día es un bloque con su fecha arriba y sus partidos debajo. En
@@ -419,7 +536,10 @@ form.subida input[type="file"]:invalid { border-color: var(--veta); }
 .partido .cruce-nombres { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
 .partido .cruce-nombres .torneo { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); }
 .partido .cruce-nombres .lados { font-size: 15px; }
-.partido .cruce-nombres .lados .vs { color: var(--ink3); font-size: 13px; padding: 0 4px; }
+.partido .cruce-nombres .lados .vs { color: var(--ink3); font-size: 13px; }
+/* Entre los nombres y el "vs" van espacios de verdad en el HTML, no
+   solo aire del CSS: sin ellos, el lector de pantalla y el copiar y
+   pegar juntaban todo ("P. RivasvsL. Cabrera"). */
 
 /* El marcador de un partido ya cargado va donde los pendientes llevan
    el boton de cargar, con la misma letra que la hora de la agenda. */
@@ -517,7 +637,10 @@ form.subida input[type="file"]:invalid { border-color: var(--veta); }
 .registro-linea .quien { color: var(--ink2); }
 
 /* ---------- Avisos de los controladores ---------- */
-.avisos { margin: 0; padding-left: 18px; color: var(--cinabrio); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+/* En --ink y con una raya a la izquierda, no en cinabrio: el rojo queda
+   para "en vivo" (DESIGN.md: nunca en errores). La raya es la forma que
+   separa el aviso del texto de alrededor sin depender del color. */
+.avisos { margin: 0; padding: 2px 0 2px 34px; border-left: 2px solid var(--ink); color: var(--ink); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 
 /* ---------- Interruptor de modo noche ----------
    Los dos discos viven en el HTML y el CSS muestra el que corresponde,

@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Calendario · Stadion</title>
   <link rel="icon" href="img/stadion.png">
@@ -11,6 +12,7 @@
   <script src="js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -20,42 +22,40 @@
 </svg><span>STADION</span></a>
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $persona_sesion); ?>
 </header>
-<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php" class="activo">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
-<main>
+<nav><a href="index.php">Inicio</a><a href="torneos.php">Torneos</a><a href="calendario.php" class="activo" aria-current="page">Calendario</a><a href="torneo.php#posiciones">Posiciones</a><a href="panel.html">Organizadores</a></nav>
+<main id="contenido">
 <section>
-  <p class="epigrafe">ἡμέραι</p>
-  <div class="fila" style="justify-content:space-between"><h1>Semana del 15 al 21 de septiembre</h1><a class="btn" href="#">Hoy</a></div>
+  <p class="epigrafe" lang="grc">ἡμέραι</p>
+  <div class="fila" style="justify-content:space-between"><h1>Semana del 15 al 21 de septiembre</h1><span class="enlace-apagado" aria-disabled="true">Hoy</span></div>
   <p class="intro">Cuatro días con partidos. El que está en vivo abre la lista.</p>
 </section>
 <section class="tarjeta">
-  <span class="etiqueta">Filtrar</span>
-  <label class="opcion"><input type="checkbox"> Solo mis torneos</label>
-  <div class="chips">
-    <span class="chip activo">Esports</span><span class="chip">Ajedrez</span><span class="chip">Tenis de mesa</span><span class="chip">Fútbol</span><span class="chip">Cartas</span>
-  </div>
+  <span class="etiqueta">Disciplinas de la semana</span>
+  <p>Esports · Ajedrez · Tenis de mesa · Fútbol · Cartas</p>
 </section>
 <section class="agenda">
+<h2 class="visualmente-oculto">Partidos de la semana</h2>
 <div class="agenda-dia">
   <p class="etiqueta dia">Jueves 18 de septiembre</p>
-  <div class="partido"><span class="hora">19:00</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Titanes CS<span class="vs">vs</span>Vortex</span></span><span class="estado estado-en-vivo">En vivo</span></div>
-  <div class="partido"><span class="hora">20:30</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Nova Esports<span class="vs">vs</span>Delta Gaming</span></span></div>
-  <div class="partido"><span class="hora">21:00</span><span class="cruce-nombres"><span class="torneo">Abierto de Tenis de Mesa · Ronda 3</span><span class="lados">J. Alonso<span class="vs">vs</span>M. Bravo</span></span></div>
+  <div class="partido"><span class="hora">19:00</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Titanes CS <span class="vs">vs</span> Vortex</span></span><span class="estado estado-en-vivo">En vivo</span></div>
+  <div class="partido"><span class="hora">20:30</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Nova Esports <span class="vs">vs</span> Delta Gaming</span></span></div>
+  <div class="partido"><span class="hora">21:00</span><span class="cruce-nombres"><span class="torneo">Abierto de Tenis de Mesa · Ronda 3</span><span class="lados">J. Alonso <span class="vs">vs</span> M. Bravo</span></span></div>
 </div>
 <div class="agenda-dia">
   <p class="etiqueta dia">Viernes 19 de septiembre</p>
-  <div class="partido"><span class="hora">18:00</span><span class="cruce-nombres"><span class="torneo"><a href="llave.php">Copa Interliceal de Ajedrez</a> · Semifinal</span><span class="lados">M. Ferreira<span class="vs">vs</span>C. Silva</span></span></div>
-  <div class="partido"><span class="hora">19:30</span><span class="cruce-nombres"><span class="torneo">Liga Barrial · Fecha 4</span><span class="lados">La Teja<span class="vs">vs</span>Cerro FC</span></span></div>
+  <div class="partido"><span class="hora">18:00</span><span class="cruce-nombres"><span class="torneo"><a href="llave.php">Copa Interliceal de Ajedrez</a> · Semifinal</span><span class="lados">M. Ferreira <span class="vs">vs</span> C. Silva</span></span></div>
+  <div class="partido"><span class="hora">19:30</span><span class="cruce-nombres"><span class="torneo">Liga Barrial · Fecha 4</span><span class="lados">La Teja <span class="vs">vs</span> Cerro FC</span></span></div>
 </div>
 <div class="agenda-dia">
   <p class="etiqueta dia">Sábado 20 de septiembre</p>
-  <div class="partido"><span class="hora">15:00</span><span class="cruce-nombres"><span class="torneo">Torneo LoL · Cuartos</span><span class="lados">Kraken<span class="vs">vs</span>Aurora</span></span></div>
-  <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Torneo LoL · Cuartos</span><span class="lados">Bruma<span class="vs">vs</span>Meteoro</span></span></div>
-  <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Aurora FC<span class="vs">vs</span>Halcones</span></span></div>
+  <div class="partido"><span class="hora">15:00</span><span class="cruce-nombres"><span class="torneo">Torneo LoL · Cuartos</span><span class="lados">Kraken <span class="vs">vs</span> Aurora</span></span></div>
+  <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Torneo LoL · Cuartos</span><span class="lados">Bruma <span class="vs">vs</span> Meteoro</span></span></div>
+  <div class="partido"><span class="hora">17:00</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8</span><span class="lados">Aurora FC <span class="vs">vs</span> Halcones</span></span></div>
 </div>
 <div class="agenda-dia">
   <p class="etiqueta dia">Domingo 21 de septiembre</p>
-  <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8 · Horario a confirmar</span><span class="lados">Liceo 3<span class="vs">vs</span>Sur Gaming</span></span></div>
-  <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Magic Commander · Ronda 2 · Horario a confirmar</span><span class="lados">Mesa 1<span class="vs">vs</span>Mesa 4</span></span></div>
+  <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Liga Valorant · Ronda 8 · Horario a confirmar</span><span class="lados">Liceo 3 <span class="vs">vs</span> Sur Gaming</span></span></div>
+  <div class="partido"><span class="hora">—</span><span class="cruce-nombres"><span class="torneo">Magic Commander · Ronda 2 · Horario a confirmar</span><span class="lados">Mesa 1 <span class="vs">vs</span> Mesa 4</span></span></div>
 </div>
 </section>
 </main>
@@ -64,9 +64,9 @@
   <span class="etiqueta">Exportar</span>
   <h3>El calendario en el teléfono</h3>
   <p>Los partidos de los torneos seguidos aparecen entre los eventos del teléfono, con su hora y su ronda.</p>
-  <a class="btn" href="#">Copiar enlace iCal</a>
+  <span class="enlace-apagado" aria-disabled="true">Copiar enlace iCal</span>
 </div>
-<div class="tarjeta" style="background:var(--olivoT)">
+<div class="tarjeta tarjeta-olivo">
   <span class="etiqueta">Esta semana</span>
   <h3>10 partidos</h3>
   <p>5 disciplinas · 6 torneos</p>
@@ -80,11 +80,11 @@
   </mask>
   <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -96,7 +96,7 @@
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>

@@ -91,13 +91,15 @@ if (is_array($lista)) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
-  <title>Administración · Stadion</title>
+  <title><?php if (!empty($errores)) { echo 'Aviso · '; } ?>Administración · Stadion</title>
   <link rel="icon" href="<?php echo $ruta_publica; ?>/img/stadion.png">
   <link rel="stylesheet" href="<?php echo $ruta_publica; ?>/css/style.css">
   <script src="<?php echo $ruta_publica; ?>/js/tema.js"></script>
 </head>
 <body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 <div class="pagina">
 <header>
   <a class="marca" href="<?php echo $ruta_publica; ?>/index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -108,23 +110,25 @@ if (is_array($lista)) {
   <?php accionesCabecera($ruta_publica, $ruta_perfil, $administrador); ?>
 </header>
 <nav><a href="#pedidos">Pedidos</a><a href="#cuentas">Cuentas</a><a href="#modulos">Módulos</a><a href="#auditoria">Auditoría</a></nav>
-<main>
+<main id="contenido">
 <section>
-  <p class="epigrafe">ἑλλανοδίκαι</p>
+  <p class="epigrafe" lang="grc">ἑλλανοδίκαι</p>
   <p class="etiqueta">Agón · Stadion</p>
   <h1>Administración</h1>
 </section>
 
 <?php if (!empty($errores)) { ?>
+<div role="alert">
 <ul class="avisos">
 <?php   foreach ($errores as $error) { ?>
   <li><?php echo htmlspecialchars($error); ?></li>
 <?php   } ?>
 </ul>
+</div>
 <?php } ?>
 
 <?php if ($mensaje !== '') { ?>
-<p class="intro"><?php echo htmlspecialchars($mensaje); ?></p>
+<p class="intro" role="status"><?php echo htmlspecialchars($mensaje); ?></p>
 <?php } ?>
 
 <section class="tarjeta" id="pedidos">
@@ -137,7 +141,11 @@ if (is_array($lista)) {
   <div class="pedidos">
 <?php   foreach ($pendientes as $pedido) {
           $quien = $pedido->getUsuario();
-          $propio = ((int)$quien->getIdUsuario() === (int)$administrador->getIdUsuario()); ?>
+          $propio = ((int)$quien->getIdUsuario() === (int)$administrador->getIdUsuario());
+          # Los botones dicen de quien es el pedido: con varios pedidos en
+          # la lista, un lector de pantalla que recorre solo los botones
+          # oiria "Aprobar, Aprobar, Aprobar".
+          $de_quien = htmlspecialchars($quien->getNombreCompletoVisible()); ?>
     <div class="pedido">
       <span class="pedido-texto"><strong><?php echo htmlspecialchars($quien->getNombreCompletoVisible()); ?></strong><span class="pedido-dato"><?php echo htmlspecialchars($quien->getCorreo()); ?> · <?php echo htmlspecialchars($pedido->getRol()->getNombre()); ?> · <span class="fecha"><?php echo htmlspecialchars(fechaRegistro($pedido->getFechaPedido())); ?></span></span></span>
 <?php     if ($propio) { ?>
@@ -148,13 +156,13 @@ if (is_array($lista)) {
           <?php echo campoCsrf(); ?>
           <input type="hidden" name="id_pedido" value="<?php echo (int)$pedido->getIdPedidoRol(); ?>">
           <input type="hidden" name="accion" value="aprobar">
-          <button class="btn btn-primario" type="submit">Aprobar</button>
+          <button class="btn btn-primario" type="submit" aria-label="Aprobar el pedido de <?php echo $de_quien; ?>">Aprobar</button>
         </form>
         <form action="<?php echo htmlspecialchars($ruta_admin); ?>" method="post">
           <?php echo campoCsrf(); ?>
           <input type="hidden" name="id_pedido" value="<?php echo (int)$pedido->getIdPedidoRol(); ?>">
           <input type="hidden" name="accion" value="rechazar">
-          <button class="btn" type="submit">Rechazar</button>
+          <button class="btn" type="submit" aria-label="Rechazar el pedido de <?php echo $de_quien; ?>">Rechazar</button>
         </form>
       </span>
 <?php     } ?>
@@ -169,7 +177,7 @@ if (is_array($lista)) {
 <?php if ($lista === null) { ?>
   <p>La lista de cuentas no se puede leer por ahora.</p>
 <?php } else { ?>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Cuentas">
   <table>
     <thead><tr><th>Nombre</th><th>Correo</th><th>Roles</th><th>Estado</th><th>Último acceso</th></tr></thead>
     <tbody>
@@ -258,8 +266,8 @@ if (is_array($lista)) {
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -271,7 +279,7 @@ if (is_array($lista)) {
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>

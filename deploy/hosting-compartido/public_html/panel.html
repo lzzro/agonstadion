@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3EEE3">
   <meta name="description" content="Stadion: plataforma modular de torneos de Agón.">
   <title>Panel del organizador · Stadion</title>
   <link rel="icon" href="img/stadion.png">
@@ -10,7 +11,13 @@
   <script src="js/tema.js"></script>
 </head>
 <body>
-<div class="pagina panel-organizador">
+<a class="saltar" href="#contenido" data-vista="resumen">Saltar al contenido</a>
+<a class="saltar" href="#mis-torneos" data-vista="mis-torneos">Saltar al contenido</a>
+<a class="saltar" href="#participantes" data-vista="participantes">Saltar al contenido</a>
+<a class="saltar" href="#resultados" data-vista="resultados">Saltar al contenido</a>
+<a class="saltar" href="#reportes" data-vista="reportes">Saltar al contenido</a>
+<a class="saltar" href="#configuracion" data-vista="configuracion">Saltar al contenido</a>
+<div class="pagina">
 <header>
   <a class="marca" href="index.php"><svg width="30" height="30" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M 26,100 A 146.9 146.9 0 0 1 174,100 A 146.9 146.9 0 0 1 26,100 Z" fill="none" stroke="currentColor" stroke-width="5"/>
@@ -19,24 +26,24 @@
 </svg><span>STADION</span></a>
   <div class="acciones"><span class="etiqueta">Club Sur · Organizador</span><a class="btn btn-primario" href="crear.php">Nuevo torneo</a></div>
 </header>
-<nav><a href="#resumen">Resumen</a><a href="#mis-torneos">Mis torneos</a><a href="#participantes">Participantes</a><a href="#resultados">Resultados</a><a href="#reportes">Reportes</a><a href="#configuracion">Configuración</a></nav>
-<main>
+<nav><a href="#resumen" class="activo" aria-current="page" data-vista="resumen">Resumen</a><a href="#resumen" data-fuera="resumen">Resumen</a><a href="#mis-torneos" class="activo" aria-current="page" data-vista="mis-torneos">Mis torneos</a><a href="#mis-torneos" data-fuera="mis-torneos">Mis torneos</a><a href="#participantes" class="activo" aria-current="page" data-vista="participantes">Participantes</a><a href="#participantes" data-fuera="participantes">Participantes</a><a href="#resultados" class="activo" aria-current="page" data-vista="resultados">Resultados</a><a href="#resultados" data-fuera="resultados">Resultados</a><a href="#reportes" class="activo" aria-current="page" data-vista="reportes">Reportes</a><a href="#reportes" data-fuera="reportes">Reportes</a><a href="#configuracion" class="activo" aria-current="page" data-vista="configuracion">Configuración</a><a href="#configuracion" data-fuera="configuracion">Configuración</a></nav>
+<main id="contenido">
 <section>
-  <p class="epigrafe">ἀγωνοθέτης</p>
+  <p class="epigrafe" lang="grc">ἀγωνοθέτης</p>
   <h1>Buenas tardes, Club Sur</h1>
   <p class="intro">Jueves 18 de septiembre · 17:42</p>
 </section>
 <div class="vista" id="mis-torneos">
   <section class="tarjeta">
   <h2>Mis torneos</h2>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mis torneos">
   <table>
-    <thead><tr><th>Torneo</th><th>Disciplina</th><th>Formato</th><th>Estado</th><th>Ronda o inscriptos</th><th>Inicio</th><th></th></tr></thead>
+    <thead><tr><th>Torneo</th><th>Disciplina</th><th>Formato</th><th>Estado</th><th>Ronda o inscriptos</th><th>Inicio</th><th><span class="visualmente-oculto">Acción</span></th></tr></thead>
     <tbody>
-      <tr><td>Abierto de Tenis de Mesa</td><td>Tenis de mesa</td><td>Suizo</td><td><span class="estado estado-en-vivo">En vivo</span></td><td>Ronda 3 de 5 · 24</td><td>5 de septiembre</td><td><a href="#">Administrar →</a></td></tr>
-      <tr><td>Copa de Verano</td><td>Fútbol</td><td>Eliminación</td><td><span class="estado estado-en-juego">Final</span></td><td>16</td><td>16 de agosto</td><td><a href="#">Ver la llave →</a></td></tr>
-      <tr><td>Liga Interna Club Sur</td><td>Fútbol</td><td>Liga</td><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>9 de 12</td><td>4 de octubre</td><td><a href="#">Administrar →</a></td></tr>
-      <tr><td>Torneo Relámpago Agosto</td><td>Ajedrez</td><td>Eliminación</td><td><span class="estado estado-cerrado">Finalizado</span></td><td>32</td><td>9 de agosto</td><td><a href="#">Ver el resumen →</a></td></tr>
+      <tr><td>Abierto de Tenis de Mesa</td><td>Tenis de mesa</td><td>Suizo</td><td><span class="estado estado-en-vivo">En vivo</span></td><td>Ronda 3 de 5 · 24</td><td>5 de septiembre</td><td><span class="enlace-apagado" aria-disabled="true">Administrar<span class="visualmente-oculto"> el Abierto de Tenis de Mesa</span> <span aria-hidden="true">→</span></span></td></tr>
+      <tr><td>Copa de Verano</td><td>Fútbol</td><td>Eliminación</td><td><span class="estado estado-en-juego">Final</span></td><td>16</td><td>16 de agosto</td><td><span class="enlace-apagado" aria-disabled="true">Ver la llave<span class="visualmente-oculto"> de la Copa de Verano</span> <span aria-hidden="true">→</span></span></td></tr>
+      <tr><td>Liga Interna Club Sur</td><td>Fútbol</td><td>Liga</td><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>9 de 12</td><td>4 de octubre</td><td><span class="enlace-apagado" aria-disabled="true">Administrar<span class="visualmente-oculto"> la Liga Interna Club Sur</span> <span aria-hidden="true">→</span></span></td></tr>
+      <tr><td>Torneo Relámpago Agosto</td><td>Ajedrez</td><td>Eliminación</td><td><span class="estado estado-cerrado">Finalizado</span></td><td>32</td><td>9 de agosto</td><td><span class="enlace-apagado" aria-disabled="true">Ver el resumen<span class="visualmente-oculto"> del Torneo Relámpago Agosto</span> <span aria-hidden="true">→</span></span></td></tr>
     </tbody>
   </table>
   </div>
@@ -47,7 +54,7 @@
   <section class="tarjeta">
   <h2>Participantes</h2>
   <p class="intro">Abierto de Tenis de Mesa, en vivo en la ronda 3.</p>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Participantes del Abierto de Tenis de Mesa">
   <table>
     <thead><tr><th>Participante</th><th>Mesa</th><th>Ronda 3</th></tr></thead>
     <tbody><tr><td>J. Alonso</td><td>4</td><td>Programado · 21:00</td></tr><tr><td>A. Arrieta</td><td>1</td><td>Cargado</td></tr><tr><td>F. Benítez</td><td>1</td><td>Cargado</td></tr><tr><td>M. Bravo</td><td>4</td><td>Programado · 21:00</td></tr><tr><td>L. Cabrera</td><td>7</td><td>Pendiente de carga</td></tr><tr><td>C. Correa</td><td>2</td><td>Cargado</td></tr><tr><td>D. Duarte</td><td>2</td><td>Cargado</td></tr><tr><td>H. Fagúndez</td><td>3</td><td>Cargado</td></tr><tr><td>I. Giménez</td><td>3</td><td>Cargado</td></tr><tr><td>G. Invernizzi</td><td>10</td><td>Pendiente de carga</td></tr><tr><td>L. Irigoyen</td><td>8</td><td>Cargado</td></tr><tr><td>R. Larrosa</td><td>10</td><td>Pendiente de carga</td></tr><tr><td>J. Lemos</td><td>8</td><td>Cargado</td></tr><tr><td>V. Machado</td><td>11</td><td>Pendiente de carga</td></tr><tr><td>R. Moreira</td><td>9</td><td>Cargado</td></tr><tr><td>E. Nieves</td><td>11</td><td>Pendiente de carga</td></tr><tr><td>G. Píriz</td><td>9</td><td>Cargado</td></tr><tr><td>T. Quintana</td><td>12</td><td>Pendiente de carga</td></tr><tr><td>P. Rivas</td><td>7</td><td>Pendiente de carga</td></tr><tr><td>N. Rocha</td><td>12</td><td>Pendiente de carga</td></tr><tr><td>S. Saravia</td><td>5</td><td>Cargado</td></tr><tr><td>M. Urrutia</td><td>5</td><td>Cargado</td></tr><tr><td>B. Varela</td><td>6</td><td>Cargado</td></tr><tr><td>O. Zapata</td><td>6</td><td>Cargado</td></tr></tbody>
@@ -57,7 +64,7 @@
   </section>
   <section class="tarjeta">
   <h2>Los otros torneos</h2>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Los otros torneos">
   <table>
     <thead><tr><th>Torneo</th><th>Estado</th><th>Inscriptos</th></tr></thead>
     <tbody>
@@ -75,33 +82,33 @@
   <p class="intro">La tabla y la llave se ordenan con cada marcador cargado.</p>
   <div class="agenda-dia">
     <p class="etiqueta dia">Abierto de Tenis de Mesa · Ronda 3 · 4 pendientes</p>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 7</span><span class="lados">P. Rivas<span class="vs">vs</span>L. Cabrera</span></span><a class="btn" href="#">Cargar</a></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 10</span><span class="lados">G. Invernizzi<span class="vs">vs</span>R. Larrosa</span></span><a class="btn" href="#">Cargar</a></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 11</span><span class="lados">V. Machado<span class="vs">vs</span>E. Nieves</span></span><a class="btn" href="#">Cargar</a></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 12</span><span class="lados">T. Quintana<span class="vs">vs</span>N. Rocha</span></span><a class="btn" href="#">Cargar</a></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 7</span><span class="lados">P. Rivas <span class="vs">vs</span> L. Cabrera</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de P. Rivas contra L. Cabrera</span></span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 10</span><span class="lados">G. Invernizzi <span class="vs">vs</span> R. Larrosa</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de G. Invernizzi contra R. Larrosa</span></span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 11</span><span class="lados">V. Machado <span class="vs">vs</span> E. Nieves</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de V. Machado contra E. Nieves</span></span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 12</span><span class="lados">T. Quintana <span class="vs">vs</span> N. Rocha</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de T. Quintana contra N. Rocha</span></span></div>
   </div>
   <div class="agenda-dia">
     <p class="etiqueta dia">Abierto de Tenis de Mesa · Ronda 3 · 1 programado</p>
-    <div class="partido"><span class="hora">21:00</span><span class="cruce-nombres"><span class="torneo">Mesa 4</span><span class="lados">J. Alonso<span class="vs">vs</span>M. Bravo</span></span></div>
+    <div class="partido"><span class="hora">21:00</span><span class="cruce-nombres"><span class="torneo">Mesa 4</span><span class="lados">J. Alonso <span class="vs">vs</span> M. Bravo</span></span></div>
   </div>
   <div class="agenda-dia">
     <p class="etiqueta dia">Abierto de Tenis de Mesa · Ronda 3 · 7 cargados</p>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 1</span><span class="lados">A. Arrieta<span class="vs">vs</span>F. Benítez</span></span><span class="marcador">3 – 1</span></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 2</span><span class="lados">C. Correa<span class="vs">vs</span>D. Duarte</span></span><span class="marcador">3 – 0</span></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 3</span><span class="lados">H. Fagúndez<span class="vs">vs</span>I. Giménez</span></span><span class="marcador">2 – 3</span></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 5</span><span class="lados">S. Saravia<span class="vs">vs</span>M. Urrutia</span></span><span class="marcador">3 – 2</span></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 6</span><span class="lados">B. Varela<span class="vs">vs</span>O. Zapata</span></span><span class="marcador">1 – 3</span></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 8</span><span class="lados">L. Irigoyen<span class="vs">vs</span>J. Lemos</span></span><span class="marcador">3 – 1</span></div>
-    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 9</span><span class="lados">R. Moreira<span class="vs">vs</span>G. Píriz</span></span><span class="marcador">0 – 3</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 1</span><span class="lados">A. Arrieta <span class="vs">vs</span> F. Benítez</span></span><span class="marcador">3 – 1</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 2</span><span class="lados">C. Correa <span class="vs">vs</span> D. Duarte</span></span><span class="marcador">3 – 0</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 3</span><span class="lados">H. Fagúndez <span class="vs">vs</span> I. Giménez</span></span><span class="marcador">2 – 3</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 5</span><span class="lados">S. Saravia <span class="vs">vs</span> M. Urrutia</span></span><span class="marcador">3 – 2</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 6</span><span class="lados">B. Varela <span class="vs">vs</span> O. Zapata</span></span><span class="marcador">1 – 3</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 8</span><span class="lados">L. Irigoyen <span class="vs">vs</span> J. Lemos</span></span><span class="marcador">3 – 1</span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="torneo">Mesa 9</span><span class="lados">R. Moreira <span class="vs">vs</span> G. Píriz</span></span><span class="marcador">0 – 3</span></div>
   </div>
   <div class="fila" style="justify-content:space-between">
     <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Faltan 5 marcadores para publicar la ronda 3.</span>
-    <span class="enlace-apagado" aria-disabled="true">Publicar ronda 3 →</span>
+    <span class="enlace-apagado" aria-disabled="true">Publicar ronda 3 <span aria-hidden="true">→</span></span>
   </div>
   <div class="agenda-dia">
     <p class="etiqueta dia">Copa de Verano · Final · 2 pendientes</p>
-    <div class="partido"><span class="cruce-nombres"><span class="lados">Club Sur A<span class="vs">vs</span>La Teja</span></span><a class="btn" href="#">Cargar</a></div>
-    <div class="partido"><span class="cruce-nombres"><span class="lados">A. Méndez<span class="vs">vs</span>S. Ortiz</span></span><a class="btn" href="#">Cargar</a></div>
+    <div class="partido"><span class="cruce-nombres"><span class="lados">Club Sur A <span class="vs">vs</span> La Teja</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de Club Sur A contra La Teja</span></span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="lados">A. Méndez <span class="vs">vs</span> S. Ortiz</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de A. Méndez contra S. Ortiz</span></span></div>
   </div>
   </section>
 </div>
@@ -146,7 +153,7 @@
   </section>
   <section class="tarjeta">
   <h3>Torneos por estado</h3>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Torneos por estado">
   <table>
     <thead><tr><th>Estado</th><th>Cantidad</th><th>Torneo</th></tr></thead>
     <tbody><tr><td><span class="estado estado-en-vivo">En vivo</span></td><td>1</td><td>Abierto de Tenis de Mesa</td></tr><tr><td><span class="estado estado-en-juego">Final</span></td><td>1</td><td>Copa de Verano</td></tr><tr><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>1</td><td>Liga Interna Club Sur</td></tr><tr><td><span class="estado estado-cerrado">Finalizado</span></td><td>1</td><td>Torneo Relámpago Agosto</td></tr></tbody>
@@ -160,7 +167,7 @@
   <fieldset class="ajustes" disabled>
     <legend>Organizador</legend>
     <div class="modulo ajuste"><label for="cfg-nombre">Nombre</label><input id="cfg-nombre" type="text" value="Club Sur" readonly></div>
-    <div class="modulo ajuste"><label for="cfg-correo">Correo</label><input id="cfg-correo" type="email" value="torneos@clubsur.uy" readonly></div>
+    <div class="modulo ajuste"><label for="cfg-correo">Correo</label><input id="cfg-correo" type="email" value="torneos@clubsur.uy" readonly spellcheck="false" autocapitalize="off"></div>
   </fieldset>
   </section>
   <section class="tarjeta">
@@ -195,29 +202,29 @@
   <p class="intro">La tabla y la llave se ordenan con cada marcador cargado.</p>
   <div class="agenda-dia">
     <p class="etiqueta dia">Abierto de Tenis de Mesa · Ronda 3</p>
-    <div class="partido"><span class="cruce-nombres"><span class="lados">P. Rivas<span class="vs">vs</span>L. Cabrera</span></span><a class="btn" href="#">Cargar</a></div>
-    <div class="partido"><span class="cruce-nombres"><span class="lados">G. Invernizzi<span class="vs">vs</span>R. Larrosa</span></span><a class="btn" href="#">Cargar</a></div>
+    <div class="partido"><span class="cruce-nombres"><span class="lados">P. Rivas <span class="vs">vs</span> L. Cabrera</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de P. Rivas contra L. Cabrera</span></span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="lados">G. Invernizzi <span class="vs">vs</span> R. Larrosa</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de G. Invernizzi contra R. Larrosa</span></span></div>
   </div>
   <div class="agenda-dia">
     <p class="etiqueta dia">Copa de Verano · Final</p>
-    <div class="partido"><span class="cruce-nombres"><span class="lados">Club Sur A<span class="vs">vs</span>La Teja</span></span><a class="btn" href="#">Cargar</a></div>
-    <div class="partido"><span class="cruce-nombres"><span class="lados">A. Méndez<span class="vs">vs</span>S. Ortiz</span></span><a class="btn" href="#">Cargar</a></div>
+    <div class="partido"><span class="cruce-nombres"><span class="lados">Club Sur A <span class="vs">vs</span> La Teja</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de Club Sur A contra La Teja</span></span></div>
+    <div class="partido"><span class="cruce-nombres"><span class="lados">A. Méndez <span class="vs">vs</span> S. Ortiz</span></span><span class="enlace-apagado" aria-disabled="true">Cargar<span class="visualmente-oculto"> el marcador de A. Méndez contra S. Ortiz</span></span></div>
   </div>
   <div class="fila" style="justify-content:space-between">
     <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">2 partidos más sin cargar y 1 por jugar. Faltan 5 marcadores para publicar la ronda 3.</span>
-    <span class="enlace-apagado" aria-disabled="true">Publicar ronda 3 →</span>
+    <span class="enlace-apagado" aria-disabled="true">Publicar ronda 3 <span aria-hidden="true">→</span></span>
   </div>
 </section>
   <section class="tarjeta">
   <h2>Mis torneos</h2>
-  <div class="tabla-scroll">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mis torneos">
   <table>
-    <thead><tr><th>Torneo</th><th>Formato</th><th>Estado</th><th>Ronda o inscriptos</th><th></th></tr></thead>
+    <thead><tr><th>Torneo</th><th>Formato</th><th>Estado</th><th>Ronda o inscriptos</th><th><span class="visualmente-oculto">Acción</span></th></tr></thead>
     <tbody>
-      <tr><td>Abierto de Tenis de Mesa</td><td>Suizo</td><td><span class="estado estado-en-vivo">En vivo</span></td><td>Ronda 3 de 5 · 24</td><td><a href="#">Administrar →</a></td></tr>
-      <tr><td>Copa de Verano</td><td>Eliminación</td><td><span class="estado estado-en-juego">Final</span></td><td>16</td><td><a href="#">Ver la llave →</a></td></tr>
-      <tr><td>Liga Interna Club Sur</td><td>Liga</td><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>9 de 12</td><td><a href="#">Administrar →</a></td></tr>
-      <tr><td>Torneo Relámpago Agosto</td><td>Eliminación</td><td><span class="estado estado-cerrado">Finalizado</span></td><td>32</td><td><a href="#">Ver el resumen →</a></td></tr>
+      <tr><td>Abierto de Tenis de Mesa</td><td>Suizo</td><td><span class="estado estado-en-vivo">En vivo</span></td><td>Ronda 3 de 5 · 24</td><td><span class="enlace-apagado" aria-disabled="true">Administrar<span class="visualmente-oculto"> el Abierto de Tenis de Mesa</span> <span aria-hidden="true">→</span></span></td></tr>
+      <tr><td>Copa de Verano</td><td>Eliminación</td><td><span class="estado estado-en-juego">Final</span></td><td>16</td><td><span class="enlace-apagado" aria-disabled="true">Ver la llave<span class="visualmente-oculto"> de la Copa de Verano</span> <span aria-hidden="true">→</span></span></td></tr>
+      <tr><td>Liga Interna Club Sur</td><td>Liga</td><td><span class="estado estado-inscripcion">Inscripción abierta</span></td><td>9 de 12</td><td><span class="enlace-apagado" aria-disabled="true">Administrar<span class="visualmente-oculto"> la Liga Interna Club Sur</span> <span aria-hidden="true">→</span></span></td></tr>
+      <tr><td>Torneo Relámpago Agosto</td><td>Eliminación</td><td><span class="estado estado-cerrado">Finalizado</span></td><td>32</td><td><span class="enlace-apagado" aria-disabled="true">Ver el resumen<span class="visualmente-oculto"> del Torneo Relámpago Agosto</span> <span aria-hidden="true">→</span></span></td></tr>
     </tbody>
   </table>
   </div>
@@ -228,7 +235,7 @@
 <div class="tarjeta">
   <span class="etiqueta">Próximo en agenda</span>
   <table><tr><td>J. Alonso</td><td class="etiqueta">JUE 21:00</td><td>M. Bravo</td></tr></table>
-  <p><a href="calendario.php">Ver el calendario →</a></p>
+  <p><a href="calendario.php">Ver el calendario <span aria-hidden="true">→</span></a></p>
 </div>
 <div class="tarjeta tarjeta-contraste">
   <span class="etiqueta">Atajo</span>
@@ -245,11 +252,11 @@
   </mask>
   <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
-  <div class="fila"><a href="#">Ayuda</a><a href="#">Términos</a><a href="#">Contacto</a></div>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
 </footer>
 </div>
-<button type="button" class="interruptor-tema" id="interruptor-tema">
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo noche">
+<button type="button" class="interruptor-tema" id="interruptor-tema" aria-label="Modo noche" aria-pressed="false">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#FBF9F4"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#D6CFC1" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#E3DDD0" stroke-width="1"/>
@@ -261,7 +268,7 @@
   <circle cx="33" cy="33" r="16" fill="none" stroke="#1E1C18" stroke-width="1.6"/>
   <path d="M41,25.5 l1.6,3.2 l3.2,1.6 l-3.2,1.6 l-1.6,3.2 l-1.6,-3.2 l-3.2,-1.6 l3.2,-1.6 Z" fill="#4F5F35"/>
 </svg>
-<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-label="Cambiar a modo día">
+<svg width="66" height="66" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <circle cx="33" cy="33" r="32" fill="#14130F"/>
   <circle cx="33" cy="33" r="32" fill="none" stroke="#3A362E" stroke-width="1"/>
   <circle cx="33" cy="33" r="27" fill="none" stroke="#2A2822" stroke-width="1"/>
