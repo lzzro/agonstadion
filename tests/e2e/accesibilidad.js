@@ -234,8 +234,10 @@ let nav = null;
       es: async p => (await textoDe(p, 'h1')) !== '' && (await vistasAbiertas(p)) === 'resumen' },
     ...pestanas.map(x => ({ vista: `torneo.php#${x}`, abrir: ir(`torneo.php#${x}`), que: `se ve solo la pestana ${x}`,
       es: async p => (await vistasAbiertas(p)) === x })),
-    { vista: `torneo.php?id=${S} (inscripcion abierta)`, abrir: ir(`torneo.php?id=${S}`), que: 'la Liga Interna, con "Iniciar sesión para pedir lugar"',
-      es: async p => (await textoDe(p, 'h1')) === 'Liga Interna Club Sur' && (await textoDe(p, '.pedir-lugar a')) === 'Iniciar sesión para pedir lugar' },
+    { vista: `torneo.php?id=${S} (inscripcion abierta)`, abrir: ir(`torneo.php?id=${S}`),
+      que: 'la Liga Interna, de muestra: "Pedir lugar" apagado, con el porque',
+      es: async p => (await textoDe(p, 'h1')) === 'Liga Interna Club Sur' && await hay(p, '.pedir-lugar .enlace-apagado[aria-disabled="true"]')
+                     && (await textoDe(p, '.pedir-lugar')).includes('Una liga de muestra no recibe pedidos.') },
     { vista: 'torneo.php?id=999999 (404)', abrir: ir('torneo.php?id=999999'), que: '404, "Sin torneo con ese número"',
       es: async (p, r) => r.status() === 404 && (await textoDe(p, 'h1')) === 'Sin torneo con ese número' },
     { vista: 'calendario.php', abrir: ir('calendario.php'), que: 'la semana del partido en vivo',
@@ -302,6 +304,9 @@ let nav = null;
     await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id} form.anotar-equipo button`)]);
   }
   t.chk(sql(`SELECT COUNT(*) FROM participante WHERE id_torneo = ${id}`) === '4', 'cuatro equipos anotados a mano');
+  await revisar(t, anon, { vista: `torneo.php?id=${id} (sin sesion)`, abrir: ir(`torneo.php?id=${id}`),
+    que: 'la liga de la prueba, con "Iniciar sesión para pedir lugar"',
+    es: async p => (await textoDe(p, 'h1')) === liga && (await textoDe(p, '.pedir-lugar a')) === 'Iniciar sesión para pedir lugar' });
 
   // --- 3. El jugador arma su equipo -------------------------------------------
   console.log('===== 3. Jugador =====');
