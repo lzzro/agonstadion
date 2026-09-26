@@ -83,6 +83,14 @@ chk(orden(new ConfiguracionTorneo(1), $filas) === 'C, A, B, D', 'por diferencia:
 chk(orden(new ConfiguracionTorneo(1, 3, 1, 0, 1, 0, 0, null, null, 'favor'), $filas) === 'C, B, A, D', 'por favor: C, B (10), A (6), D');
 $iguales = array(fila('Zeta', 1, 0, 0, 2, 1), fila('Alfa', 1, 0, 0, 2, 1));
 chk(orden(new ConfiguracionTorneo(1), $iguales) === 'Alfa, Zeta', 'si todo coincide, el orden alfabetico');
+# Sin mirar tildes ni mayusculas: por bytes, "Ómnibus" y "Álamo" irian
+# despues de "Zeta", y "ZZ" antes que "aa".
+$con_tildes = array(fila('Zeta', 1, 0, 0, 2, 1), fila('Ómnibus', 1, 0, 0, 2, 1), fila('Álamo', 1, 0, 0, 2, 1),
+                    fila('Nova', 1, 0, 0, 2, 1), fila('Aurora', 1, 0, 0, 2, 1));
+chk(orden(new ConfiguracionTorneo(1), $con_tildes) === 'Álamo, Aurora, Nova, Ómnibus, Zeta',
+    'el orden alfabetico no mira tildes: Álamo, Aurora, Nova, Ómnibus, Zeta');
+chk(ConfiguracionTorneo::compararNombres('ZZ Esports', 'aa Esports') > 0 && ConfiguracionTorneo::compararNombres('Vortex', 'vortex') !== 0,
+    'ni mayusculas; y dos nombres que solo cambian en eso no quedan empatados');
 chk(strpos((new ConfiguracionTorneo(1))->textoDesempate('mapas'), 'diferencia de mapas') !== false,
     'el texto del desempate lleva la unidad de la disciplina');
 

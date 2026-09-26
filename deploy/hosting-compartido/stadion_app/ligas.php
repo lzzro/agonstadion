@@ -42,9 +42,19 @@ function chipLigaHtml(Torneo $torneo, $en_vivo)
     return '<span class="estado ' . $chip[0] . '">' . $chip[1] . '</span>';
 }
 
-function marcaMuestra()
+function marcaMuestra($texto = 'De muestra')
 {
-    return '<span class="muestra">De muestra</span>';
+    return '<span class="muestra">' . htmlspecialchars($texto) . '</span>';
+}
+
+# La marca de un total: "De muestra" si todo lo que suma sale de ligas de
+# muestra, "Incluye muestra" si solo una parte, nada si ninguna.
+function marcaTotal($de_muestra, $en_total)
+{
+    if ($de_muestra <= 0) {
+        return '';
+    }
+    return marcaMuestra(($de_muestra >= $en_total) ? 'De muestra' : 'Incluye muestra');
 }
 
 # "equipo" o "equipos"

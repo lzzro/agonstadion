@@ -17,6 +17,13 @@
 const { chromium } = require('playwright-core');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+// La raiz del repositorio, y la carpeta donde el sitio de prueba guarda
+// las fotos (en la disposicion del hosting es la de su copia).
+const RAIZ = path.resolve(__dirname, '..', '..');
+const SUBIDAS = process.env.STADION_SUBIDAS || path.join(RAIZ, 'public', 'subidas');
 
 const BASE = (process.env.STADION_URL || 'http://127.0.0.1:8095').replace(/\/$/, '');
 const MYSQL = process.env.STADION_MYSQL || 'mysql sgdm';
@@ -116,6 +123,48 @@ async function token(p) {
   return valor;
 }
 
+// --- Lo que una bateria crea, y solo eso, se borra al final ---------
+// Para las baterias que dejan la base como la encontraron (permisos.js,
+// sesion.js, subidas.js, recorrido.js). Cada una anota sus cuentas en
+// un arreglo de { id, correo } y, al terminar, pase lo que pase, llama a
+// limpiarCuentas(): borra la auditoria de esas cuentas (la propia, la de
+// sus pedidos de rol, la del primer administrador y la de un inicio de
+// sesion fallido con su correo), sus pedidos de rol, sus fotos del disco
+// y las cuentas (los roles se van con ellas, ON DELETE CASCADE). Cada
+// DELETE nombra las cuentas por id y por correo a la vez, y solo correos
+// prueba-...@ejemplo.invalid: una cuenta que no sea de prueba no se borra
+// nunca, aunque se cuele en el arreglo.
+function limpiarCuentas(cuentas) {
+  const propias = cuentas.filter(x => x && Number.isInteger(x.id) && /^prueba-[0-9a-f]+@ejemplo\.invalid$/.test(x.correo));
+  if (propias.length === 0) return;
+  const ids = propias.map(x => x.id).join(',');
+  const correos = propias.map(x => texto(x.correo)).join(',');
+  const cuentas_sql = `SELECT id_usuario FROM usuario WHERE id_usuario IN (${ids}) AND correo IN (${correos})`;
+  // Las fotos: solo nombres como los que genera ImagenSubida (32
+  // caracteres al azar), y solo dentro de la carpeta de las subidas.
+  const fotos = sql(`SELECT foto_perfil FROM usuario WHERE id_usuario IN (${cuentas_sql}) AND foto_perfil IS NOT NULL
+                     UNION SELECT foto_portada FROM usuario WHERE id_usuario IN (${cuentas_sql}) AND foto_portada IS NOT NULL`);
+  for (const nombre of fotos.split('\n').filter(f => /^[0-9a-f]{32}\.(jpg|png|webp)$/.test(f))) {
+    try { fs.unlinkSync(path.join(SUBIDAS, nombre)); } catch (e) { /* ya no estaba */ }
+  }
+  sql(`DELETE FROM auditoria
+        WHERE id_usuario IN (${cuentas_sql})
+           OR (tabla_afectada IN ('usuario', 'usuario_rol') AND id_registro IN (${cuentas_sql}))
+           OR (tabla_afectada = 'pedido_rol' AND id_registro IN
+                 (SELECT id_pedido_rol FROM pedido_rol WHERE id_usuario IN (${cuentas_sql})))
+           OR (id_usuario IS NULL AND accion = 'login_error' AND detalle IN (${correos}));
+       DELETE FROM pedido_rol WHERE id_usuario IN (${cuentas_sql});
+       DELETE FROM usuario WHERE id_usuario IN (${ids}) AND correo IN (${correos});`);
+}
+
+// La huella de las tablas que tocan esas baterias: si al final da lo
+// mismo que al principio, la base quedo como estaba.
+const huellaBase = () => sql('CHECKSUM TABLE usuario, usuario_rol, pedido_rol, auditoria');
+
+// Los archivos de la carpeta de las subidas, para comparar antes y
+// despues.
+const archivosSubidas = () => { try { return fs.readdirSync(SUBIDAS).sort().join(','); } catch (e) { return '(sin carpeta)'; } };
+
 // Un POST armado a mano, con la cookie de la sesion del contexto.
 async function postear(ctx, url, campos) {
   const r = await ctx.request.post(url, { form: campos, maxRedirects: 0 });
@@ -129,4 +178,5 @@ async function direccionDe(p, publica) {
   return p.url().split('#')[0].split('?')[0];
 }
 
-module.exports = { BASE, sql, texto, azar, navegador, contador, cuentaNueva, darRol, entrar, token, postear, direccionDe };
+module.exports = { BASE, RAIZ, SUBIDAS, sql, texto, azar, clave, navegador, contador, cuentaNueva, darRol, entrar, token, postear,
+                   direccionDe, limpiarCuentas, huellaBase, archivosSubidas };

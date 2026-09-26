@@ -11,6 +11,9 @@
 --     muestra no inicia sesion nunca (ver "Cuentas de muestra", abajo).
 --   - torneo.fecha_inicio pasa a ser opcional: una liga se crea con la
 --     inscripcion abierta y la fecha de inicio puede quedar a definir.
+--   - torneo.nombre_vigente (columna calculada) con su UNIQUE: dos
+--     torneos vigentes (en preparacion, inscripcion o en curso) no
+--     comparten nombre, tengan fecha o no.
 --   - configuracion_torneo.criterio_desempate: 'diferencia' (diferencia
 --     de tantos y despues tantos a favor) o 'favor' (al reves).
 --   - La tabla pedido_inscripcion: un capitan pide lugar para su equipo
@@ -29,12 +32,16 @@
 -- con su historial entero (cada partido jugado con su marcador), para
 -- que torneos.php, torneo.php y calendario.php lean todo de la base:
 --   - Liga Valorant · Otoño (Comunidad Vórtice): 12 equipos, una
---     vuelta (11 fechas), 7 jugadas y la 8 en curso.
+--     vuelta (11 fechas), 7 jugadas y la 8 en curso. Series al mejor de
+--     3 mapas: todas con ganador (2-0 o 2-1), ningun empate.
 --   - Liga Barrial del Cerro (Centro Juvenil Cerro): 10 equipos, 9
 --     fechas, 3 jugadas y la 4 en curso.
 --   - Liga Interna Club Sur (Club Sur): inscripcion abierta, 9 de 12.
 -- La tabla de posiciones se calcula aca mismo a partir de los partidos
--- (no se escribe a mano), y da la de las paginas de siempre.
+-- (no se escribe a mano). La de la Valorant tiene el mismo orden y las
+-- mismas diferencias de mapas que la maqueta de torneo.php; los puntos
+-- cambian donde la maqueta tenia empates, que una serie al mejor de 3 no
+-- puede tener.
 --
 -- ORDEN, en una base que viene de antes:
 --   1. las que falten de la 001 a la 004
@@ -70,8 +77,10 @@
 --     veces no duplica nada. La consulta del final (paso 6) se puede
 --     correr sola, cuantas veces haga falta, para ver el resultado.
 --   - Si ya hay un equipo o una cuenta con alguno de los nombres o
---     correos de muestra, frena con "CONSTRAINT ck_005_nombres_libres
---     failed", tambien sin cambiar nada. La consulta 2c lista cuales.
+--     correos de muestra, o dos torneos vigentes con el mismo nombre
+--     (el UNIQUE nuevo no se podria crear), frena con "CONSTRAINT
+--     ck_005_nombres_libres failed", tambien sin cambiar nada. La
+--     consulta 2c lista cuales.
 --   - La ultima consulta tiene que mostrar, en una base que no tenia
 --     torneos ni equipos:
 --         cuentas_de_muestra   3
@@ -84,12 +93,12 @@
 --         en_vivo              1
 --         filas_tabla          22
 --         puntero              Titanes CS · 18 pts · +9
---         octavo               Liceo 3 · 7 pts · -3
+--         octavo               Liceo 3 · 9 pts · -3
 --         tablas               18
 --         restricciones_check  33
 --         claves_foraneas      29
---         indices_unicos       15
---     Los tres ultimos son los de una base nueva creada con schema.sql.
+--         indices_unicos       16
+--     Los cuatro ultimos son los de una base nueva creada con schema.sql.
 --     Si alguno difiere, NO seguir: avisar.
 -- -------------------------------------------------------------------
 -- Cuentas de muestra
@@ -199,7 +208,12 @@ SELECT 'equipo' AS ocupado, e.nombre AS valor
 UNION ALL
 SELECT 'cuenta', correo
   FROM usuario
- WHERE correo IN ('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejemplo.invalid');
+ WHERE correo IN ('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejemplo.invalid')
+UNION ALL
+SELECT 'torneo vigente repetido', MIN(nombre)
+  FROM torneo
+ WHERE estado IN ('borrador', 'inscripcion', 'en_curso')
+ GROUP BY nombre HAVING COUNT(*) > 1;
 
 CREATE TEMPORARY TABLE control_005_nombres (
   ocupados INT NOT NULL,
@@ -208,7 +222,10 @@ CREATE TEMPORARY TABLE control_005_nombres (
 INSERT INTO control_005_nombres (ocupados)
 SELECT (SELECT COUNT(*) FROM equipo e JOIN carga_005_equipo c ON c.nombre = e.nombre)
      + (SELECT COUNT(*) FROM usuario
-         WHERE correo IN ('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejemplo.invalid'));
+         WHERE correo IN ('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejemplo.invalid'))
+     + (SELECT COUNT(*) FROM (SELECT 1 FROM torneo
+                               WHERE estado IN ('borrador', 'inscripcion', 'en_curso')
+                               GROUP BY nombre HAVING COUNT(*) > 1) repetidos);
 DROP TEMPORARY TABLE control_005_nombres;
 
 
@@ -222,6 +239,11 @@ ALTER TABLE usuario
   ADD CONSTRAINT IF NOT EXISTS ck_usuario_muestra CHECK (de_muestra IN (0, 1));
 
 ALTER TABLE torneo MODIFY fecha_inicio DATE NULL;
+ALTER TABLE torneo
+  ADD COLUMN IF NOT EXISTS nombre_vigente VARCHAR(80) GENERATED ALWAYS AS
+    (IF(estado IN ('borrador', 'inscripcion', 'en_curso'), nombre, NULL)) STORED AFTER fecha_creacion;
+ALTER TABLE torneo
+  ADD UNIQUE KEY IF NOT EXISTS uq_torneo_vigente (nombre_vigente);
 
 ALTER TABLE configuracion_torneo
   ADD COLUMN IF NOT EXISTS criterio_desempate VARCHAR(10) NOT NULL DEFAULT 'diferencia' AFTER ida_y_vuelta;
@@ -343,12 +365,16 @@ SELECT 'Liga Interna Club Sur', d.id_disciplina, tt.id_tipo_torneo, m.id_modulo,
    AND u.correo = 'clubsur@ejemplo.invalid';
 
 -- Su configuracion: 3/1/0 en las tres, una vuelta, desempate por
--- diferencia y despues a favor. La Valorant clasifica a 4 a playoffs.
+-- diferencia y despues a favor. La Valorant clasifica a 4 a playoffs y
+-- no admite empates (admite_empate = 0): sus series son al mejor de 3
+-- mapas, y una serie al mejor de un numero impar siempre tiene ganador.
+-- Los puntos por empate quedan en 1, como en las otras, pero ningun
+-- partido suyo termina empatado.
 INSERT INTO configuracion_torneo (id_torneo, puntos_victoria, puntos_empate, puntos_derrota,
                                   admite_empate, clasifican_playoffs, ida_y_vuelta,
                                   criterio_desempate, rondas_previstas, reglas)
-SELECT id_torneo, 3, 1, 0, 1, 4, 0, 'diferencia', 11,
-       'Series al mejor de 3 mapas. Sin tercer mapa, la serie queda 1 a 1 y cuenta como empate. Un equipo que no se presenta a la hora pactada pierde el enfrentamiento por walkover, sin necesidad de jugarlo.'
+SELECT id_torneo, 3, 1, 0, 0, 4, 0, 'diferencia', 11,
+       'Series al mejor de 3 mapas: gana la serie quien se queda con dos, así que no hay empates. Un equipo que no se presenta a la hora pactada pierde el enfrentamiento por walkover, sin necesidad de jugarlo.'
   FROM torneo WHERE nombre = 'Liga Valorant · Otoño';
 
 INSERT INTO configuracion_torneo (id_torneo, puntos_victoria, puntos_empate, puntos_derrota,
@@ -449,31 +475,31 @@ CREATE TEMPORARY TABLE carga_005_partido (torneo VARCHAR(80), ronda TINYINT UNSI
   puntaje_local SMALLINT, puntaje_visitante SMALLINT)
   ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT INTO carga_005_partido VALUES
-  ('Liga Valorant · Otoño', 1, 1, 'Vortex', 'Atlántida GG', '2026-08-22 19:00:00', 'jugado', 1, 1),
+  ('Liga Valorant · Otoño', 1, 1, 'Vortex', 'Atlántida GG', '2026-08-22 19:00:00', 'jugado', 2, 0),
   ('Liga Valorant · Otoño', 1, 2, 'Sur Gaming', 'Faro Gaming', '2026-08-22 20:30:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 1, 3, 'Halcones', 'Rambla Esports', '2026-08-22 22:00:00', 'jugado', 1, 2),
-  ('Liga Valorant · Otoño', 1, 4, 'Delta Gaming', 'Ping Masters', '2026-08-23 19:00:00', 'jugado', 1, 2),
-  ('Liga Valorant · Otoño', 1, 5, 'Titanes CS', 'Liceo 3', '2026-08-23 20:30:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 1, 4, 'Delta Gaming', 'Ping Masters', '2026-08-23 19:00:00', 'jugado', 2, 1),
+  ('Liga Valorant · Otoño', 1, 5, 'Titanes CS', 'Liceo 3', '2026-08-23 20:30:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 1, 6, 'Nova Esports', 'Aurora FC', '2026-08-24 19:00:00', 'jugado', 2, 1),
-  ('Liga Valorant · Otoño', 2, 1, 'Faro Gaming', 'Vortex', '2026-08-26 19:00:00', 'jugado', 2, 1),
-  ('Liga Valorant · Otoño', 2, 2, 'Atlántida GG', 'Rambla Esports', '2026-08-26 20:30:00', 'jugado', 1, 1),
-  ('Liga Valorant · Otoño', 2, 3, 'Sur Gaming', 'Ping Masters', '2026-08-26 22:00:00', 'jugado', 1, 1),
-  ('Liga Valorant · Otoño', 2, 4, 'Halcones', 'Liceo 3', '2026-08-27 19:00:00', 'jugado', 2, 1),
-  ('Liga Valorant · Otoño', 2, 5, 'Delta Gaming', 'Aurora FC', '2026-08-27 20:30:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 2, 1, 'Faro Gaming', 'Vortex', '2026-08-26 19:00:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 2, 2, 'Atlántida GG', 'Rambla Esports', '2026-08-26 20:30:00', 'jugado', 2, 0),
+  ('Liga Valorant · Otoño', 2, 3, 'Sur Gaming', 'Ping Masters', '2026-08-26 22:00:00', 'jugado', 2, 1),
+  ('Liga Valorant · Otoño', 2, 4, 'Halcones', 'Liceo 3', '2026-08-27 19:00:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 2, 5, 'Delta Gaming', 'Aurora FC', '2026-08-27 20:30:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 2, 6, 'Titanes CS', 'Nova Esports', '2026-08-28 19:00:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 3, 1, 'Vortex', 'Rambla Esports', '2026-08-30 19:00:00', 'jugado', 2, 0),
-  ('Liga Valorant · Otoño', 3, 2, 'Faro Gaming', 'Ping Masters', '2026-08-30 20:30:00', 'jugado', 1, 1),
-  ('Liga Valorant · Otoño', 3, 3, 'Atlántida GG', 'Liceo 3', '2026-08-30 22:00:00', 'jugado', 1, 1),
-  ('Liga Valorant · Otoño', 3, 4, 'Sur Gaming', 'Aurora FC', '2026-08-31 19:00:00', 'jugado', 1, 2),
-  ('Liga Valorant · Otoño', 3, 5, 'Halcones', 'Nova Esports', '2026-08-31 20:30:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 3, 2, 'Faro Gaming', 'Ping Masters', '2026-08-30 20:30:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 3, 3, 'Atlántida GG', 'Liceo 3', '2026-08-30 22:00:00', 'jugado', 2, 0),
+  ('Liga Valorant · Otoño', 3, 4, 'Sur Gaming', 'Aurora FC', '2026-08-31 19:00:00', 'jugado', 0, 2),
+  ('Liga Valorant · Otoño', 3, 5, 'Halcones', 'Nova Esports', '2026-08-31 20:30:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 3, 6, 'Delta Gaming', 'Titanes CS', '2026-09-01 19:00:00', 'jugado', 0, 2),
   ('Liga Valorant · Otoño', 4, 1, 'Ping Masters', 'Vortex', '2026-09-03 19:00:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 4, 2, 'Rambla Esports', 'Liceo 3', '2026-09-03 20:30:00', 'jugado', 1, 2),
-  ('Liga Valorant · Otoño', 4, 3, 'Faro Gaming', 'Aurora FC', '2026-09-03 22:00:00', 'jugado', 1, 1),
+  ('Liga Valorant · Otoño', 4, 3, 'Faro Gaming', 'Aurora FC', '2026-09-03 22:00:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 4, 4, 'Atlántida GG', 'Nova Esports', '2026-09-04 19:00:00', 'jugado', 0, 2),
   ('Liga Valorant · Otoño', 4, 5, 'Sur Gaming', 'Titanes CS', '2026-09-04 20:30:00', 'jugado', 0, 2),
-  ('Liga Valorant · Otoño', 4, 6, 'Halcones', 'Delta Gaming', '2026-09-05 19:00:00', 'jugado', 1, 2),
-  ('Liga Valorant · Otoño', 5, 1, 'Vortex', 'Liceo 3', '2026-09-07 19:00:00', 'jugado', 2, 1),
+  ('Liga Valorant · Otoño', 4, 6, 'Halcones', 'Delta Gaming', '2026-09-05 19:00:00', 'jugado', 2, 1),
+  ('Liga Valorant · Otoño', 5, 1, 'Vortex', 'Liceo 3', '2026-09-07 19:00:00', 'jugado', 1, 2),
   ('Liga Valorant · Otoño', 5, 2, 'Ping Masters', 'Aurora FC', '2026-09-07 20:30:00', 'jugado', 1, 2),
   ('Liga Valorant · Otoño', 5, 3, 'Rambla Esports', 'Nova Esports', '2026-09-07 22:00:00', 'jugado', 0, 2),
   ('Liga Valorant · Otoño', 5, 4, 'Faro Gaming', 'Titanes CS', '2026-09-08 19:00:00', 'jugado', 0, 2),
@@ -482,15 +508,15 @@ INSERT INTO carga_005_partido VALUES
   ('Liga Valorant · Otoño', 6, 1, 'Aurora FC', 'Vortex', '2026-09-11 19:00:00', 'jugado', 1, 2),
   ('Liga Valorant · Otoño', 6, 2, 'Liceo 3', 'Nova Esports', '2026-09-11 20:30:00', 'jugado', 0, 2),
   ('Liga Valorant · Otoño', 6, 3, 'Ping Masters', 'Titanes CS', '2026-09-11 22:00:00', 'jugado', 0, 2),
-  ('Liga Valorant · Otoño', 6, 4, 'Rambla Esports', 'Delta Gaming', '2026-09-12 19:00:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 6, 4, 'Rambla Esports', 'Delta Gaming', '2026-09-12 19:00:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 6, 5, 'Faro Gaming', 'Halcones', '2026-09-12 20:30:00', 'jugado', 1, 2),
   ('Liga Valorant · Otoño', 6, 6, 'Atlántida GG', 'Sur Gaming', '2026-09-13 19:00:00', 'jugado', 2, 1),
-  ('Liga Valorant · Otoño', 7, 1, 'Vortex', 'Nova Esports', '2026-09-15 19:00:00', 'jugado', 2, 1),
-  ('Liga Valorant · Otoño', 7, 2, 'Aurora FC', 'Titanes CS', '2026-09-15 20:30:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 7, 1, 'Vortex', 'Nova Esports', '2026-09-15 19:00:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 7, 2, 'Aurora FC', 'Titanes CS', '2026-09-15 20:30:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 7, 3, 'Liceo 3', 'Delta Gaming', '2026-09-15 22:00:00', 'jugado', 1, 2),
-  ('Liga Valorant · Otoño', 7, 4, 'Ping Masters', 'Halcones', '2026-09-16 19:00:00', 'jugado', 1, 2),
+  ('Liga Valorant · Otoño', 7, 4, 'Ping Masters', 'Halcones', '2026-09-16 19:00:00', 'jugado', 2, 1),
   ('Liga Valorant · Otoño', 7, 5, 'Rambla Esports', 'Sur Gaming', '2026-09-16 20:30:00', 'jugado', 2, 0),
-  ('Liga Valorant · Otoño', 7, 6, 'Faro Gaming', 'Atlántida GG', '2026-09-17 19:00:00', 'jugado', 1, 1),
+  ('Liga Valorant · Otoño', 7, 6, 'Faro Gaming', 'Atlántida GG', '2026-09-17 19:00:00', 'jugado', 2, 0),
   ('Liga Valorant · Otoño', 8, 1, 'Titanes CS', 'Vortex', '2026-09-18 19:00:00', 'en_vivo', NULL, NULL),
   ('Liga Valorant · Otoño', 8, 2, 'Nova Esports', 'Delta Gaming', '2026-09-18 20:30:00', 'programado', NULL, NULL),
   ('Liga Valorant · Otoño', 8, 3, 'Aurora FC', 'Halcones', '2026-09-20 17:00:00', 'programado', NULL, NULL),
@@ -617,7 +643,7 @@ SELECT pa.id_participante,
 -- la aplicacion.
 INSERT INTO auditoria (id_usuario, tabla_afectada, id_registro, accion, detalle)
 VALUES (NULL, 'torneo', NULL, 'alta',
-        'Migración 005: 3 cuentas, 3 ligas, 31 equipos');
+        '3 cuentas, 3 ligas, 31 equipos');
 
 COMMIT;
 

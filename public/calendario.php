@@ -23,7 +23,7 @@ $hoy = date('Y-m-d');
 $partidos = null;
 $lunes = null;
 
-$pedida = isset($_GET['semana']) ? (string)$_GET['semana'] : '';
+$pedida = (isset($_GET['semana']) && is_string($_GET['semana'])) ? $_GET['semana'] : '';
 $conexion = conectarBD();
 if ($conexion !== null) {
     $repositorio = new EnfrentamientoRepositorio($conexion);
@@ -138,7 +138,7 @@ $es_esta_semana = ($lunes === lunesDe($hoy));
   <span class="enlace-apagado" aria-disabled="true">Copiar enlace iCal</span>
 </div>
 <div class="tarjeta tarjeta-olivo">
-  <span class="etiqueta">Esta semana</span>
+  <span class="etiqueta"><?php echo $es_esta_semana ? 'Esta semana' : 'Resumen de la semana'; ?></span>
   <h3><?php echo plural(is_array($partidos) ? count($partidos) : 0, 'partido', 'partidos'); ?></h3>
   <p><?php echo plural(count($disciplinas), 'disciplina', 'disciplinas'); ?> · <?php echo plural(count($torneos_semana), 'torneo', 'torneos'); ?></p>
 </div>

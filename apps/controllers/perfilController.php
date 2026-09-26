@@ -164,8 +164,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         # --- 3d. Un equipo nuevo, con esta cuenta de capitan ----------
         # El capitan es siempre la cuenta de la sesion.
-        $valores_equipo['nombre'] = isset($_POST['nombre_equipo']) ? trim((string)$_POST['nombre_equipo']) : '';
-        $valores_equipo['ciudad'] = isset($_POST['ciudad_equipo']) ? trim((string)$_POST['ciudad_equipo']) : '';
+        $valores_equipo['nombre'] = (isset($_POST['nombre_equipo']) && is_string($_POST['nombre_equipo']))
+                                    ? trim($_POST['nombre_equipo']) : '';
+        $valores_equipo['ciudad'] = (isset($_POST['ciudad_equipo']) && is_string($_POST['ciudad_equipo']))
+                                    ? trim($_POST['ciudad_equipo']) : '';
 
         $equipo = new Equipo(null, $valores_equipo['nombre'],
                              ($valores_equipo['ciudad'] === '') ? null : $valores_equipo['ciudad'], $usuario);
@@ -294,7 +296,7 @@ $pedido_organizador = $usuario->tieneRol('organizador') ? null
                     : $pedidos->ultimoDe($id_usuario, 'organizador');
 
 # El aviso de crear.php y del panel, solo si de verdad falta el rol.
-$aviso_organizador = isset($_GET['aviso']) && $_GET['aviso'] === 'organizador'
+$aviso_organizador = isset($_GET['aviso']) && is_string($_GET['aviso']) && $_GET['aviso'] === 'organizador'
                      && !$usuario->tieneRol('organizador');
 
 # Los equipos que capitanea, para la pestana Mis torneos.

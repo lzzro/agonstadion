@@ -13,7 +13,8 @@
 # El criterio de desempate decide el orden entre dos con los mismos
 # puntos: 'diferencia' mira primero la diferencia de tantos y despues
 # los tantos a favor; 'favor', al reves. Si todo coincide, el orden es
-# alfabetico, para que la tabla salga siempre igual.
+# alfabetico, para que la tabla salga siempre igual: sin mirar
+# mayusculas ni tildes (ver claveAlfabetica), como ordena la base.
 # =====================================================================
 
 class ConfiguracionTorneo
@@ -186,7 +187,7 @@ class ConfiguracionTorneo
                         if ($segundo_actual < $segundo_siguiente) {
                             $va_despues = true;
                         } elseif ($segundo_actual === $segundo_siguiente
-                                  && strcmp($actual->getNombreVisible(), $siguiente->getNombreVisible()) > 0) {
+                                  && self::compararNombres($actual->getNombreVisible(), $siguiente->getNombreVisible()) > 0) {
                             $va_despues = true;
                         }
                     }
@@ -200,6 +201,29 @@ class ConfiguracionTorneo
         }
 
         return $ordenadas;
+    }
+
+    # El nombre listo para ordenar: en minuscula y sin tildes, asi
+    # "Ómnibus" va con las o y "atlántida" antes que "Aurora". Comparar
+    # los bytes tal cual (strcmp) pone toda mayuscula antes de toda
+    # minuscula, y toda letra con tilde despues de la z. La ñ va con la
+    # n, como en utf8mb4_unicode_ci, el cotejo de la base.
+    public static function claveAlfabetica($nombre)
+    {
+        $sin_tildes = strtr(mb_strtolower((string)$nombre, 'UTF-8'), array(
+            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ñ' => 'n', 'ç' => 'c'));
+        return $sin_tildes;
+    }
+
+    # Menor que 0 si $a va antes, mayor si va despues. Si las dos claves
+    # coinciden ("Vortex" y "vortex"), decide el texto tal cual: el orden
+    # nunca queda librado al azar.
+    public static function compararNombres($a, $b)
+    {
+        $orden = strcmp(self::claveAlfabetica($a), self::claveAlfabetica($b));
+        return ($orden !== 0) ? $orden : strcmp((string)$a, (string)$b);
     }
 
     public function validar()

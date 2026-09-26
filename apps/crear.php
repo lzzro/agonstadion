@@ -8,6 +8,8 @@
 #   $disciplinas    arreglo de Disciplina, indexado por id
 #   $valores        lo que muestra cada campo (lo que llego, o los
 #                   valores de una liga nueva)
+#   $hoy            la fecha de hoy en Montevideo (AAAA-MM-DD), el
+#                   minimo de la fecha de inicio
 #   $errores        avisos generales (arreglo)
 #   $errores_campo  campo => mensaje, para mostrar al lado del campo
 #   $ruta_publica, $ruta_perfil, $ruta_crear, $ruta_panel   direcciones
@@ -148,8 +150,8 @@ $hay_errores = !empty($errores) || !empty($errores_campo);
         <?php echo errorCampo('cupo', $errores_campo); ?>
       </div>
       <div class="campo">
-        <label>Fecha de inicio<input type="date" id="campo-inicio" name="inicio" value="<?php echo $v['inicio']; ?>"<?php echo atributosCampo('inicio', true, $errores_campo); ?>></label>
-        <p class="ayuda-campo" id="ayuda-inicio">Opcional: puede quedar a definir.</p>
+        <label>Fecha de inicio<input type="date" id="campo-inicio" name="inicio" value="<?php echo $v['inicio']; ?>" min="<?php echo htmlspecialchars($hoy); ?>"<?php echo atributosCampo('inicio', true, $errores_campo); ?>></label>
+        <p class="ayuda-campo" id="ayuda-inicio">De hoy en adelante. Opcional: puede quedar a definir.</p>
         <?php echo errorCampo('inicio', $errores_campo); ?>
       </div>
     </div>

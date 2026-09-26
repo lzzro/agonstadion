@@ -82,5 +82,14 @@ function conectarBD()
     # Sin esto, los acentos y la enie se guardan mal.
     $conexion->set_charset($configuracion_bd['juego']);
 
+    # La hora de la base, la de Montevideo (UTC-3, sin horario de verano
+    # desde 2015), igual que la de las paginas (apps/fechas.php). Sin
+    # esto, NOW() y los DEFAULT CURRENT_TIMESTAMP guardan la hora del
+    # servidor, que en un hosting suele ser otra: un pedido hecho a las
+    # 17:14 figuraba a las 20:14. Se da como diferencia (-03:00) y no por
+    # nombre, porque el nombre necesita las tablas de zonas horarias de
+    # MariaDB, que un hosting no siempre tiene cargadas.
+    $conexion->query("SET time_zone = '-03:00'");
+
     return $conexion;
 }

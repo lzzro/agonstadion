@@ -252,7 +252,9 @@ h2 { margin: 0; font-family: var(--serif); font-size: 28px; font-weight: 500; }
 .intro { color: var(--ink2); max-width: 52ch; }
 .grilla { display: grid; grid-template-columns: 1fr; gap: 16px; }
 .fila { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.datos { display: flex; gap: 28px; padding-top: 16px; border-top: 1px solid var(--hair); }
+/* flex-wrap: con la marca "Incluye muestra" debajo, los tres numeros del
+   inicio no entran en un renglon en el telefono; el ultimo baja. */
+.datos { display: flex; flex-wrap: wrap; gap: 16px 28px; padding-top: 16px; border-top: 1px solid var(--hair); }
 .datos strong { display: block; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1; }
 
 /* ---------- Tablas ---------- */
@@ -356,7 +358,10 @@ div.pedir-lugar p { margin: 0; }
 .pasos-liga { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 /* "Semana anterior · Hoy · Semana siguiente" del calendario. */
 .semanas { gap: 8px 18px; font-size: 14px; }
-fieldset { border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+/* min-width: 0 porque un fieldset, por defecto, no se achica por debajo
+   de su contenido: la grilla de los puntos de "Nueva liga" lo estiraba
+   y la pagina se corria a lo ancho en el telefono. */
+fieldset { border: 1px solid var(--hair); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 legend { font-family: var(--serif); font-size: 20px; padding: 0 6px; }
 .opciones { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .opcion { display: flex; flex-direction: row; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--hair); background: var(--pario); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); }
@@ -546,6 +551,10 @@ form.pedir-rol { align-items: flex-start; }
 .partido .hora { font-family: var(--serif); font-size: 20px; color: var(--ink2); min-width: 56px; }
 .partido .cruce-nombres { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
 .partido .cruce-nombres .torneo { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); }
+/* El nombre de la liga es un enlace dentro de un renglon de texto: va
+   subrayado, porque de noche --ink y --ink3 no se distinguen lo
+   suficiente solo por el color (WCAG 1.4.1). */
+.partido .cruce-nombres .torneo a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .partido .cruce-nombres .lados { font-size: 15px; }
 .partido .cruce-nombres .lados .vs { color: var(--ink3); font-size: 13px; }
 /* Entre los nombres y el "vs" van espacios de verdad en el HTML, no

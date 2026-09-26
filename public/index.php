@@ -18,6 +18,8 @@ require_once $carpeta_app . '/ligas.php';
 #                     curso
 #   Participantes     los inscriptos en los torneos publicos
 #   Formatos          los del catalogo (liga, eliminacion, suizo)
+# Los dos primeros llevan la marca si suman ligas de muestra: "De
+# muestra" si todo sale de ellas, "Incluye muestra" si solo una parte.
 #
 # El recuadro del costado es la fecha en juego de la liga destacada (la
 # misma de "Posiciones" en el menu), con sus primeros partidos.
@@ -47,12 +49,19 @@ if ($conexion !== null) {
 }
 
 $activos = 0;
+$activos_muestra = 0;
 $participantes = 0;
+$participantes_muestra = 0;
 $en_vivo_destacada = false;
 if (is_array($lista)) {
     foreach ($lista as $fila) {
+        $de_muestra = $fila['torneo']->esDeMuestra();
         $participantes += $fila['inscriptos'];
-        if ($fila['torneo']->tieneInscripcionAbierta() || $fila['torneo']->estaEnCurso()) { $activos++; }
+        if ($de_muestra) { $participantes_muestra += $fila['inscriptos']; }
+        if ($fila['torneo']->tieneInscripcionAbierta() || $fila['torneo']->estaEnCurso()) {
+            $activos++;
+            if ($de_muestra) { $activos_muestra++; }
+        }
         if ($destacada !== null && (int)$fila['torneo']->getIdTorneo() === (int)$destacada->getIdTorneo()) {
             $en_vivo_destacada = $fila['en_vivo'];
         }
@@ -90,7 +99,7 @@ if (is_array($lista)) {
   <p class="intro">Liga, eliminación directa o sistema suizo. Esports, ajedrez, tenis de mesa o fútbol: inscripciones, enfrentamientos, resultados y posiciones en un solo lugar.</p>
   <div class="fila"><a class="btn btn-primario" href="crear.php">Organizar un torneo</a><a class="btn" href="torneos.php">Ver torneos públicos</a></div>
 <?php if (is_array($lista)) { ?>
-  <div class="datos"><div><strong><?php echo $activos; ?></strong><span class="etiqueta">Torneos activos</span></div><div><strong><?php echo $participantes; ?></strong><span class="etiqueta">Participantes</span></div><div><strong><?php echo (int)$formatos; ?></strong><span class="etiqueta">Formatos</span></div></div>
+  <div class="datos"><div><strong><?php echo $activos; ?></strong><span class="etiqueta">Torneos activos</span><?php echo marcaTotal($activos_muestra, $activos); ?></div><div><strong><?php echo $participantes; ?></strong><span class="etiqueta">Participantes</span><?php echo marcaTotal($participantes_muestra, $participantes); ?></div><div><strong><?php echo (int)$formatos; ?></strong><span class="etiqueta">Formatos</span></div></div>
 <?php } ?>
 </section>
 <section>

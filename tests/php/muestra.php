@@ -6,9 +6,12 @@
 #
 # Comprueba, leyendo la base con los mismos repositorios que usan las
 # paginas:
-#   - la tabla de la Liga Valorant, recalculada desde los partidos
-#     (TablaPosiciones), es la de las paginas de siempre: las 8 filas de
-#     la maqueta de torneo.php y las 4 que la completan;
+#   - la Liga Valorant no tiene ningun empate: se juega al mejor de 3
+#     mapas, asi que cada serie termina 2-0 o 2-1, y la liga no admite
+#     empates (admite_empate = 0);
+#   - su tabla, recalculada desde los partidos (TablaPosiciones), tiene el
+#     orden y las diferencias de mapas de la maqueta de torneo.php, con la
+#     columna E en 0 (los puntos cambian donde la maqueta tenia empates);
 #   - en las dos ligas en curso, la tabla guardada (tabla_posiciones) es
 #     la misma que la recalculada;
 #   - el fixture de cada liga en curso es el que arma Fixture.php con sus
@@ -56,22 +59,28 @@ foreach (array('Liga Valorant · Otoño', 'Liga Barrial del Cerro', 'Liga Intern
 }
 if (!chk(!in_array(null, $ids, true), 'las tres ligas de muestra estan en la base')) { fin(); }
 
-# La tabla de la maqueta de torneo.php (las 8 filas que mostraba) y las
-# 4 que faltaban, con mapas a favor y en contra.
+# La tabla de la Valorant, sin empates. El orden de los 12 y la
+# diferencia de mapas de cada uno son los de la maqueta de torneo.php
+# (que mostraba las 8 primeras); los puntos cambian donde la maqueta
+# tenia empates: Vortex 13 -> 12, Aurora FC 10 -> 9, Ping Masters 8 -> 9,
+# Liceo 3 7 -> 9, y abajo Rambla, Atlantida y Sur 7 -> 9.
 $esperada = array(
     'Titanes CS 7 6 0 1 13:4 9 18',
     'Nova Esports 7 5 0 2 12:6 6 15',
-    'Vortex 7 4 1 2 11:8 3 13',
+    'Vortex 7 4 0 3 11:8 3 12',
     'Delta Gaming 7 4 0 3 10:9 1 12',
-    'Aurora FC 7 3 1 3 10:10 0 10',
+    'Aurora FC 7 3 0 4 10:10 0 9',
     'Halcones 7 3 0 4 10:11 -1 9',
-    'Ping Masters 7 2 2 3 8:10 -2 8',
-    'Liceo 3 7 2 1 4 8:11 -3 7',
-    'Rambla Esports 7 2 1 4 7:10 -3 7',
-    'Atlántida GG 7 1 4 2 6:9 -3 7',
-    'Sur Gaming 7 2 1 4 7:11 -4 7',
-    'Faro Gaming 7 1 3 3 7:10 -3 6'
+    'Ping Masters 7 3 0 4 9:11 -2 9',
+    'Liceo 3 7 3 0 4 8:11 -3 9',
+    'Rambla Esports 7 3 0 4 7:10 -3 9',
+    'Atlántida GG 7 3 0 4 6:9 -3 9',
+    'Sur Gaming 7 3 0 4 7:11 -4 9',
+    'Faro Gaming 7 2 0 5 8:11 -3 6'
 );
+# De la maqueta: equipo, puesto y diferencia, en el orden de siempre.
+$maqueta = array('Titanes CS 9', 'Nova Esports 6', 'Vortex 3', 'Delta Gaming 1', 'Aurora FC 0',
+                 'Halcones -1', 'Ping Masters -2', 'Liceo 3 -3');
 
 foreach (array('Liga Valorant · Otoño', 'Liga Barrial del Cerro') as $nombre) {
     $id = $ids[$nombre];
@@ -87,9 +96,25 @@ foreach (array('Liga Valorant · Otoño', 'Liga Barrial del Cerro') as $nombre) 
 
     chk($desde_partidos === $guardada, "$nombre: la tabla guardada es la que sale de los partidos");
     if ($nombre === 'Liga Valorant · Otoño') {
-        chk(array_slice($desde_partidos, 0, 8) === array_slice($esperada, 0, 8),
-            "$nombre: las 8 filas de la maqueta, iguales (puesto, equipo, PJ, G, E, P, Dif, Pts)");
-        chk($desde_partidos === $esperada, "$nombre: las 12 filas, con los mapas a favor y en contra");
+        $orden_y_dif = array();
+        foreach (array_slice($calculada->getOrdenadas(), 0, 8) as $fila) {
+            $orden_y_dif[] = $fila->getNombreVisible() . ' ' . $fila->getDiferencia();
+        }
+        chk($orden_y_dif === $maqueta, "$nombre: las 8 primeras, en el orden y con la diferencia de la maqueta");
+        chk($desde_partidos === $esperada, "$nombre: las 12 filas, sin empates, con los mapas a favor y en contra");
+        $sentencia = $conexion->prepare("SELECT COUNT(*), SUM(re.puntaje_local = re.puntaje_visitante),
+                                                SUM(GREATEST(re.puntaje_local, re.puntaje_visitante) = 2
+                                                    AND LEAST(re.puntaje_local, re.puntaje_visitante) IN (0, 1)),
+                                                SUM(re.id_participante_ganador IS NULL), MAX(c.admite_empate)
+                                         FROM resultado re JOIN enfrentamiento en USING (id_enfrentamiento)
+                                              JOIN ronda r USING (id_ronda) JOIN configuracion_torneo c ON c.id_torneo = r.id_torneo
+                                         WHERE r.id_torneo = ?");
+        $sentencia->bind_param('i', $id);
+        $sentencia->execute();
+        $cuentas = $sentencia->get_result()->fetch_row();
+        chk($cuentas[0] == 42 && $cuentas[1] == 0 && $cuentas[2] == 42 && $cuentas[3] == 0 && $cuentas[4] == 0,
+            "$nombre: 42 series jugadas, todas 2-0 o 2-1, con ganador, ningun empate, y la liga no admite empates ("
+            . implode('/', $cuentas) . ')');
         if ($desde_partidos !== $esperada) { echo '        ' . implode("\n        ", $desde_partidos) . "\n"; }
     }
 

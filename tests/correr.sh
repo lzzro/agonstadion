@@ -8,7 +8,8 @@
 # Lo que necesita, por variables de entorno, esta en tests/README.md.
 # Nunca contra un servidor real: las pruebas crean cuentas, ligas y
 # equipos, y dan roles por SQL. Las de navegador no arrancan contra una
-# direccion que no sea la propia maquina.
+# direccion que no sea la propia maquina. Las que limpian borran solo
+# lo que ellas mismas crean (ver tests/README.md).
 #
 # Sale con 0 si todas las baterias dieron bien, y con 1 si alguna fallo.
 # =====================================================================
@@ -30,7 +31,12 @@ correr php tests/php/modelo_ligas.php
 # Con la base de prueba (ya migrada con la 005)
 correr php tests/php/muestra.php
 
-# Con el sitio andando
+# Con el sitio andando. Primero las que limpian lo suyo y comparan la
+# base antes y despues; despues las que dejan rastro. Nunca dos a la vez.
+correr node tests/e2e/permisos.js
+correr node tests/e2e/sesion.js
+correr node tests/e2e/subidas.js
+correr node tests/e2e/recorrido.js
 correr node tests/e2e/ligas.js
 correr node tests/e2e/publicas.js
 correr node tests/e2e/accesibilidad.js

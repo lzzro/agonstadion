@@ -42,7 +42,8 @@ $ultimos = array();
 $destacado = null;
 $sin_base = false;
 
-$pedido_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+# Solo un texto: un ?id[]=x (un arreglo) no es un numero de liga.
+$pedido_id = (isset($_GET['id']) && is_string($_GET['id'])) ? (int)$_GET['id'] : 0;
 $conexion = conectarBD();
 if ($conexion === null) {
     $sin_base = true;
@@ -85,14 +86,20 @@ foreach ($todos as $p) {
     if ($p->estaEnCompetencia()) { $en_competencia[(int)$p->getIdParticipante()] = $p; }
 }
 $en_vivo = null;       # el partido en vivo, si hay
-$proximo = null;       # el primero por jugar con dia y hora
+$proximo = null;       # el primero por jugar con dia y hora, de ahora en adelante
+$ahora   = date('Y-m-d H:i:s');   # Montevideo (apps/fechas.php), como la base
 $cerradas = 0;
 $actual = null;        # la primera fecha sin cerrar
 foreach ($rondas as $ronda) {
     if ($ronda->estaCerrada()) { $cerradas++; } elseif ($actual === null) { $actual = $ronda; }
     foreach ($ronda->getEnfrentamientos() as $e) {
         if ($e->estaEnVivo() && $en_vivo === null) { $en_vivo = $e; }
+        # Un programado con la hora ya pasada no es "proximo": su
+        # resultado todavia no esta cargado. Las dos fechas van como
+        # AAAA-MM-DD HH:MM:SS, asi que comparar el texto es comparar
+        # las fechas.
         if ($e->getEstado() === 'programado' && $e->getFechaHora() !== null && !$e->esLibre()
+            && $e->getFechaHora() >= $ahora
             && ($proximo === null || $e->getFechaHora() < $proximo['partido']->getFechaHora())) {
             $proximo = array('partido' => $e, 'ronda' => $ronda);
         }
@@ -112,9 +119,11 @@ $avisos_lugar = array(
     'cupo'           => array(true, 'La liga ya tiene su cupo completo.'),
     'ya-juega'       => array(true, 'Ese equipo ya juega esta liga.'),
     'en-revision'    => array(true, 'Ese equipo ya tiene un pedido en revisión en esta liga.'),
-    'no-disponible'  => array(true, 'El pedido no se puede registrar por ahora.')
+    'no-disponible'  => array(true, 'El pedido no se puede registrar por ahora.'),
+    'muestra'        => array(true, 'Una liga de muestra no recibe pedidos.')
 );
-$aviso = (isset($_GET['aviso']) && isset($avisos_lugar[$_GET['aviso']])) ? $avisos_lugar[$_GET['aviso']] : null;
+$aviso = (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos_lugar[$_GET['aviso']]))
+       ? $avisos_lugar[$_GET['aviso']] : null;
 
 # Lo que dice la etiqueta de arriba del nombre.
 $avance = '';
@@ -236,7 +245,9 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
 <?php   } ?>
 <?php   if ($torneo->tieneInscripcionAbierta()) { ?>
   <div class="pedir-lugar">
-<?php     if ($cupo_lleno) { ?>
+<?php     if ($torneo->esDeMuestra()) { ?>
+    <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small>Una liga de muestra no recibe pedidos.</small></p>
+<?php     } elseif ($cupo_lleno) { ?>
     <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small>La liga tiene su cupo completo.</small></p>
 <?php     } elseif ($persona_sesion === null) { ?>
     <p><a class="btn" href="login.php">Iniciar sesión para pedir lugar</a></p>
@@ -309,7 +320,7 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
     <tbody><?php foreach ($tabla as $i => $fila) { ?><tr<?php if ($i < $clasifican) { echo ' class="clasifica"'; } ?>><td class="num"><?php echo $i + 1; ?></td><td><?php echo htmlspecialchars($fila->getNombreVisible()); ?></td><td><?php echo $fila->getPartidosJugados(); ?></td><td><?php echo $fila->getGanados(); ?></td><td><?php echo $fila->getEmpatados(); ?></td><td><?php echo $fila->getPerdidos(); ?></td><td><?php echo conSigno($fila->getDiferencia()); ?></td><td class="num"><?php echo $fila->getPuntos($config); ?></td></tr><?php } ?></tbody>
   </table>
   </div>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php if ($clasifican > 0) { echo 'En verde: clasifican a playoffs · '; } ?>Victoria <?php echo $config->getPuntosVictoria(); ?> pts · Empate <?php echo $config->getPuntosEmpate(); ?> pt<?php echo ($config->getPuntosEmpate() === 1) ? '' : 's'; ?> · Dif: diferencia de <?php echo $unidad; ?></span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php if ($clasifican > 0) { echo 'En verde: clasifican a playoffs · '; } ?>Victoria <?php echo $config->getPuntosVictoria(); ?> pts · <?php if ($config->admiteEmpate()) { ?>Empate <?php echo $config->getPuntosEmpate(); ?> pt<?php echo ($config->getPuntosEmpate() === 1) ? '' : 's'; ?><?php } else { ?>Sin empates<?php } ?> · Dif: diferencia de <?php echo $unidad; ?></span>
 <?php   } ?>
   </section>
 </div>
@@ -344,8 +355,15 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
           $reglas = array();
           $reglas['Formato'] = 'Liga de ' . ($torneo->tieneInscripcionAbierta() ? 'hasta ' . $torneo->getMaxParticipantes() : count($en_competencia))
                              . ' equipos, todos contra todos, ' . vueltasTexto($config) . '.';
-          $reglas['Puntaje'] = $config->getPuntosVictoria() . ' puntos la victoria, ' . $config->getPuntosEmpate()
-                             . ' el empate y ' . $config->getPuntosDerrota() . ' la derrota.';
+          # Una liga sin empates (admite_empate = 0, como las de series al
+          # mejor de un numero impar) no nombra los puntos del empate.
+          if ($config->admiteEmpate()) {
+              $reglas['Puntaje'] = $config->getPuntosVictoria() . ' puntos la victoria, ' . $config->getPuntosEmpate()
+                                 . ' el empate y ' . $config->getPuntosDerrota() . ' la derrota.';
+          } else {
+              $reglas['Puntaje'] = $config->getPuntosVictoria() . ' puntos la victoria y ' . $config->getPuntosDerrota()
+                                 . ' la derrota. Ningún partido termina empatado.';
+          }
           $reglas['Desempate'] = $config->textoDesempate($unidad);
           if ($config->getClasificanPlayoffs() > 0) {
               $reglas['Playoffs'] = 'Clasifican los ' . $config->getClasificanPlayoffs() . ' primeros de la tabla.';
@@ -433,8 +451,12 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
             $oraciones = explode('. ', $config->getReglas());
             $breve .= ' ' . rtrim($oraciones[0], '.') . '.';
         }
-        $breve .= ' Victoria ' . $config->getPuntosVictoria() . ' pts, empate ' . $config->getPuntosEmpate()
-                . ' pt' . (($config->getPuntosEmpate() === 1) ? '' : 's') . '.';
+        if ($config->admiteEmpate()) {
+            $breve .= ' Victoria ' . $config->getPuntosVictoria() . ' pts, empate ' . $config->getPuntosEmpate()
+                    . ' pt' . (($config->getPuntosEmpate() === 1) ? '' : 's') . '.';
+        } else {
+            $breve .= ' Victoria ' . $config->getPuntosVictoria() . ' pts, sin empates.';
+        }
         if ($config->getClasificanPlayoffs() > 0) {
             $breve .= ' Los ' . $config->getClasificanPlayoffs() . ' primeros clasifican a playoffs.';
         }

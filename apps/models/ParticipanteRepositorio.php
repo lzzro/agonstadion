@@ -86,14 +86,18 @@ class ParticipanteRepositorio
     }
 
     # El organizador anota un equipo a mano (ver la cabecera). Devuelve
-    # un arreglo de errores, vacio si quedo anotado.
+    #   array('errores' => arreglo, vacio si quedo anotado,
+    #         'id_participante' => la inscripcion nueva, para la auditoria,
+    #         'id_equipo_nuevo' => el equipo, si hubo que crearlo; si no, null)
     public function agregarEquipo(Torneo $torneo, Usuario $organizador, $nombre)
     {
+        $salida = array('errores' => array(), 'id_participante' => null, 'id_equipo_nuevo' => null);
         $nombre = trim((string)$nombre);
         $equipo_nuevo = new Equipo(null, $nombre);
         $errores = $equipo_nuevo->validar();
         if (!empty($errores)) {
-            return $errores;
+            $salida['errores'] = $errores;
+            return $salida;
         }
 
         $torneos   = new TorneoRepositorio($this->conexion);
@@ -105,16 +109,19 @@ class ParticipanteRepositorio
         $cantidad = $torneos->bloquearYContar($id_torneo, $id_org);
         if ($cantidad === null) {
             $this->conexion->rollback();
-            return array('Esa liga no está a cargo de esta cuenta.');
+            $salida['errores'][] = 'Esa liga no está a cargo de esta cuenta.';
+            return $salida;
         }
         $actual = $torneos->buscarPorId($id_torneo);
         if ($actual === null || !$actual->tieneInscripcionAbierta()) {
             $this->conexion->rollback();
-            return array('La inscripción de esa liga está cerrada.');
+            $salida['errores'][] = 'La inscripción de esa liga está cerrada.';
+            return $salida;
         }
         if ($cantidad >= $actual->getMaxParticipantes()) {
             $this->conexion->rollback();
-            return array('La liga ya tiene su cupo completo.');
+            $salida['errores'][] = 'La liga ya tiene su cupo completo.';
+            return $salida;
         }
 
         # ¿Ya hay un equipo con ese nombre?
@@ -127,7 +134,8 @@ class ParticipanteRepositorio
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
             $this->conexion->rollback();
-            return array('El equipo no se puede anotar por ahora.');
+            $salida['errores'][] = 'El equipo no se puede anotar por ahora.';
+            return $salida;
         }
         $sentencia->bind_param('is', $id_org, $nombre);
         $sentencia->execute();
@@ -137,11 +145,13 @@ class ParticipanteRepositorio
         if ($fila !== null) {
             if ($fila['id_usuario_capitan'] !== null) {
                 $this->conexion->rollback();
-                return array('Ese equipo tiene capitán: entra con su propio pedido.');
+                $salida['errores'][] = 'Ese equipo tiene capitán: entra con su propio pedido.';
+                return $salida;
             }
             if ((int)$fila['en_ligas_ajenas'] > 0) {
                 $this->conexion->rollback();
-                return array('Ese nombre ya lo usa un equipo de otra liga.');
+                $salida['errores'][] = 'Ese nombre ya lo usa un equipo de otra liga.';
+                return $salida;
             }
             $id_equipo = (int)$fila['id_equipo'];
         } else {
@@ -149,15 +159,18 @@ class ParticipanteRepositorio
             $sentencia = $this->conexion->prepare($sql);
             if ($sentencia === false) {
                 $this->conexion->rollback();
-                return array('El equipo no se puede anotar por ahora.');
+                $salida['errores'][] = 'El equipo no se puede anotar por ahora.';
+                return $salida;
             }
             $sentencia->bind_param('s', $nombre);
             if (!$sentencia->execute()) {
                 $sentencia->close();
                 $this->conexion->rollback();
-                return array('El equipo no se puede anotar por ahora.');
+                $salida['errores'][] = 'El equipo no se puede anotar por ahora.';
+                return $salida;
             }
             $id_equipo = (int)$this->conexion->insert_id;
+            $salida['id_equipo_nuevo'] = $id_equipo;
             $sentencia->close();
         }
 
@@ -165,20 +178,22 @@ class ParticipanteRepositorio
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
             $this->conexion->rollback();
-            return array('El equipo no se puede anotar por ahora.');
+            $salida['errores'][] = 'El equipo no se puede anotar por ahora.';
+            return $salida;
         }
         $sentencia->bind_param('ii', $id_torneo, $id_equipo);
         if (!$sentencia->execute()) {
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
             $this->conexion->rollback();
-            return array($duplicado ? 'Ese equipo ya juega esta liga.'
-                                    : 'El equipo no se puede anotar por ahora.');
+            $salida['errores'][] = $duplicado ? 'Ese equipo ya juega esta liga.' : 'El equipo no se puede anotar por ahora.';
+            return $salida;
         }
+        $salida['id_participante'] = (int)$this->conexion->insert_id;
         $sentencia->close();
 
         $this->conexion->commit();
-        return array();
+        return $salida;
     }
 
     #endregion

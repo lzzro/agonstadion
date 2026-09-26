@@ -102,7 +102,8 @@ $codigos = array(
     'La inscripción de esa liga está cerrada.'                => 'cerrada',
     'La liga ya tiene su cupo completo.'                       => 'cupo',
     'Ese equipo ya juega esta liga.'                           => 'ya-juega',
-    'Ese equipo ya tiene un pedido en revisión en esta liga.'  => 'en-revision'
+    'Ese equipo ya tiene un pedido en revisión en esta liga.'  => 'en-revision',
+    'Una liga de muestra no recibe pedidos.'                   => 'muestra'
 );
 
 if ($equipo === null) {

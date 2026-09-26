@@ -41,6 +41,7 @@ require_once __DIR__ . '/../models/TorneoRepositorio.php';
 require_once __DIR__ . '/../models/CatalogoRepositorio.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
+require_once __DIR__ . '/../fechas.php';
 
 # Direcciones. Si quien llama no las dejo preparadas, vale la
 # instalacion local. Ver apps/index.php.
@@ -48,6 +49,9 @@ if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_crear))   { $ruta_crear   = 'crearController.php'; }
 if (!isset($ruta_panel))   { $ruta_panel   = 'panelController.php'; }
+
+# Hoy, en Montevideo (apps/fechas.php): una liga no empieza antes.
+$hoy = date('Y-m-d');
 
 $titulo  = 'Nueva liga';
 $mensaje = '';
@@ -121,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = rechazarCsrf();
     } else {
         foreach ($valores as $campo => $defecto) {
-            $valores[$campo] = isset($_POST[$campo]) ? trim((string)$_POST[$campo]) : '';
+            # Solo textos: un campo mandado como arreglo (nombre[]=x) queda vacio.
+            $valores[$campo] = (isset($_POST[$campo]) && is_string($_POST[$campo])) ? trim($_POST[$campo]) : '';
         }
 
         # Cada campo, con su mensaje. Los numeros se castean con (int)
@@ -171,6 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($valores['inicio'] !== '' && !Torneo::fechaValida($valores['inicio'])) {
             $errores_campo['inicio'] = 'La fecha de inicio no es una fecha válida.';
+        } elseif ($valores['inicio'] !== '' && $valores['inicio'] < $hoy) {
+            # Las dos van como AAAA-MM-DD: comparar el texto es comparar
+            # las fechas.
+            $errores_campo['inicio'] = 'La fecha de inicio va de hoy en adelante.';
         }
 
         if (empty($errores_campo)) {

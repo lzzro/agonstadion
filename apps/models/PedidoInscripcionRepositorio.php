@@ -33,8 +33,11 @@ class PedidoInscripcionRepositorio
     }
 
     # Registra el pedido. Las reglas que no son de la base (que la liga
-    # tenga la inscripcion abierta y lugar, que el equipo no este ya
-    # adentro) se miran aca; que no haya dos pendientes lo cuida la base.
+    # tenga la inscripcion abierta y lugar, que no sea de muestra, que el
+    # equipo no este ya adentro) se miran aca, en una transaccion y con la
+    # fila del torneo bloqueada (SELECT ... FOR UPDATE): asi un pedido no
+    # se cuela mientras se cierra la inscripcion, que bloquea la misma
+    # fila. Que no haya dos pendientes lo cuida la base.
     # Devuelve un arreglo de errores, vacio si quedo registrado.
     public function crear(PedidoInscripcion $pedido)
     {
@@ -42,25 +45,46 @@ class PedidoInscripcionRepositorio
         if (!empty($errores)) {
             return $errores;
         }
-        $torneo = $pedido->getTorneo();
-        if (!$torneo->tieneInscripcionAbierta()) {
-            return array('La inscripción de esa liga está cerrada.');
+        # Las ligas de muestra las organiza una cuenta que no inicia
+        # sesion: un pedido ahi quedaria sin resolver para siempre.
+        if ($pedido->getTorneo()->esDeMuestra()) {
+            return array('Una liga de muestra no recibe pedidos.');
         }
 
         $torneos   = new TorneoRepositorio($this->conexion);
-        $id_torneo = (int)$torneo->getIdTorneo();
+        $id_torneo = (int)$pedido->getTorneo()->getIdTorneo();
         $id_equipo = (int)$pedido->getEquipo()->getIdEquipo();
 
-        if ($torneos->contarParticipantes($id_torneo) >= $torneo->getMaxParticipantes()) {
+        $this->conexion->begin_transaction();
+
+        $sql = 'SELECT estado, max_participantes FROM torneo WHERE id_torneo = ? FOR UPDATE';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            $this->conexion->rollback();
+            return array('El pedido no se puede registrar por ahora.');
+        }
+        $sentencia->bind_param('i', $id_torneo);
+        $sentencia->execute();
+        $fila = $sentencia->get_result()->fetch_assoc();
+        $sentencia->close();
+
+        if ($fila === null || $fila['estado'] !== 'inscripcion') {
+            $this->conexion->rollback();
+            return array('La inscripción de esa liga está cerrada.');
+        }
+        if ($torneos->contarParticipantes($id_torneo) >= (int)$fila['max_participantes']) {
+            $this->conexion->rollback();
             return array('La liga ya tiene su cupo completo.');
         }
         if ($this->equipoInscripto($id_torneo, $id_equipo)) {
+            $this->conexion->rollback();
             return array('Ese equipo ya juega esta liga.');
         }
 
         $sql = 'INSERT INTO pedido_inscripcion (id_torneo, id_equipo, id_usuario) VALUES (?, ?, ?)';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
+            $this->conexion->rollback();
             return array('El pedido no se puede registrar por ahora.');
         }
         $id_usuario = (int)$pedido->getUsuario()->getIdUsuario();
@@ -68,11 +92,14 @@ class PedidoInscripcionRepositorio
         if (!$sentencia->execute()) {
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
+            $this->conexion->rollback();
             return array($duplicado ? 'Ese equipo ya tiene un pedido en revisión en esta liga.'
                                     : 'El pedido no se puede registrar por ahora.');
         }
         $pedido->setIdPedidoInscripcion($this->conexion->insert_id);
         $sentencia->close();
+
+        $this->conexion->commit();
         return array();
     }
 

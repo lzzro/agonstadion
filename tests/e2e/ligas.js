@@ -24,6 +24,10 @@
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
 
+// Un dia contado desde hoy en Montevideo (UTC-3 todo el ano, como el
+// sitio), como AAAA-MM-DD: diaMvd(0) es hoy, diaMvd(-1) ayer.
+const diaMvd = dias => new Date(Date.now() - 3 * 3600 * 1000 + dias * 86400 * 1000).toISOString().slice(0, 10);
+
 let nav = null;
 (async () => {
   const t = c.contador('Ligas de punta a punta');
@@ -73,6 +77,15 @@ let nav = null;
     cupo: '8', vueltas: 'una', victoria: '2', empate: '3', derrota: '0', desempate: 'diferencia', inicio: '' });
   t.chk(r.cuerpo.includes('El empate no vale más que la victoria.'), 'el empate no puede valer mas que la victoria');
 
+  // Una fecha de inicio que ya paso (ayer, en Montevideo), y el minimo
+  // del campo, que es hoy.
+  r = await c.postear(O.ctx, url_crear, { token_csrf: tk, nombre: `Liga Y ${sufijo}`, disciplina: sql(`SELECT id_disciplina FROM disciplina WHERE nombre = 'Ajedrez'`),
+    cupo: '8', vueltas: 'una', victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', inicio: diaMvd(-1) });
+  t.chk(r.cuerpo.includes('La fecha de inicio va de hoy en adelante.') && r.cuerpo.includes('id="error-inicio"'),
+        'una fecha de inicio pasada no se acepta, con el error al lado del campo');
+  t.chk(r.cuerpo.includes(`min="${diaMvd(0)}"`), `el campo de la fecha tiene de minimo el dia de hoy (${diaMvd(0)})`);
+  t.chk(sql(`SELECT COUNT(*) FROM torneo WHERE id_usuario_organizador = ${org.id}`) === '0', 'con la fecha pasada no se crea nada');
+
   // Bien, por el formulario.
   const liga = `Liga de Prueba ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);
@@ -110,7 +123,12 @@ let nav = null;
   };
   for (const letra of ['A', 'B', 'C']) await anotar(`Equipo ${letra} ${sufijo}`);
   t.chk(sql(`SELECT COUNT(*) FROM participante WHERE id_torneo = ${id}`) === '3', 'tres equipos anotados a mano');
-  t.chk(sql(`SELECT COUNT(*) FROM auditoria WHERE accion = 'inscripcion' AND id_registro = ${id}`) === '3', 'cada uno queda en la auditoria');
+  t.chk(sql(`SELECT COUNT(*) FROM auditoria a JOIN participante p ON p.id_participante = a.id_registro
+             WHERE a.accion = 'inscripcion' AND a.tabla_afectada = 'participante' AND p.id_torneo = ${id}`) === '3',
+        'cada inscripcion queda en la auditoria, con el id de su participante');
+  t.chk(sql(`SELECT COUNT(*) FROM auditoria a JOIN equipo e ON e.id_equipo = a.id_registro
+             WHERE a.accion = 'alta' AND a.tabla_afectada = 'equipo' AND e.nombre LIKE 'Equipo _ ${sufijo}'`) === '3',
+        'y el alta de cada equipo nuevo, con el id del equipo');
   await anotar(`equipo a ${sufijo}`);
   t.chk((await O.p.title()).startsWith('Aviso ·') && (await O.p.textContent(`#error-equipo-${id}`)).includes('ya juega esta liga'),
         'el mismo equipo otra vez (en minuscula): aviso al lado del campo');
@@ -205,6 +223,20 @@ let nav = null;
   t.chk(O.p.url().includes('aviso=pedido-rechazado'), 'rechazar');
   t.chk(sql(`SELECT COUNT(*) FROM participante p JOIN equipo e USING (id_equipo) WHERE p.id_torneo = ${id} AND e.nombre = ${texto(equipo_j)}`) === '1',
         'el aceptado juega la liga');
+  // En el perfil del capitan aceptado, "Mis torneos" ya la lista, con su
+  // equipo; en el del rechazado, no.
+  const misTorneos = async pag => {
+    await pag.goto(`${await c.direccionDe(pag, 'perfil.php')}#mis-torneos`);
+    await pag.reload();
+    return { filas: await pag.$$eval('#mis-torneos tbody tr', trs => trs.map(tr => [...tr.cells].map(x => x.textContent.trim()).join(' | '))),
+             torneos: await pag.textContent('.datos > div:first-child strong') };
+  };
+  let mis = await misTorneos(J.p);
+  t.chk(mis.filas.length === 1 && mis.filas[0].startsWith(liga) && mis.filas[0].includes(`Equipo · ${equipo_j}`)
+        && mis.filas[0].includes('Inscripción abierta') && mis.torneos === '1',
+        `"Mis torneos" del capitan aceptado lista la liga, con su equipo, y la estadistica Torneos pasa a 1 (${mis.filas.join(' / ')})`);
+  mis = await misTorneos(J2.p);
+  t.chk(mis.filas.length === 0 && mis.torneos === '0', 'la del capitan rechazado, no');
   t.chk(sql(`SELECT GROUP_CONCAT(estado ORDER BY id_pedido_inscripcion) FROM pedido_inscripcion WHERE id_torneo = ${id}`) === 'aceptado,rechazado',
         'en la base: aceptado y rechazado, con fecha y responsable');
   t.chk(sql(`SELECT COUNT(*) FROM auditoria WHERE tabla_afectada = 'pedido_inscripcion' AND accion IN ('aprobacion', 'rechazo') AND id_usuario = ${org.id}`) === '2',
@@ -311,10 +343,11 @@ let nav = null;
   await O.p.selectOption('select[name="disciplina"]', { label: 'Esports' });
   await O.p.fill('input[name="cupo"]', '4');
   await O.p.check('#vueltas-dos');
-  await O.p.fill('input[name="inicio"]', '2026-11-07');
+  const inicio2 = diaMvd(42);
+  await O.p.fill('input[name="inicio"]', inicio2);
   await Promise.all([O.p.waitForNavigation(), O.p.click('main form button[type="submit"]')]);
   const id2 = parseInt(sql(`SELECT id_torneo FROM torneo WHERE nombre = ${texto(liga2)}`), 10);
-  t.chk(sql(`SELECT CONCAT(fecha_inicio, '|', ida_y_vuelta) FROM torneo JOIN configuracion_torneo USING (id_torneo) WHERE id_torneo = ${id2}`) === '2026-11-07|1',
+  t.chk(sql(`SELECT CONCAT(fecha_inicio, '|', ida_y_vuelta) FROM torneo JOIN configuracion_torneo USING (id_torneo) WHERE id_torneo = ${id2}`) === `${inicio2}|1`,
         'ida y vuelta, con fecha de inicio');
   for (const letra of ['P', 'Q', 'R', 'S']) {
     await O.p.goto(`${BASE}/panel.php`);

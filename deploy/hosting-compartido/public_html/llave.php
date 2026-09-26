@@ -26,8 +26,13 @@ $conexion = conectarBD();
 if ($conexion !== null) {
     $torneos = new TorneoRepositorio($conexion);
     $lista = $torneos->listarPublicos();
-    if (isset($_GET['id']) && (int)$_GET['id'] > 0) {
+    if (isset($_GET['id']) && is_string($_GET['id']) && (int)$_GET['id'] > 0) {
         $liga = $torneos->buscarPorId((int)$_GET['id']);
+        # Solo un torneo publico: un borrador o uno cancelado no se nombra
+        # (torneo.php tampoco lo muestra).
+        if ($liga !== null && !in_array($liga->getEstado(), array('inscripcion', 'en_curso', 'finalizado'))) {
+            $liga = null;
+        }
     }
     $conexion->close();
 }

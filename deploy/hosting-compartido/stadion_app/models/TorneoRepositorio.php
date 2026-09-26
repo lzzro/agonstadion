@@ -241,9 +241,10 @@ class TorneoRepositorio
     }
 
     # Si ya hay una liga vigente (no finalizada ni cancelada) con ese
-    # nombre. La base no lo puede frenar sola: su UNIQUE es de nombre y
-    # fecha de inicio, y la fecha puede quedar sin definir. Compara con
-    # el cotejo de la tabla, que no distingue mayusculas ni tildes.
+    # nombre, para dar un aviso claro antes de intentar. La base lo frena
+    # igual (uq_torneo_vigente), incluso si dos se crean a la vez: por eso
+    # el 1062 del INSERT da el mismo aviso. Compara con el cotejo de la
+    # tabla, que no distingue mayusculas ni tildes.
     public function nombreEnUso($nombre)
     {
         $sql = "SELECT 1 FROM torneo
@@ -299,7 +300,10 @@ class TorneoRepositorio
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
             $this->conexion->rollback();
-            return array($duplicado ? 'Ya hay una liga con ese nombre y esa fecha de inicio.'
+            # 1062: uq_torneo_vigente (otra liga vigente con ese nombre,
+            # creada a la vez) o uq_torneo_nom (una terminada con el mismo
+            # nombre y la misma fecha). Las dos son el nombre.
+            return array($duplicado ? 'Ya hay una liga en juego con ese nombre.'
                                     : 'La liga no se puede crear por ahora.');
         }
         $torneo->setIdTorneo($this->conexion->insert_id);

@@ -308,14 +308,19 @@ let nav = null;
   const tabla = await p.$$eval('#posiciones tbody tr', trs => trs.map(tr => ({
     celdas: [...tr.children].map(td => td.textContent).join(' '), clasifica: tr.classList.contains('clasifica') })));
   t.chk(tabla.length === 12, `la tabla tiene 12 filas (${tabla.length})`);
-  const maqueta = ['1 Titanes CS 7 6 0 1 +9 18', '2 Nova Esports 7 5 0 2 +6 15', '3 Vortex 7 4 1 2 +3 13', '4 Delta Gaming 7 4 0 3 +1 12',
-                   '5 Aurora FC 7 3 1 3 0 10', '6 Halcones 7 3 0 4 -1 9', '7 Ping Masters 7 2 2 3 -2 8', '8 Liceo 3 7 2 1 4 -3 7'];
-  t.chk(tabla.slice(0, 8).map(x => x.celdas).join('/') === maqueta.join('/'), 'las 8 primeras filas son las de la maqueta de siempre');
+  // La Liga Valorant se juega al mejor de 3 mapas: sin empates. El orden
+  // y las diferencias son los de la maqueta de siempre; los puntos no,
+  // porque la maqueta tenia empates (ver sql/migraciones/005_ligas.sql).
+  const esperada8 = ['1 Titanes CS 7 6 0 1 +9 18', '2 Nova Esports 7 5 0 2 +6 15', '3 Vortex 7 4 0 3 +3 12', '4 Delta Gaming 7 4 0 3 +1 12',
+                     '5 Aurora FC 7 3 0 4 0 9', '6 Halcones 7 3 0 4 -1 9', '7 Ping Masters 7 3 0 4 -2 9', '8 Liceo 3 7 3 0 4 -3 9'];
+  t.chk(tabla.slice(0, 8).map(x => x.celdas).join('/') === esperada8.join('/'),
+        'las 8 primeras filas: el orden y las diferencias de la maqueta, sin empates');
+  t.chk(tabla.every(x => x.celdas.split(' ').slice(-4, -3)[0] === '0'), 'la columna E, en 0 en las 12 filas');
   t.chk(tabla.map(x => x.celdas).join('/') === tablaEsperada(V).join('/'), 'las 12 filas son las de tabla_posiciones, con el orden del desempate');
   const clasifican = parseInt(sql(`SELECT clasifican_playoffs FROM configuracion_torneo WHERE id_torneo = ${V}`), 10);
   t.chk(clasifican === 4 && tabla.every((x, i) => x.clasifica === (i < 4)), 'las 4 primeras (y solo esas) llevan class="clasifica"');
-  t.chk((await p.textContent('#posiciones .tarjeta > .etiqueta')).includes('En verde: clasifican a playoffs · Victoria 3 pts · Empate 1 pt · Dif: diferencia de mapas'),
-        'debajo de la tabla, los puntos y la unidad de la disciplina (mapas)');
+  t.chk((await p.textContent('#posiciones .tarjeta > .etiqueta')).includes('En verde: clasifican a playoffs · Victoria 3 pts · Sin empates · Dif: diferencia de mapas'),
+        'debajo de la tabla, los puntos (sin empates: la liga no los admite) y la unidad de la disciplina (mapas)');
 
   // Participantes.
   const equipos_v = await p.$$eval('#participantes tbody tr td:first-child', tds => tds.map(td => td.textContent));
@@ -326,11 +331,12 @@ let nav = null;
 
   // Reglas.
   const reglas = await p.$$eval('#reglas tbody tr', trs => trs.map(tr => tr.querySelector('th').textContent + ': ' + tr.querySelector('td').textContent));
-  t.chk(sql(`SELECT CONCAT(puntos_victoria, '/', puntos_empate, '/', puntos_derrota, '/', criterio_desempate) FROM configuracion_torneo WHERE id_torneo = ${V}`) === '3/1/0/diferencia'
-        && reglas.includes('Puntaje: 3 puntos la victoria, 1 el empate y 0 la derrota.'), 'Reglas: el puntaje 3/1/0 de la configuracion');
+  t.chk(sql(`SELECT CONCAT(puntos_victoria, '/', puntos_empate, '/', puntos_derrota, '/', criterio_desempate, '/', admite_empate) FROM configuracion_torneo WHERE id_torneo = ${V}`) === '3/1/0/diferencia/0'
+        && reglas.includes('Puntaje: 3 puntos la victoria y 0 la derrota. Ningún partido termina empatado.'),
+        'Reglas: 3/1/0 en la configuracion, sin empates (admite_empate = 0): no nombra los puntos del empate');
   t.chk(reglas.includes('Desempate: Primero la diferencia de mapas (a favor menos en contra); si persiste, los mapas a favor. Si todo coincide, el orden alfabético.'),
         'Reglas: el desempate de la liga, con la unidad de la disciplina');
-  t.chk(reglas.includes('Playoffs: Clasifican los 4 primeros de la tabla.') && reglas.some(x => x.startsWith('Partidos: Series al mejor de 3 mapas.')),
+  t.chk(reglas.includes('Playoffs: Clasifican los 4 primeros de la tabla.') && reglas.some(x => x.startsWith('Partidos: Series al mejor de 3 mapas: gana la serie quien se queda con dos, así que no hay empates.')),
         'Reglas: los playoffs y el texto de las reglas de la base');
   t.chk(await p.$$eval('#reglas tbody th', ths => ths.every(th => th.getAttribute('scope') === 'row')), 'los rotulos de Reglas son <th scope="row">');
 
@@ -346,10 +352,24 @@ let nav = null;
   const proximo_base = sql(`SELECT CONCAT(el.nombre, ' vs ', ev.nombre, '|', en.fecha_hora) FROM enfrentamiento en INNER JOIN ronda r ON r.id_ronda = en.id_ronda
                             INNER JOIN participante pl ON pl.id_participante = en.id_participante_local INNER JOIN equipo el ON el.id_equipo = pl.id_equipo
                             INNER JOIN participante pv ON pv.id_participante = en.id_participante_visitante INNER JOIN equipo ev ON ev.id_equipo = pv.id_equipo
-                            WHERE r.id_torneo = ${V} AND en.estado = 'programado' AND en.fecha_hora IS NOT NULL ORDER BY en.fecha_hora LIMIT 1`);
-  t.chk(proximo_base === 'Nova Esports vs Delta Gaming|2026-09-18 20:30:00'
-        && resumen.some(s => s.includes('Próximo enfrentamiento Nova Esports vs Delta Gaming Fecha 8 · viernes 18 de septiembre, 20:30')),
-        'Resumen: el proximo, Nova Esports vs Delta Gaming, viernes 18 de septiembre, 20:30');
+                            WHERE r.id_torneo = ${V} AND en.estado = 'programado' AND en.fecha_hora IS NOT NULL
+                              AND en.id_participante_visitante IS NOT NULL
+                              AND en.fecha_hora >= CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-03:00')
+                            ORDER BY en.fecha_hora, r.numero, en.numero LIMIT 1`);
+  // "Proximo" es de ahora en adelante (Montevideo): un programado con la
+  // hora ya pasada no cuenta. Si no queda ninguno, la tarjeta no esta.
+  const tarjeta_proximo = resumen.filter(s => s.startsWith('Próximo enfrentamiento'));
+  if (proximo_base === '') {
+    t.chk(tarjeta_proximo.length === 0, 'Resumen: sin partidos por jugar de ahora en adelante, no hay "Próximo enfrentamiento"');
+  } else {
+    const [cruce, cuando] = proximo_base.split('|');
+    const ronda_proximo = sql(`SELECT r.numero FROM enfrentamiento en INNER JOIN ronda r ON r.id_ronda = en.id_ronda
+                               WHERE r.id_torneo = ${V} AND en.estado = 'programado' AND en.fecha_hora = ${texto(cuando)} ORDER BY r.numero, en.numero LIMIT 1`);
+    const esperado = `Próximo enfrentamiento ${cruce} Fecha ${ronda_proximo} · ${diaSemana(cuando)} ${fechaTexto(cuando)}, ${cuando.slice(11, 16)}`;
+    t.chk(cuando >= new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Montevideo', dateStyle: 'short', timeStyle: 'medium' }).format(new Date()).slice(0, 16)
+          && tarjeta_proximo.length === 1 && tarjeta_proximo[0].startsWith(esperado),
+          `Resumen: el proximo es el primero por jugar de ahora en adelante (${esperado.replace('Próximo enfrentamiento ', '')})`);
+  }
   t.chk((await p.textContent('#resumen .intro')).includes('7 fechas cerradas; la 8 en juego.'), 'Resumen: 7 fechas cerradas y la 8 en juego');
   t.chk(resumen.some(s => s.includes('Al frente de la tabla Titanes CS 18 puntos en 7 fechas')), 'Resumen: al frente, Titanes CS con 18 puntos');
 
@@ -415,13 +435,19 @@ let nav = null;
         'la Liga Interna: 9 de 12, y la primera fecha el domingo 4 de octubre');
   t.chk(await p.$$eval('#participantes tbody tr', trs => trs.length) === parseInt(sql(`SELECT COUNT(*) FROM participante WHERE id_torneo = ${S} AND estado IN ('inscripto', 'confirmado')`), 10),
         'sus participantes son los de la base');
-  t.chk(await p.$eval('.pedir-lugar a', a => a.getAttribute('href') + '|' + a.textContent) === 'login.php|Iniciar sesión para pedir lugar',
-        'sin sesion, "Iniciar sesión para pedir lugar" lleva al acceso');
+  // Una liga de muestra no recibe pedidos: la organiza una cuenta que no
+  // inicia sesion, y el pedido quedaria sin resolver.
+  t.chk(await p.$('.pedir-lugar a, .pedir-lugar form') === null
+        && (await p.textContent('.pedir-lugar')).replace(/\s+/g, ' ').trim() === 'Pedir lugar Una liga de muestra no recibe pedidos.'
+        && await p.$('.pedir-lugar .enlace-apagado[aria-disabled="true"]') !== null,
+        'la Liga Interna es de muestra: "Pedir lugar" apagado, con el porque');
 
   // La liga nueva: sin la marca.
   await p.goto(`${BASE}/torneo.php?id=${N}`);
   t.chk((await p.textContent('h1')) === liga && (await p.textContent('aside .tarjeta-olivo h3')) === 'Olivia De la prueba'
         && await p.$('.muestra') === null, 'la liga nueva: su organizador, sin ninguna marca De muestra');
+  t.chk(await p.$eval('.pedir-lugar a', a => a.getAttribute('href') + '|' + a.textContent) === 'login.php|Iniciar sesión para pedir lugar',
+        'en la liga nueva, sin sesion, "Iniciar sesión para pedir lugar" lleva al acceso');
 
   // Un numero que no existe.
   r = await p.goto(`${BASE}/torneo.php?id=999999`);
@@ -449,7 +475,8 @@ let nav = null;
       muestra: x.querySelectorAll('.muestra').length })),
     enlaces: [...document.querySelectorAll('.semanas a')].map(a => a.textContent.trim() + '>' + a.getAttribute('href')),
     hoy: [...document.querySelectorAll('.semanas span.enlace-apagado[aria-disabled="true"]')].map(s => s.textContent),
-    aside: document.querySelector('aside .tarjeta-olivo h3').textContent
+    aside: document.querySelector('aside .tarjeta-olivo h3').textContent,
+    aside_etiqueta: document.querySelector('aside .tarjeta-olivo .etiqueta').textContent
   }));
   const vivo_dia = sql(`SELECT DATE(en.fecha_hora) FROM enfrentamiento en INNER JOIN ronda r ON r.id_ronda = en.id_ronda INNER JOIN torneo t ON t.id_torneo = r.id_torneo
                         WHERE en.estado = 'en_vivo' AND ${PUBLICO} ORDER BY en.fecha_hora LIMIT 1`);
@@ -486,6 +513,7 @@ let nav = null;
         `Semana anterior y siguiente llevan ?semana= (${s.enlaces.join(' · ')})`);
   if (lunesDe(hoy) !== lunes) {
     t.chk(s.enlaces.includes(`Hoy>calendario.php?semana=${lunesDe(hoy)}`) && s.hoy.length === 0, `fuera de la semana de hoy, "Hoy" es un enlace a ?semana=${lunesDe(hoy)}`);
+    t.chk(s.aside_etiqueta === 'Resumen de la semana', `fuera de la semana de hoy, el costado no dice "Esta semana" (${s.aside_etiqueta})`);
   }
   await Promise.all([p.waitForNavigation(), p.click('.semanas a:first-child')]);
   t.chk((await p.textContent('main h1')) === tituloSemana(anterior) && p.url().endsWith(`?semana=${anterior}`),
@@ -510,6 +538,7 @@ let nav = null;
   s = await leerSemana();
   t.chk(s.titulo === tituloSemana(lunesDe(hoy)) && s.hoy.join() === 'Hoy' && !s.enlaces.some(x => x.startsWith('Hoy>')),
         `?semana=${hoy} (hoy): "Hoy" esta apagado (span.enlace-apagado), porque es la semana de hoy`);
+  t.chk(s.aside_etiqueta === 'Esta semana', 'y el costado dice "Esta semana"');
   await p.goto(`${BASE}/calendario.php?semana=2026-09-28`);
   t.chk((await p.textContent('main h1')) === 'Semana del 28 de septiembre al 4 de octubre', 'una semana que cruza de mes: "Semana del 28 de septiembre al 4 de octubre"');
 
@@ -540,13 +569,23 @@ let nav = null;
     const primeras = (await abrirTorneos()).tarjetas.slice(0, 3);
     await p.goto(`${BASE}/index.php`);
     return { primeras, tarjetas: await leerTarjetas(p, 'main'),
-             datos: await p.$$eval('.datos > div', ds => ds.map(d => d.querySelector('strong').textContent + ' ' + d.querySelector('.etiqueta').textContent)) };
+             datos: await p.$$eval('.datos > div', ds => ds.map(d => d.querySelector('strong').textContent + ' ' + d.querySelector('.etiqueta').textContent)),
+             marcas: await p.$$eval('.datos > div', ds => ds.map(d => (d.querySelector('.muestra') || { textContent: '' }).textContent)) };
   });
   const datos = vista.visto.datos;
   const activos = vista.base.lista.filter(x => x.estado === 'inscripcion' || x.estado === 'en_curso').length;
   const participantes = vista.base.lista.reduce((n, x) => n + x.inscriptos, 0);
   t.chk(datos.join(' / ') === `${activos} Torneos activos / ${participantes} Participantes / ${vista.base.formatos} Formatos`,
         `los tres numeros son los de la base (${datos.join(' / ')})`);
+  // La marca de cada total: "De muestra" si todo sale de ligas de
+  // muestra, "Incluye muestra" si una parte, nada si ninguna. Formatos
+  // es el catalogo: no lleva.
+  const marca = (de_muestra, total) => de_muestra <= 0 ? '' : (de_muestra >= total ? 'De muestra' : 'Incluye muestra');
+  const activas = vista.base.lista.filter(x => x.estado === 'inscripcion' || x.estado === 'en_curso');
+  const esperadas = [marca(activas.filter(x => x.muestra).length, activos),
+                     marca(vista.base.lista.filter(x => x.muestra).reduce((n, x) => n + x.inscriptos, 0), participantes), ''];
+  t.chk(vista.visto.marcas.join('|') === esperadas.join('|') && esperadas[0] === 'Incluye muestra',
+        `los totales que suman ligas de muestra lo dicen (${vista.visto.marcas.map(m => m || '—').join(' / ')})`);
   tarjetas = vista.visto.tarjetas;
   const primeras = vista.visto.primeras;
   t.chk(tarjetas.length === 3 && tarjetas.every((k, i) => k.enlace === primeras[i].enlace && k.nombre === primeras[i].nombre && k.chip === primeras[i].chip

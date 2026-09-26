@@ -55,7 +55,8 @@
 -- modulo_competencia (id_modulo, nombre, descripcion)
 -- torneo (id_torneo, nombre, id_disciplina, id_tipo_torneo, id_modulo,
 --         id_usuario_organizador, fecha_inicio, fecha_fin,
---         max_participantes, sede, estado, fecha_creacion)
+--         max_participantes, sede, estado, fecha_creacion,
+--         nombre_vigente [calculada])
 -- configuracion_torneo (id_torneo*, puntos_victoria, puntos_empate,
 --         puntos_derrota, admite_empate, clasifican_playoffs,
 --         ida_y_vuelta, criterio_desempate, rondas_previstas, reglas)
@@ -375,17 +376,27 @@ CREATE TABLE torneo (
   id_usuario_organizador INT UNSIGNED NOT NULL,
   -- Opcional: una liga nace con la inscripcion abierta y la fecha de
   -- inicio puede quedar a definir. Como un UNIQUE admite varios NULL,
-  -- uq_torneo_nom no frena dos torneos del mismo nombre sin fecha: que
-  -- no haya dos ligas vigentes con el mismo nombre lo cuida la
-  -- aplicacion (TorneoRepositorio::nombreEnUso).
+  -- uq_torneo_nom no frena dos torneos del mismo nombre sin fecha: eso
+  -- lo hace uq_torneo_vigente, mas abajo.
   fecha_inicio           DATE         NULL,
   fecha_fin              DATE         NULL,
   max_participantes      SMALLINT UNSIGNED NOT NULL DEFAULT 16,
   sede                   VARCHAR(80)  NULL,
   estado                 VARCHAR(15)  NOT NULL DEFAULT 'borrador',
   fecha_creacion         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- El nombre mientras el torneo esta vigente (en preparacion, con la
+  -- inscripcion abierta o en curso), y NULL cuando termina o se cancela.
+  -- Su UNIQUE no deja dos torneos vigentes con el mismo nombre, aunque
+  -- no tengan fecha, y un nombre vuelve a quedar libre cuando el torneo
+  -- termina: el mismo recurso que pendiente_de en pedido_rol (un UNIQUE
+  -- admite varios NULL). La columna la calcula la base, no se escribe.
+  -- El cotejo de la tabla no distingue mayusculas ni tildes: "Liga Sur"
+  -- y "LIGA SUR" son el mismo nombre.
+  nombre_vigente         VARCHAR(80)  GENERATED ALWAYS AS
+                           (IF(estado IN ('borrador', 'inscripcion', 'en_curso'), nombre, NULL)) STORED,
   CONSTRAINT pk_torneo        PRIMARY KEY (id_torneo),
   CONSTRAINT uq_torneo_nom    UNIQUE (nombre, fecha_inicio),
+  CONSTRAINT uq_torneo_vigente UNIQUE (nombre_vigente),
   CONSTRAINT fk_torneo_disc   FOREIGN KEY (id_disciplina) REFERENCES disciplina (id_disciplina)
       ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT fk_torneo_tipo   FOREIGN KEY (id_tipo_torneo) REFERENCES tipo_torneo (id_tipo_torneo)

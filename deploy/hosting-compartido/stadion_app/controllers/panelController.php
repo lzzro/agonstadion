@@ -122,7 +122,7 @@ $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
 # --- 3. Las acciones ---------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $accion    = isset($_POST['accion'])    ? $_POST['accion']         : '';
+    $accion    = (isset($_POST['accion']) && is_string($_POST['accion'])) ? $_POST['accion'] : '';
     $id_torneo = isset($_POST['id_torneo']) ? (int)$_POST['id_torneo'] : 0;
     $id_pedido = isset($_POST['id_pedido']) ? (int)$_POST['id_pedido'] : 0;
     $hecho     = '';   # el codigo del aviso, si la accion salio bien
@@ -154,17 +154,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errores[] = 'Esa liga no está a cargo de esta cuenta.';
 
         } elseif ($accion === 'agregar') {
-            $nombre = isset($_POST['equipo']) ? trim((string)$_POST['equipo']) : '';
+            $nombre = (isset($_POST['equipo']) && is_string($_POST['equipo'])) ? trim($_POST['equipo']) : '';
             $valor_equipo[$id_torneo] = $nombre;
             $resultado = $participantes->agregarEquipo($torneo, $organizador, $nombre);
-            if (empty($resultado)) {
+            if (empty($resultado['errores'])) {
+                # El equipo nuevo (si hubo que crearlo) y la inscripcion,
+                # cada una con el id de su propia fila.
+                if ($resultado['id_equipo_nuevo'] !== null) {
+                    $auditorias->registrar(new Auditoria(null, $organizador, 'equipo', 'alta',
+                        $resultado['id_equipo_nuevo'], mb_substr('Equipo ' . $nombre, 0, 255), $ip));
+                }
                 $auditorias->registrar(new Auditoria(null, $organizador, 'participante', 'inscripcion',
-                    $id_torneo, mb_substr($nombre . ' en ' . $torneo->getNombre(), 0, 255), $ip));
+                    $resultado['id_participante'], mb_substr($nombre . ' en ' . $torneo->getNombre(), 0, 255), $ip));
                 $hecho = 'equipo-anotado';
             } else {
                 # Van al lado del campo del equipo, en su liga.
-                $errores_equipo[$id_torneo] = implode(' ', $resultado);
-                $errores[] = $torneo->getNombre() . ': ' . implode(' ', $resultado);
+                $errores_equipo[$id_torneo] = implode(' ', $resultado['errores']);
+                $errores[] = $torneo->getNombre() . ': ' . implode(' ', $resultado['errores']);
             }
 
         } elseif ($accion === 'cerrar') {
@@ -212,7 +218,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 # --- 4. El aviso de la accion anterior -------------------------------
-if (isset($_GET['aviso']) && isset($avisos[$_GET['aviso']]) && empty($errores)) {
+# Solo un texto de la lista: un ?aviso[]=x (un arreglo) no es un aviso.
+if (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos[$_GET['aviso']]) && empty($errores)) {
     $mensaje = $avisos[$_GET['aviso']];
 }
 
