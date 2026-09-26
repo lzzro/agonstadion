@@ -39,7 +39,7 @@ tokenCsrf();
   <main id="contenido" class="panel panel-form">
     <form action="../apps/controllers/loginController.php" method="post">
       <?php echo campoCsrf(); ?>
-      <span class="etiqueta">Bienvenido de vuelta</span>
+      <span class="etiqueta">De vuelta en el estadio</span>
       <h2>Iniciar sesión</h2>
       <label>Correo<input type="email" name="correo" placeholder="nombre@correo.com" required autocomplete="email" spellcheck="false" autocapitalize="off"></label>
       <div class="campo">

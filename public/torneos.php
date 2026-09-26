@@ -80,7 +80,7 @@
 <aside>
 <div class="tarjeta">
   <span class="etiqueta">Próximos cierres</span>
-  <table><tr><td>Liga Valorant · R7<br><small>cierra el domingo</small></td><td class="num">2 d</td></tr><tr><td>Tenis de Mesa · R3<br><small>cierra el martes</small></td><td class="num">4 d</td></tr><tr><td>Copa Interliceal · Octavos<br><small>cierra el jueves</small></td><td class="num">6 d</td></tr></table>
+  <table><tr><td>Copa Interliceal · Cuartos<br><small>cierra hoy</small></td><td class="num">0 d</td></tr><tr><td>Liga Valorant · R7<br><small>cierra el domingo</small></td><td class="num">2 d</td></tr><tr><td>Tenis de Mesa · R3<br><small>cierra el martes</small></td><td class="num">4 d</td></tr></table>
 </div>
 <div class="tarjeta tarjeta-contraste">
   <span class="etiqueta">Para organizadores</span>
