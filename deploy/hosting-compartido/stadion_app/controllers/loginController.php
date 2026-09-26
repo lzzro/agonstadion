@@ -52,8 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $errores[] = rechazarCsrf();
 } else {
 
-    $correo = isset($_POST['correo'])   ? trim($_POST['correo']) : '';
-    $clave  = isset($_POST['password']) ? $_POST['password']     : '';
+    # Solo textos: un campo mandado como arreglo (nombre[]=x) queda vacio
+    # (sin esto, trim() corta con un error y la pagina responde 500).
+    $correo = (isset($_POST['correo']) && is_string($_POST['correo'])) ? trim($_POST['correo']) : '';
+    $clave  = (isset($_POST['password']) && is_string($_POST['password'])) ? $_POST['password'] : '';
 
     if (empty($correo) || empty($clave)) {
         $errores[] = 'El correo y la contrasena son obligatorios.';

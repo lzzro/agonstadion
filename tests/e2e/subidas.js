@@ -104,8 +104,8 @@ let nav;
     const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
     const SVG = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><script>alert(1)</script></svg>');
 
-    const A = await c.cuentaNueva(nav, 'Ícaro', 'Prueba'); propias.push(A);
-    const B = await c.cuentaNueva(nav, 'Dédalo', 'Prueba'); propias.push(B);
+    const A = await c.cuentaNueva(nav, 'Ícaro', 'Prueba', propias);
+    const B = await c.cuentaNueva(nav, 'Dédalo', 'Prueba', propias);
     const foto = cuenta => sql(`SELECT IFNULL(foto_perfil, 'NULL') FROM usuario WHERE id_usuario = ${cuenta.id}`);
     const portada = cuenta => sql(`SELECT IFNULL(foto_portada, 'NULL') FROM usuario WHERE id_usuario = ${cuenta.id}`);
     const existe = nombre => fs.existsSync(path.join(SUBIDAS, nombre));
@@ -219,8 +219,9 @@ let nav;
   } finally {
     try {
       for (const x of [...puestos]) sacar(x);
-      c.limpiarCuentas(propias);
-      t.chk(c.archivosSubidas() === antes.carpeta, 'al final, la carpeta de las subidas tiene los mismos archivos que antes');
+      const limpieza = c.limpiarCuentas(propias);
+      t.chk(limpieza.faltaban === 0, `al final, las ${limpieza.fotos} fotos de la corrida estaban en la carpeta de las subidas, y se borran`);
+      t.chk(c.archivosSubidas() === antes.carpeta, 'la carpeta de las subidas tiene los mismos archivos que antes');
       t.chk(c.huellaBase() === antes.huella, 'y usuario, usuario_rol, pedido_rol y auditoria quedan iguales (CHECKSUM TABLE)');
     } catch (e) {
       t.chk(false, `la limpieza (${e.message.split('\n')[0]})`);

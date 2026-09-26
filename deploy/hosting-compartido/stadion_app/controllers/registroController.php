@@ -45,11 +45,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 } else {
 
     # --- lo que llega del formulario ---
-    $nombre   = isset($_POST['nombre'])   ? trim($_POST['nombre'])   : '';
-    $apellido = isset($_POST['apellido']) ? trim($_POST['apellido']) : '';
-    $correo   = isset($_POST['correo'])   ? trim($_POST['correo'])   : '';
-    $clave    = isset($_POST['password']) ? $_POST['password']       : '';
-    $alias    = isset($_POST['alias'])    ? trim($_POST['alias'])    : '';
+    # Solo textos: un campo mandado como arreglo (nombre[]=x) queda vacio
+    # (sin esto, trim() corta con un error y la pagina responde 500).
+    $nombre   = (isset($_POST['nombre']) && is_string($_POST['nombre'])) ? trim($_POST['nombre']) : '';
+    $apellido = (isset($_POST['apellido']) && is_string($_POST['apellido'])) ? trim($_POST['apellido']) : '';
+    $correo   = (isset($_POST['correo']) && is_string($_POST['correo'])) ? trim($_POST['correo']) : '';
+    $clave    = (isset($_POST['password']) && is_string($_POST['password'])) ? $_POST['password'] : '';
+    $alias    = (isset($_POST['alias']) && is_string($_POST['alias'])) ? trim($_POST['alias']) : '';
 
     if (empty($nombre) || empty($apellido) || empty($correo) || empty($clave)) {
         $errores[] = 'Nombre, apellido, correo y contrasena son obligatorios.';

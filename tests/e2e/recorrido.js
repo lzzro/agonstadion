@@ -37,7 +37,7 @@ let nav;
   const propias = [];
   nav = await c.navegador();
   try {
-    const A = await c.cuentaNueva(nav, 'Teseo', 'Prueba'); propias.push(A);
+    const A = await c.cuentaNueva(nav, 'Teseo', 'Prueba', propias);
     sql(fs.readFileSync(path.join(c.RAIZ, 'sql', 'primer_administrador.sql'), 'utf8').replace(/CORREO_DE_LA_CUENTA/g, A.correo));
     c.darRol(A, 'organizador');
     const S = await c.entrar(nav, A);

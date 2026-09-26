@@ -98,7 +98,9 @@ $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
 # --- 3. Aprobar o rechazar -------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $accion    = isset($_POST['accion'])    ? $_POST['accion']         : '';
+    # Solo textos: una accion mandada como arreglo (accion[]=x) queda
+    # vacia, igual que en los demas controladores.
+    $accion = (isset($_POST['accion']) && is_string($_POST['accion'])) ? $_POST['accion'] : '';
     $id_pedido = isset($_POST['id_pedido']) ? (int)$_POST['id_pedido'] : 0;
 
     if (!csrfValido()) {

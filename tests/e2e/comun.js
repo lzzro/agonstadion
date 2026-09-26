@@ -77,9 +77,13 @@ function contador(titulo) {
 }
 
 // Da de alta una cuenta por el formulario de registro y devuelve sus
-// datos. La contrasena es al azar y vive solo en memoria.
-async function cuentaNueva(nav, nombre, apellido) {
+// datos. La contrasena es al azar y vive solo en memoria. Con $lista (el
+// arreglo de las cuentas que la bateria borra al final), la cuenta se
+// anota ahi ANTES de mandar el alta: si algo corta despues, la limpieza
+// la encuentra igual, por el correo.
+async function cuentaNueva(nav, nombre, apellido, lista) {
   const datos = { nombre, apellido, correo: `prueba-${azar()}@ejemplo.invalid`, clave: clave() };
+  if (Array.isArray(lista)) lista.push(datos);
   const ctx = await nav.newContext();
   const p = await ctx.newPage();
   await p.goto(`${BASE}/registro.php`);
@@ -134,9 +138,22 @@ async function token(p) {
 // DELETE nombra las cuentas por id y por correo a la vez, y solo correos
 // prueba-...@ejemplo.invalid: una cuenta que no sea de prueba no se borra
 // nunca, aunque se cuele en el arreglo.
+// Devuelve cuantas fotos de esas cuentas habia que borrar y cuantas no
+// estaban en la carpeta de las subidas (si faltan, la carpeta que mira la
+// prueba no es la del sitio: ver STADION_SUBIDAS).
 function limpiarCuentas(cuentas) {
-  const propias = cuentas.filter(x => x && Number.isInteger(x.id) && /^prueba-[0-9a-f]+@ejemplo\.invalid$/.test(x.correo));
-  if (propias.length === 0) return;
+  const resultado = { fotos: 0, faltaban: 0 };
+  const validas = cuentas.filter(x => x && /^prueba-[0-9a-f]+@ejemplo\.invalid$/.test(x.correo));
+  // Una cuenta que se corto a mitad del alta no tiene id: se busca por
+  // el correo.
+  for (const x of validas) {
+    if (!Number.isInteger(x.id)) {
+      const id = parseInt(sql(`SELECT IFNULL(MAX(id_usuario), 0) FROM usuario WHERE correo = ${texto(x.correo)}`), 10);
+      if (id > 0) x.id = id;
+    }
+  }
+  const propias = validas.filter(x => Number.isInteger(x.id));
+  if (propias.length === 0) return resultado;
   const ids = propias.map(x => x.id).join(',');
   const correos = propias.map(x => texto(x.correo)).join(',');
   const cuentas_sql = `SELECT id_usuario FROM usuario WHERE id_usuario IN (${ids}) AND correo IN (${correos})`;
@@ -145,7 +162,8 @@ function limpiarCuentas(cuentas) {
   const fotos = sql(`SELECT foto_perfil FROM usuario WHERE id_usuario IN (${cuentas_sql}) AND foto_perfil IS NOT NULL
                      UNION SELECT foto_portada FROM usuario WHERE id_usuario IN (${cuentas_sql}) AND foto_portada IS NOT NULL`);
   for (const nombre of fotos.split('\n').filter(f => /^[0-9a-f]{32}\.(jpg|png|webp)$/.test(f))) {
-    try { fs.unlinkSync(path.join(SUBIDAS, nombre)); } catch (e) { /* ya no estaba */ }
+    resultado.fotos++;
+    try { fs.unlinkSync(path.join(SUBIDAS, nombre)); } catch (e) { resultado.faltaban++; }
   }
   sql(`DELETE FROM auditoria
         WHERE id_usuario IN (${cuentas_sql})
@@ -155,6 +173,7 @@ function limpiarCuentas(cuentas) {
            OR (id_usuario IS NULL AND accion = 'login_error' AND detalle IN (${correos}));
        DELETE FROM pedido_rol WHERE id_usuario IN (${cuentas_sql});
        DELETE FROM usuario WHERE id_usuario IN (${ids}) AND correo IN (${correos});`);
+  return resultado;
 }
 
 // La huella de las tablas que tocan esas baterias: si al final da lo
@@ -162,8 +181,13 @@ function limpiarCuentas(cuentas) {
 const huellaBase = () => sql('CHECKSUM TABLE usuario, usuario_rol, pedido_rol, auditoria');
 
 // Los archivos de la carpeta de las subidas, para comparar antes y
-// despues.
-const archivosSubidas = () => { try { return fs.readdirSync(SUBIDAS).sort().join(','); } catch (e) { return '(sin carpeta)'; } };
+// despues. Sin la carpeta, la prueba no sigue: compararia nada con nada.
+function archivosSubidas() {
+  if (!fs.existsSync(path.join(SUBIDAS, '.htaccess'))) {
+    throw new Error(`No esta la carpeta de las subidas del sitio en ${SUBIDAS} (ver STADION_SUBIDAS)`);
+  }
+  return fs.readdirSync(SUBIDAS).sort().join(',');
+}
 
 // Un POST armado a mano, con la cookie de la sesion del contexto.
 async function postear(ctx, url, campos) {

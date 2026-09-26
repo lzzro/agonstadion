@@ -203,18 +203,33 @@ class ConfiguracionTorneo
         return $ordenadas;
     }
 
-    # El nombre listo para ordenar: en minuscula y sin tildes, asi
-    # "Ómnibus" va con las o y "atlántida" antes que "Aurora". Comparar
-    # los bytes tal cual (strcmp) pone toda mayuscula antes de toda
-    # minuscula, y toda letra con tilde despues de la z. La ñ va con la
-    # n, como en utf8mb4_unicode_ci, el cotejo de la base.
+    # El nombre listo para ordenar: en minuscula y sin tildes ni otras
+    # marcas, asi "Ómnibus" va con las o, "atlántida" antes que "Aurora" y
+    # "São Paulo" antes que "Sur". Comparar los bytes tal cual (strcmp)
+    # pone toda mayuscula antes de toda minuscula, y toda letra con marca
+    # despues de la z. Se sigue a utf8mb4_unicode_ci, el cotejo de la base:
+    # cada letra con marca va con su letra base (la ñ con la n, la ß como
+    # ss, la œ como oe), y las que ese cotejo trata como letras propias
+    # (æ, đ, ħ, ı, ł, ŋ, ø, ŧ, þ) van despues de todas las de su letra
+    # base: se les pone "~", que en la comparacion va despues de la z.
     public static function claveAlfabetica($nombre)
     {
-        $sin_tildes = strtr(mb_strtolower((string)$nombre, 'UTF-8'), array(
-            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
-            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o',
-            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ñ' => 'n', 'ç' => 'c'));
-        return $sin_tildes;
+        $letras = array(
+            'a' => 'áàâäãåāăą', 'c' => 'çćĉċč', 'd' => 'ď', 'e' => 'éèêëēĕėęě', 'g' => 'ĝğġģ',
+            'h' => 'ĥ', 'i' => 'íìîïĩīĭįİ', 'j' => 'ĵ', 'k' => 'ķ', 'l' => 'ĺļľŀ', 'n' => 'ñńņňŉ',
+            'o' => 'óòôöõōŏő', 'r' => 'ŕŗř', 's' => 'śŝşšș', 't' => 'ţťț', 'u' => 'úùûüũūŭůűų',
+            'w' => 'ŵ', 'y' => 'ýÿŷ', 'z' => 'źżž',
+            'a~' => 'æ', 'd~' => 'đ', 'd~~' => 'ð', 'h~' => 'ħ', 'i~' => 'ı', 'l~' => 'ł', 'n~' => 'ŋ',
+            'o~' => 'ø', 't~' => 'ŧ', 'z~' => 'þ');
+        # La İ en minuscula es una i con un punto combinado aparte: el
+        # punto se saca.
+        $cambios = array('ß' => 'ss', 'œ' => 'oe', "\u{307}" => '');
+        foreach ($letras as $base => $con_marca) {
+            foreach (preg_split('//u', $con_marca, -1, PREG_SPLIT_NO_EMPTY) as $letra) {
+                $cambios[$letra] = $base;
+            }
+        }
+        return strtr(mb_strtolower((string)$nombre, 'UTF-8'), $cambios);
     }
 
     # Menor que 0 si $a va antes, mayor si va despues. Si las dos claves

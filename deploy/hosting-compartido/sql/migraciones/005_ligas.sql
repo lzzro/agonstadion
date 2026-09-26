@@ -128,6 +128,12 @@
 -- "Valorant · Otoño"), y asi lo tiene que leer el servidor.
 SET NAMES utf8mb4;
 
+-- La hora de Montevideo (UTC-3), la misma que usa la aplicacion (ver
+-- apps/config/database.php): la fila de la auditoria que deja la carga
+-- lleva la hora de aca y no la del servidor, que en el hosting es UTC.
+-- Vale solo para esta conexion.
+SET time_zone = '-03:00';
+
 
 -- ---------------------------------------------------------------------
 -- 1. Lo que tiene que estar antes. Nada de esto cambia la base.

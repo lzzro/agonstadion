@@ -170,8 +170,12 @@ class PedidoInscripcionRepositorio
         }
 
         $estado = $aceptar ? 'aceptado' : 'rechazado';
+        # GREATEST: la resolucion nunca queda antes del pedido, aunque el
+        # pedido se haya guardado con la hora del servidor (antes de que la
+        # conexion pasara a la de Montevideo, ver config/database.php); si
+        # no, ck_pinsc_fechas frenaria una resolucion legitima.
         $sql = "UPDATE pedido_inscripcion
-                   SET estado = ?, fecha_resolucion = NOW(), id_usuario_resuelve = ?
+                   SET estado = ?, fecha_resolucion = GREATEST(NOW(), fecha_pedido), id_usuario_resuelve = ?
                  WHERE id_pedido_inscripcion = ? AND id_torneo = ? AND estado = 'pendiente'";
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {

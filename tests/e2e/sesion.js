@@ -88,9 +88,9 @@ let nav;
   try {
     // Nombres guardados en minuscula (y uno con mayuscula adentro), para
     // probar Usuario::paraMostrar.
-    const A = await c.cuentaNueva(nav, 'ariadna', 'minos'); propias.push(A);
-    const O = await c.cuentaNueva(nav, 'odiseo', 'de Ítaca'); propias.push(O);
-    const N = await c.cuentaNueva(nav, 'nausícaa', 'Prueba'); propias.push(N);
+    const A = await c.cuentaNueva(nav, 'ariadna', 'minos', propias);
+    const O = await c.cuentaNueva(nav, 'odiseo', 'de Ítaca', propias);
+    const N = await c.cuentaNueva(nav, 'nausícaa', 'Prueba', propias);
     sql(fs.readFileSync(path.join(c.RAIZ, 'sql', 'primer_administrador.sql'), 'utf8').replace(/CORREO_DE_LA_CUENTA/g, A.correo));
     t.chk(sql(`SELECT COUNT(*) FROM usuario_rol ur JOIN rol r USING (id_rol) WHERE ur.id_usuario = ${A.id} AND r.nombre = 'administrador'`) === '1',
           'tres cuentas nuevas de @ejemplo.invalid; la primera, administradora (sql/primer_administrador.sql)');
@@ -153,6 +153,11 @@ let nav;
     await p.setInputFiles('form.subida:has(input[value="foto"]) input[type=file]', await imagen(nav, 'image/jpeg', 300, 300));
     await Promise.all([p.waitForNavigation(), p.click('form.subida:has(input[value="foto"]) button')]);
     const grande = await p.evaluate(() => document.querySelector('main img.avatar').getAttribute('src').split('/').pop());
+    // La carpeta que mira la prueba tiene que ser la del sitio: si no, la
+    // limpieza borraria en otro lado.
+    if (!t.chk(fs.existsSync(path.join(c.SUBIDAS, grande)), `la foto queda en la carpeta de las subidas que mira la prueba (${c.SUBIDAS})`)) {
+      throw new Error('la carpeta de las subidas no es la del sitio: ver STADION_SUBIDAS');
+    }
     for (const pag of ['index.php', 'torneo.php']) {
       await p.goto(`${BASE}/${pag}`);
       k = await circulo(p);
@@ -183,16 +188,18 @@ let nav;
     t.chk(f.borde === 'none' && f.fondo === 'rgba(0, 0, 0, 0)' && f.color === 'rgb(112, 107, 97)' && f.mayus === 'uppercase' && parseFloat(f.espacio) > 1,
           `texto discreto: sin borde ni fondo, en ${f.color}, en versalitas`);
     const sesion1 = await archivoSesion(S.ctx);
+    const habia = sesion1 !== '' && fs.existsSync(sesion1);   // el archivo de la sesion, antes de cerrarla
     const salidas = () => sql(`SELECT COUNT(*) FROM auditoria WHERE accion = 'logout' AND id_usuario = ${A.id}`);
     const salidas0 = salidas();
     await Promise.all([p.waitForNavigation(), p.click('.perfil-cabecera form.salir-perfil button')]);
     t.chk(/\/index\.php$/.test(p.url()) && await p.isVisible('header a[href$="login.php"]') && !(await circulo(p)),
           'vuelve al inicio, con Iniciar sesion y sin circulo');
     const sin_cookie = !(await S.ctx.cookies()).some(x => x.name === 'PHPSESSID');
-    if (sesion1 !== '' && fs.existsSync(SESIONES)) {
+    if (habia) {
       t.chk(!fs.existsSync(sesion1) && sin_cookie, 'la sesion se borra del servidor, y la cookie del navegador');
     } else {
-      t.chk(sin_cookie, 'la cookie de la sesion se borra del navegador (la carpeta de las sesiones no esta a la vista)');
+      t.chk(sin_cookie, 'la cookie de la sesion se borra del navegador');
+      console.log(`  --    el borrado en el servidor: omitido (no esta el archivo de la sesion en "${SESIONES}"; ver STADION_SESIONES)`);
     }
     t.chk(salidas() === String(parseInt(salidas0, 10) + 1), 'y queda una fila "logout" en la auditoria');
 
@@ -342,8 +349,9 @@ let nav;
     t.chk(false, `la bateria corre entera (${e.message.split('\n')[0]})`);
   } finally {
     try {
-      c.limpiarCuentas(propias);
-      t.chk(c.archivosSubidas() === antes.carpeta, 'al final, la carpeta de las subidas tiene los mismos archivos que antes');
+      const limpieza = c.limpiarCuentas(propias);
+      t.chk(limpieza.faltaban === 0, `al final, las ${limpieza.fotos} fotos de la corrida estaban en la carpeta de las subidas, y se borran`);
+      t.chk(c.archivosSubidas() === antes.carpeta, 'la carpeta de las subidas tiene los mismos archivos que antes');
       t.chk(c.huellaBase() === antes.huella, 'y usuario, usuario_rol, pedido_rol y auditoria quedan iguales (CHECKSUM TABLE)');
     } catch (e) {
       t.chk(false, `la limpieza (${e.message.split('\n')[0]})`);

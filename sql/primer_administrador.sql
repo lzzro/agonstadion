@@ -41,6 +41,12 @@
 -- ninguna pagina da el rol administrador.
 -- =====================================================================
 
+-- La hora de Montevideo (UTC-3), la misma que usa la aplicacion (ver
+-- apps/config/database.php): la fila de la auditoria lleva la hora de
+-- aca y no la del servidor, que en el hosting es UTC. Vale solo para
+-- esta conexion.
+SET time_zone = '-03:00';
+
 -- El correo, en utf8mb4 y con un cotejo fijo, venga como venga la
 -- conexion (XAMPP y el phpMyAdmin del hosting pueden venir distintos).
 SET @correo = CONVERT('CORREO_DE_LA_CUENTA' USING utf8mb4) COLLATE utf8mb4_unicode_ci;

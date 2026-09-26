@@ -182,5 +182,25 @@ foreach (array('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejem
         "$correo: de muestra, y ninguna clave la abre (ni su propio texto)");
 }
 
+# El desempate alfabetico de la tabla ordena como la base
+# (utf8mb4_unicode_ci): tildes, mayusculas y las letras que ese cotejo
+# trata aparte (æ, ł, ø, þ...). Los nombres van a la base como datos de
+# una sentencia preparada, no pegados al SQL.
+$nombres = array('Vortex', 'atlántida GG', 'Aurora', 'Ómnibus', 'Ñandú', 'Nova', 'Álamo', 'Liceo 3', 'São Paulo',
+                 'Sur Gaming', 'Łódź', 'Lz', 'Zeta', 'Åland', 'Boca', 'Straße', 'Strasse A', 'Ærø', 'Azul', 'Øster', 'Oz',
+                 'Œuf', 'Oeste', 'Čačak', 'Czech', 'Šiauliai', 'Þór', 'Tómas', 'İzmir', 'Iz', 'ıb', 'Đa', 'Ða', 'Dz');
+$en_php = $nombres;
+usort($en_php, array('ConfiguracionTorneo', 'compararNombres'));
+$marcas = implode(' UNION ALL ', array_fill(0, count($nombres), 'SELECT ? AS n'));
+$sentencia = $conexion->prepare("SELECT n FROM ($marcas) t ORDER BY n COLLATE utf8mb4_unicode_ci, n COLLATE utf8mb4_bin");
+$sentencia->bind_param(str_repeat('s', count($nombres)), ...$nombres);
+$sentencia->execute();
+$en_base = array();
+$resultado = $sentencia->get_result();
+while ($fila = $resultado->fetch_row()) { $en_base[] = $fila[0]; }
+$sentencia->close();
+chk($en_php === $en_base, 'el desempate alfabetico ordena ' . count($nombres) . ' nombres igual que la base (utf8mb4_unicode_ci)'
+    . ($en_php === $en_base ? '' : ': ' . implode(', ', $en_php) . ' / ' . implode(', ', $en_base)));
+
 $conexion->close();
 fin();

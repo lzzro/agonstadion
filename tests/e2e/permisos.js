@@ -92,12 +92,16 @@ const foto = (cuenta, columna) => sql(`SELECT IFNULL(${columna}, '-') FROM usuar
 const rolesAjenos = () => sql(`SELECT COUNT(*), IFNULL(SUM(CRC32(CONCAT(id_usuario, '-', id_rol))), 0) FROM usuario_rol WHERE id_usuario NOT IN (${ids()})`);
 
 // Una sentencia como sgdm_app, la cuenta de la aplicacion (con
-// apps/config/database.php): devuelve el numero de error, 0 si anduvo.
+// apps/config/database.php y el socket de STADION_DB_SOCKET): devuelve el
+// numero de error, 0 si anduvo, o "filas:N" si es una consulta. Antes de
+// usarla, la bateria comprueba que sgdm_app ve la misma base que
+// STADION_MYSQL (ver mismaBase); si no, no sigue.
 function comoApp(sentencia) {
   const args = [];
   if (process.env.STADION_DB_SOCKET) args.push('-d', `mysqli.default_socket=${process.env.STADION_DB_SOCKET}`);
   args.push('-r', 'require $argv[1] . "/apps/config/database.php"; mysqli_report(MYSQLI_REPORT_OFF);'
-                + ' $c = conectarBD(); if ($c === null) { echo "sin conexion"; exit; } $c->query($argv[2]); echo $c->errno;',
+                + ' $c = conectarBD(); if ($c === null) { echo "sin conexion"; exit; } $r = $c->query($argv[2]);'
+                + ' echo ($r instanceof mysqli_result) ? "filas:" . $r->num_rows : $c->errno;',
             RAIZ, sentencia);
   try {
     return execFileSync('php', args, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
@@ -105,6 +109,10 @@ function comoApp(sentencia) {
     return 'no corre';
   }
 }
+// Una cuenta de la corrida, por id y por correo a la vez: en otra base,
+// ese par no existe y la sentencia no alcanza a nadie.
+const laCuenta = cuenta => `SELECT id_usuario FROM usuario WHERE id_usuario = ${cuenta.id} AND correo = ${texto(cuenta.correo)}`;
+const mismaBase = cuenta => comoApp(laCuenta(cuenta)) === 'filas:1';
 
 let nav;
 (async () => {
@@ -113,13 +121,17 @@ let nav;
   nav = await c.navegador();
   try {
     // --- Las cuentas de esta corrida ------------------------------------
-    const admin = await c.cuentaNueva(nav, 'Ariadna', 'Prueba'); propias.push(admin);
-    const jug = await c.cuentaNueva(nav, 'Odiseo', 'Prueba'); propias.push(jug);
+    const admin = await c.cuentaNueva(nav, 'Ariadna', 'Prueba', propias);
+    const jug = await c.cuentaNueva(nav, 'Odiseo', 'Prueba', propias);
     const nueva = { correo: `prueba-${c.azar()}@ejemplo.invalid`, clave: 'x' + c.azar(12) };   // la del registro, paso 6
     propias.push(nueva);
     t.chk(Number.isInteger(admin.id) && Number.isInteger(jug.id), `dos cuentas nuevas de @ejemplo.invalid (${admin.id} y ${jug.id})`);
     sql(fs.readFileSync(path.join(RAIZ, 'sql', 'primer_administrador.sql'), 'utf8').replace(/CORREO_DE_LA_CUENTA/g, admin.correo));
     t.chk(roles(admin) === 'administrador,jugador', 'primer administrador por SQL (sql/primer_administrador.sql), en una cuenta de la corrida');
+    // Las consultas como sgdm_app (comoApp) tienen que ir a la misma base.
+    if (!t.chk(mismaBase(jug), 'sgdm_app ve la misma base que la prueba (su cuenta nueva, por id y correo; ver STADION_DB_SOCKET)')) {
+      throw new Error('sgdm_app mira otra base: la bateria no sigue');
+    }
 
     // Las direcciones de los controladores, como las dejo cada
     // instalacion: la local y la del hosting son distintas.
@@ -184,7 +196,8 @@ let nav;
                AND id_registro = (SELECT id_pedido_rol FROM pedido_rol WHERE id_usuario = ${jug.id})`) === '1', '  ...y queda en la auditoria');
     r = await c.postear(J.ctx, PERFIL, { accion: 'pedir_rol', token_csrf: TJ });
     t.chk(r.cuerpo.includes('Ya hay un pedido en revision.') && pendientes() === '1', 'pedir otra vez: aviso, y sigue uno solo');
-    t.chk(comoApp(`INSERT INTO pedido_rol (id_usuario, id_rol) SELECT ${jug.id}, id_rol FROM rol WHERE nombre = 'organizador'`) === '1062',
+    t.chk(comoApp(`INSERT INTO pedido_rol (id_usuario, id_rol) SELECT u.id_usuario, r.id_rol FROM (${laCuenta(jug)}) u
+                   JOIN rol r ON r.nombre = 'organizador'`) === '1062',
           'la base frena el segundo pendiente (sgdm_app: error 1062)');
     // El permiso se mira sin borrar nada (WHERE 1 = 0).
     if (DCL === 'propio') {
@@ -209,8 +222,14 @@ let nav;
     t.chk(r.estado === 403 && pendientes() === '1', 'rechazar sin token: 403, y sigue pendiente');
     r = await c.postear(A.ctx, ADMIN, { accion: 'rechazar', id_pedido: P1, token_csrf: TJ });
     t.chk(r.estado === 403 && pendientes() === '1', 'rechazar con el token de otra sesion: 403, y sigue pendiente');
+    // Un pedido guardado con la hora del servidor (UTC, tres horas
+    // adelante), como los de antes de que la conexion pasara a la hora de
+    // Montevideo: se resuelve igual, y la resolucion no queda antes.
+    sql(`UPDATE pedido_rol SET fecha_pedido = NOW() + INTERVAL 3 HOUR WHERE id_pedido_rol = ${P1} AND id_usuario IN (${laCuenta(jug)})`);
     r = await c.postear(A.ctx, ADMIN, { accion: 'rechazar', id_pedido: P1, token_csrf: TA });
     t.chk(r.estado === 200, 'rechazar: 200');
+    t.chk(sql(`SELECT fecha_resolucion >= fecha_pedido FROM pedido_rol WHERE id_pedido_rol = ${P1}`) === '1',
+          '  ...aunque el pedido figure tres horas adelante (guardado en UTC), y la resolucion no queda antes');
     t.chk(sql(`SELECT CONCAT(estado, ' ', id_usuario_resuelve, ' ', fecha_resolucion IS NOT NULL) FROM pedido_rol WHERE id_pedido_rol = ${P1}`)
           === `rechazado ${admin.id} 1`, '  ...rechazado, con fecha y quien lo resuelve');
     t.chk(sql(`SELECT COUNT(*) FROM auditoria WHERE accion = 'rechazo' AND id_usuario = ${admin.id} AND id_registro = ${P1}`) === '1',
@@ -253,7 +272,7 @@ let nav;
     r = await c.postear(A.ctx, ADMIN, { accion: 'rechazar', id_pedido: P3, token_csrf: TA });
     t.chk(r.cuerpo.includes('Un pedido propio') && pendientes() === '1', 'rechazarse a si mismo: aviso, y sigue pendiente');
     t.chk(comoApp(`UPDATE pedido_rol SET estado = 'aprobado', fecha_resolucion = NOW(), id_usuario_resuelve = id_usuario
-                   WHERE id_pedido_rol = ${P3}`) === '4025', 'la base tambien lo frena (CHECK, error 4025)');
+                   WHERE id_pedido_rol = ${P3} AND id_usuario IN (${laCuenta(admin)})`) === '4025', 'la base tambien lo frena (CHECK, error 4025)');
     r = await c.postear(A.ctx, ADMIN, { accion: 'borrar', id_pedido: P3, token_csrf: TA });
     t.chk(r.cuerpo.includes('Solo se aprueba o se rechaza un pedido.') && pendientes() === '1', 'una accion inventada: aviso, y nada cambia');
     const inexistente = parseInt(sql('SELECT IFNULL(MAX(id_pedido_rol), 0) + 1000 FROM pedido_rol'), 10);
@@ -272,6 +291,11 @@ let nav;
     t.chk(r.estado === 403 && nombre(jug) === nombre_j, 'datos sin accion ni token: 403, y el nombre intacto');
     r = await c.postear(J.ctx, PERFIL, { accion: 'datos', nombre: 'odiseo', apellido: 'de Ítaca', token_csrf: TJ });
     t.chk(r.estado === 200 && r.cuerpo.includes('El perfil queda guardado.') && nombre(jug) === 'odiseo', 'datos con token: 200, y guardado');
+    // Un campo mandado como arreglo (nombre[]=x) no rompe la pagina: el
+    // campo queda vacio y el formulario responde con su aviso.
+    r = await c.postear(J.ctx, PERFIL, { accion: 'datos', 'nombre[]': 'x', apellido: 'X', token_csrf: TJ });
+    t.chk(r.estado === 200 && r.cuerpo.includes('<div role="alert">') && nombre(jug) === 'odiseo',
+          `el perfil con nombre[]=x: ${r.estado}, con el aviso, y el nombre intacto`);
     const f0 = foto(jug, 'foto_perfil'), g0 = foto(jug, 'foto_portada');
     const imagen = { name: 'otra.png', mimeType: 'image/png', buffer: PNG };
     r = await subir(J.ctx, PERFIL, { accion: 'foto', imagen });
@@ -291,6 +315,15 @@ let nav;
     t.chk(r.estado === 403 && (await pedir(x, PERFIL)).estado === 302, 'iniciar sesion sin token: 403, y sin sesion');
     r = await c.postear(x, LOGIN, { correo: jug.correo, password: jug.clave, token_csrf: TA });
     t.chk(r.estado === 403 && (await pedir(x, PERFIL)).estado === 302, 'iniciar sesion con el token de otra sesion: 403, y sin sesion');
+    const x2 = await nav.newContext();
+    r = await c.postear(x2, LOGIN, { 'correo[]': jug.correo, 'password[]': jug.clave, token_csrf: await tokenDe(x2, `${BASE}/login.php`) });
+    t.chk(r.estado === 200 && r.cuerpo.includes('<div role="alert">') && (await pedir(x2, PERFIL)).estado === 302,
+          `iniciar sesion con correo[] y password[]: ${r.estado}, con el aviso, y sin sesion`);
+    r = await c.postear(x2, REG, { 'nombre[]': 'x', apellido: 'Prueba', 'correo[]': nueva.correo, password: nueva.clave, terminos: '1',
+                                   token_csrf: await tokenDe(x2, `${BASE}/registro.php`) });
+    t.chk(r.estado === 200 && r.cuerpo.includes('<div role="alert">') && sql(`SELECT COUNT(*) FROM usuario WHERE correo = ${texto(nueva.correo)}`) === '0',
+          `registro con nombre[] y correo[]: ${r.estado}, con el aviso, y sin cuenta`);
+    await x2.close();
     const alta = { nombre: 'Nadie', apellido: 'Prueba', correo: nueva.correo, password: nueva.clave, terminos: '1' };
     r = await c.postear(x, REG, alta);
     t.chk(r.estado === 403 && sql(`SELECT COUNT(*) FROM usuario WHERE correo = ${texto(nueva.correo)}`) === '0', 'registro sin token: 403, y sin cuenta');

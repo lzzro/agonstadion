@@ -115,7 +115,7 @@ $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
 # --- 3. Lo que llegue por POST ---------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $accion = isset($_POST['accion']) ? $_POST['accion'] : 'datos';
+    $accion = (isset($_POST['accion']) && is_string($_POST['accion'])) ? $_POST['accion'] : 'datos';
 
     # Si el pedido entero supera el limite de PHP (post_max_size), PHP
     # lo descarta sin avisar: llegan $_POST y $_FILES vacios. Solo una
@@ -234,10 +234,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
 
         # --- 3c. Datos del perfil -------------------------------------
-        $nombre       = isset($_POST['nombre'])       ? trim($_POST['nombre'])       : '';
-        $apellido     = isset($_POST['apellido'])     ? trim($_POST['apellido'])     : '';
-        $alias        = isset($_POST['alias'])        ? trim($_POST['alias'])        : '';
-        $presentacion = isset($_POST['presentacion']) ? trim($_POST['presentacion']) : '';
+        # Solo textos: un campo mandado como arreglo (nombre[]=x) queda vacio
+        # (sin esto, trim() corta con un error y la pagina responde 500).
+        $nombre       = (isset($_POST['nombre']) && is_string($_POST['nombre'])) ? trim($_POST['nombre']) : '';
+        $apellido     = (isset($_POST['apellido']) && is_string($_POST['apellido'])) ? trim($_POST['apellido']) : '';
+        $alias        = (isset($_POST['alias']) && is_string($_POST['alias'])) ? trim($_POST['alias']) : '';
+        $presentacion = (isset($_POST['presentacion']) && is_string($_POST['presentacion'])) ? trim($_POST['presentacion']) : '';
 
         # Los campos vacios que la base admite en NULL viajan como NULL y
         # no como cadena vacia, para que la columna quede igual que cuando

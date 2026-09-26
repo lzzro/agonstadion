@@ -89,6 +89,10 @@ function conectarBD()
     # 17:14 figuraba a las 20:14. Se da como diferencia (-03:00) y no por
     # nombre, porque el nombre necesita las tablas de zonas horarias de
     # MariaDB, que un hosting no siempre tiene cargadas.
+    # Lo guardado antes de este cambio queda con la hora del servidor (no
+    # se convierte): por eso las resoluciones de pedidos usan
+    # GREATEST(NOW(), fecha_pedido). La 005 y primer_administrador.sql,
+    # que se corren a mano, ponen la misma hora al empezar.
     $conexion->query("SET time_zone = '-03:00'");
 
     return $conexion;
