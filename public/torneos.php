@@ -84,8 +84,8 @@
 </div>
 <div class="tarjeta tarjeta-contraste">
   <span class="etiqueta">Para organizadores</span>
-  <h3>Abrí tu propio estadio</h3>
-  <p>El torneo se arma con lo que cargás: participantes, formato, fecha. Del calendario y la llave se ocupa Stadion.</p>
+  <h3>Un estadio propio</h3>
+  <p>Participantes, formato y fecha. Con eso, el calendario y la llave quedan trazados.</p>
   <a class="btn" href="crear.php">Crear torneo</a>
 </div>
 </aside>

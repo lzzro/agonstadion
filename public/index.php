@@ -43,10 +43,10 @@
   </article>
   <article class="tarjeta">
     <span class="etiqueta">Eliminación · Ajedrez</span>
-    <h3>Copa Interliceal</h3>
-    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">32 participantes · Octavos</p>
-    <div class="barra"><span style="width:40%"></span></div>
-    <a href="llave.php">Ver torneo<span class="visualmente-oculto"> Copa Interliceal</span> <span aria-hidden="true">→</span></a>
+    <h3>Copa Interliceal de Ajedrez</h3>
+    <p class="etiqueta" style="letter-spacing:.04em;text-transform:none;">16 participantes · Cuartos</p>
+    <div class="barra"><span style="width:50%"></span></div>
+    <a href="llave.php">Ver torneo<span class="visualmente-oculto"> Copa Interliceal de Ajedrez</span> <span aria-hidden="true">→</span></a>
   </article>
   <article class="tarjeta">
     <span class="etiqueta">Suizo · Tenis de mesa</span>

@@ -64,7 +64,7 @@
 <div class="tarjeta tarjeta-olivo">
   <span class="etiqueta" style="color:var(--olivo)">Lo que se va a generar</span>
   <p style="margin:0;font-family:var(--serif);font-size:34px;font-weight:500;line-height:1.1">120</p>
-  <p>enfrentamientos, en 15 rondas, si inscribís 16 participantes. El calendario se arma solo al publicar.</p>
+  <p>enfrentamientos, en 15 rondas, con 16 participantes inscriptos. El calendario se arma solo al publicar.</p>
 </div>
 </aside>
 <footer>

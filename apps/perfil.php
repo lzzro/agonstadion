@@ -262,7 +262,6 @@ $estados = array(
       <text class="rotulo" x="428" y="200" text-anchor="middle">Ago</text>
       <text class="rotulo" x="520" y="200" text-anchor="middle">Sep</text>
     </svg>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">El número baja cuando la reacción mejora.</span>
   </section>
   <section class="tarjeta">
   <div class="fila" style="justify-content:space-between"><div></div><span class="muestra">De muestra</span></div>

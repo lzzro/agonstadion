@@ -43,7 +43,7 @@ tokenCsrf();
       <h2>Crear una cuenta</h2>
       <label>Nombre<input type="text" name="nombre" placeholder="Ana" required minlength="2" maxlength="40" autocomplete="given-name"></label>
       <label>Apellido<input type="text" name="apellido" placeholder="Pereira" required minlength="2" maxlength="40" autocomplete="family-name"></label>
-      <label>Correo<input type="email" name="correo" placeholder="tu@correo.com" required maxlength="120" autocomplete="email" spellcheck="false" autocapitalize="off"></label>
+      <label>Correo<input type="email" name="correo" placeholder="nombre@correo.com" required maxlength="120" autocomplete="email" spellcheck="false" autocapitalize="off"></label>
       <div class="campo">
         <label>Contraseña<input type="password" name="password" required minlength="10" autocomplete="new-password" aria-describedby="ayuda-clave"></label>
         <p class="ayuda-campo" id="ayuda-clave">Mínimo 10 caracteres.</p>
@@ -54,7 +54,7 @@ tokenCsrf();
       </div>
       <label class="opcion" style="border:none;padding:0"><input type="checkbox" name="terminos" required> <span>Conforme con los términos</span></label>
       <button class="btn btn-primario" type="submit">Crear una cuenta</button>
-      <span class="etiqueta" style="text-transform:none;letter-spacing:.04em;text-align:center">¿Ya tenés cuenta? <a href="login.php" style="color:var(--olivo);text-decoration:underline;text-underline-offset:3px">Iniciar sesión</a></span>
+      <span class="etiqueta" style="text-transform:none;letter-spacing:.04em;text-align:center">¿Cuenta ya abierta? <a href="login.php" style="color:var(--olivo);text-decoration:underline;text-underline-offset:3px">Iniciar sesión</a></span>
     </form>
   </main>
 </div>

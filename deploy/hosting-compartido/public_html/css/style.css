@@ -33,8 +33,7 @@
    De día, todo par de colores cumple WCAG 2.2 AA: 4,5:1 para el texto
    (3:1 si es grande) y 3:1 para los bordes de los campos y las formas
    que hacen falta para entender la pantalla (el punto o el cuadrado de
-   un estado). De noche también, salvo el borde de los campos (--campo,
-   ver el bloque de noche).
+   un estado). De noche también.
    Cuatro colores de día bajan por eso: --ink3 y --cerrado (antes
    #8A8478, 3,21:1), --enjuego (antes #B9975C, 2,37:1) y el borde de
    los campos, que era --veta (1,47:1) y ahora es --campo. El hover del
@@ -65,10 +64,8 @@
   --enjuego: #AD8B50;  /* derivado */
   --vencedor: #A7B593; /* derivado */
   --cerrado: #A79F8C;  /* igual que --ink3: de día son el mismo color */
-  --campo: #3A362E;    /* igual que --veta: el borde de noche no cambia.
-                          Da 1,47:1 sobre --pario, debajo de 3:1:
-                          pendiente de decisión de Lucas (el modo noche
-                          quedó sin tocar en la ronda de contraste). */
+  --campo: #A79F8C;    /* igual que --ink3, como de día: 6,74:1 sobre
+                          --pario (con --veta daba 1,47:1) */
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -324,7 +321,7 @@ input, select, textarea { font-family: var(--sans); font-size: 15px; padding: 12
 /* :focus-within cubre el ícono de calendario del campo de fecha: el Tab
    se detiene en él por separado, y ahí el campo no cuenta como :focus. */
 input:focus, input:focus-within, select:focus, textarea:focus { outline: 2px solid var(--olivo); outline-offset: 1px; }
-/* El texto de ejemplo ("tu@correo.com") en --ink3: el gris que pone el
+/* El texto de ejemplo ("nombre@correo.com") en --ink3: el gris que pone el
    navegador por su cuenta (#757575) no llega a 4,5:1 sobre --pario, ni
    de día ni de noche. Sigue siendo más claro que el valor escrito, que
    va en --ink. */

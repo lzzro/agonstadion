@@ -41,7 +41,7 @@ tokenCsrf();
       <?php echo campoCsrf(); ?>
       <span class="etiqueta">Bienvenido de vuelta</span>
       <h2>Iniciar sesión</h2>
-      <label>Correo<input type="email" name="correo" placeholder="tu@correo.com" required autocomplete="email" spellcheck="false" autocapitalize="off"></label>
+      <label>Correo<input type="email" name="correo" placeholder="nombre@correo.com" required autocomplete="email" spellcheck="false" autocapitalize="off"></label>
       <div class="campo">
         <label>Contraseña<input type="password" name="password" required minlength="10" autocomplete="current-password" aria-describedby="ayuda-clave"></label>
         <p class="ayuda-campo" id="ayuda-clave">Mínimo 10 caracteres.</p>
