@@ -125,7 +125,9 @@ function leerTabla(p) {
     const ths = [...document.querySelectorAll('#posiciones thead th')].filter(visible);
     const primera = document.querySelector('#posiciones tbody tr');
     const tds = primera ? [...primera.children].filter(visible) : [];
-    const alineadas = ths.map((th, i) => tds[i] && getComputedStyle(th).textAlign !== getComputedStyle(tds[i]).textAlign ? th.textContent : null).filter(Boolean);
+    // "start" y "left" son lo mismo en una pagina de izquierda a derecha.
+    const alinea = e => ({ start: 'left', end: 'right' }[getComputedStyle(e).textAlign] || getComputedStyle(e).textAlign);
+    const alineadas = ths.map((th, i) => tds[i] && alinea(th) !== alinea(tds[i]) ? th.textContent : null).filter(Boolean);
     const num = document.querySelector('#posiciones td.num');
     return { filas, encabezados: ths.map(th => th.textContent).join('|'), alineadas,
              cifras: num ? getComputedStyle(num).fontVariantNumeric : '' };
