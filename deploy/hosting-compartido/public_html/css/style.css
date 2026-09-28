@@ -107,6 +107,12 @@ main, .vista, main > section[id] { scroll-margin-top: 16px; }
     "aside"
     "footer";
   grid-template-columns: 1fr;
+  /* Las filas van en auto salvo la del contenido (main), que se lleva lo
+     que sobra: con min-height: 100vh y una pagina corta (torneos.php con
+     pocas ligas, en una pantalla grande), la grilla reparte el alto
+     sobrante entre todas las filas auto, y el menu crecia hasta ~100 px
+     con la linea de la pagina actual pegada abajo. */
+  grid-template-rows: auto auto 1fr auto auto;
   min-height: 100vh;
 }
 header { grid-area: header; }
@@ -261,13 +267,45 @@ h2 { margin: 0; font-family: var(--serif); font-size: 28px; font-weight: 500; }
 /* Cifras de ancho fijo en toda la tabla: las columnas de numeros (PJ,
    G, Pts, inscriptos) quedan alineadas de una fila a otra. En el texto
    no cambia nada. */
-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+/* lining-nums: cifras de altura pareja. La Cormorant (y la serif de
+   respaldo) trae por defecto cifras de estilo antiguo, que suben y bajan
+   de la linea: el 1 parecia una i sin punto, el 9 bajaba y un 12 quedaba
+   desparejo. tabular-nums: todas del mismo ancho. No cambia la letra. */
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: lining-nums tabular-nums; }
 th { text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); font-weight: 500; padding: 8px; border-bottom: 1px solid var(--veta); }
 td { padding: 10px 8px; border-bottom: 1px solid var(--hair); }
 /* Rótulo de fila (la tabla de Reglas del torneo): un <th scope="row">
    para el lector de pantalla, con el aspecto de una celda más. */
 tbody th { font-weight: 400; padding: 10px 8px; border-bottom-color: var(--hair); }
 td.num { text-align: right; font-family: var(--serif); font-size: 18px; }
+/* Cada columna de numeros va entera a la derecha, encabezado y valores
+   (antes el encabezado iba a la izquierda y el valor a la derecha).
+   .num es la cifra grande en serif (#, Pts); .cifra, la de la interfaz. */
+th.num, th.cifra, td.cifra { text-align: right; white-space: nowrap; }
+/* La tabla de posiciones. La columna # se ajusta a su numero: con la
+   tabla al 100 % se quedaba con parte del ancho sobrante y dejaba un
+   hueco grande antes de Equipo. */
+table.posiciones th.pos, table.posiciones td.pos { width: 1%; text-align: right; padding-left: 10px; padding-right: 12px; }
+/* Los que clasifican a playoffs: fondo olivo palido Y una raya vertical
+   olivo de 3 px al borde de la fila (color y forma, como los estados de
+   DESIGN.md). La leyenda repite la raya, y cada fila lo dice tambien en
+   texto oculto para el lector de pantalla. Las demas filas llevan la
+   raya transparente, asi las columnas no se corren. */
+table.posiciones td.pos { border-left: 3px solid transparent; }
+table.posiciones tr.clasifica td.pos { border-left-color: var(--olivo); }
+.marca-clasifica { display: inline-block; width: 3px; height: 12px; margin-right: 6px; background: var(--olivo); vertical-align: -1px; }
+/* Los encabezados llevan letter-spacing, que deja un hueco despues de la
+   ultima letra: a la derecha, ese hueco se descuenta del relleno para
+   que el encabezado termine donde terminan las cifras. */
+th.num, th.cifra { padding-right: calc(8px - .16em); }
+table.posiciones th.pos { padding-right: calc(12px - .16em); }
+/* En el telefono, la tabla de posiciones deja lo que ordena: #, equipo,
+   partidos jugados, tantos, diferencia y puntos. G, E y P vuelven desde
+   768 px; si igual no entra, se desplaza dentro de .tabla-scroll. */
+table.posiciones .detalle { display: none; }
+@media (min-width: 768px) {
+  table.posiciones .detalle { display: table-cell; }
+}
 /* Un marcador ("2 – 0", "1 – 1", o la raya de un partido sin empezar)
    no se parte nunca: si falta lugar, se parten los nombres de los
    equipos de al lado. Vale para la celda de la tabla (tarjeta en vivo
@@ -275,7 +313,7 @@ td.num { text-align: right; font-family: var(--serif); font-size: 18px; }
    de las filas de partidos, que en un partido jugado lleva el resultado.
    Los numeros van en tabular-nums para que "1 – 1" y "2 – 0" midan lo
    mismo y la columna no baile de una fila a otra. */
-.marcador, .partido .hora { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.marcador, .partido .hora { white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
 td.marcador { text-align: center; padding-left: 10px; padding-right: 10px; }
 /* La tarjeta "en vivo" del inicio, en la columna lateral (desde 768 px),
    tiene entre 140 y 250 px de ancho. Tres columnas (equipo, marcador,
@@ -692,6 +730,7 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
       "main aside"
       "footer footer";
     grid-template-columns: 2fr 1fr;
+    grid-template-rows: auto auto 1fr auto;
   }
   main { padding: 32px 32px 32px 40px; }
   aside { padding: 32px 40px 32px 0; }

@@ -3,12 +3,19 @@
 // ---------------------------------------------------------------------
 //   node tests/e2e/recorrido.js
 //
+//   0. el menu: en cada pagina con el menu compartido, y en cada ancho
+//      (390 a 1920 px, con una ventana alta, que es donde sobra lugar), el
+//      alto del <nav> es el mismo que en index.php (2 px de tolerancia), y
+//      la linea de la pagina actual queda pegada al texto de su enlace.
+//      (La administracion tiene su propio menu, y queda afuera.)
 //   1. barrido: cada vista, en 390, 768 y 1024 px, de dia y de noche, sin
 //      sesion y con ella: sin desborde a lo ancho, sin texto del color de
 //      su fondo, sin respuestas con error (400 o mas) ni errores de
 //      JavaScript; con sesion, el circulo en la cabecera
 //   2. marcadores: ningun marcador ("2 – 0") se parte en dos renglones,
-//      ni su tabla se sale de la tarjeta, en cinco anchos y dos modos
+//      ni su tabla se sale de la tarjeta, y todos llevan cifras de altura
+//      pareja y ancho fijo (lining-nums tabular-nums), en cinco anchos y
+//      dos modos
 //   3. enlaces: todo href, src y action interno de cada pagina responde
 //      (menos de 400), sin sesion y con ella, y toda ancla #x existe en su
 //      pagina. Un formulario se manda sin su token: responde 403 con el
@@ -44,6 +51,42 @@ let nav;
     const sesion = await S.ctx.storageState();
     await S.ctx.close();
     t.chk(true, 'una cuenta nueva de @ejemplo.invalid, administradora y organizadora');
+
+    // --- 0. El menu ---------------------------------------------------------------------
+    console.log('--- 0. El menu: el mismo alto en todas las paginas ---');
+    const CON_MENU = PUBLICAS.concat(['crear.php', 'panel.php', 'perfil.php']);
+    const medirMenu = p => p.evaluate(() => {
+      const n = document.querySelector('nav');
+      const caja = n.getBoundingClientRect();
+      // La entrada marcada que se ve (en torneo.php hay copias ocultas).
+      const a = [...n.querySelectorAll('a.activo')].find(x => x.getClientRects().length > 0);
+      let linea = null;
+      if (a) {
+        const r = document.createRange();
+        r.selectNodeContents(a);
+        const texto = [...r.getClientRects()].reduce((m, x) => Math.max(m, x.bottom), 0);
+        linea = Math.round(a.getBoundingClientRect().bottom - texto);   // del pie del texto a la linea
+      }
+      return { alto: Math.round(caja.height), linea };
+    });
+    const menuMal = [];
+    let menuVistas = 0;
+    for (const ancho of [390, 768, 1024, 1440, 1920]) {
+      const ctx = await nav.newContext({ viewport: { width: ancho, height: 1400 }, storageState: sesion });
+      const p = await ctx.newPage();
+      await p.goto(`${BASE}/index.php`, { waitUntil: 'networkidle' });
+      const base = await medirMenu(p);
+      for (const vista of CON_MENU) {
+        await p.goto(`${BASE}/${vista}`, { waitUntil: 'networkidle' });
+        const m = await medirMenu(p);
+        menuVistas++;
+        if (Math.abs(m.alto - base.alto) > 2) menuMal.push(`${vista} a ${ancho} px: el menu mide ${m.alto} px (en index.php, ${base.alto})`);
+        if (m.linea !== null && m.linea > 12) menuMal.push(`${vista} a ${ancho} px: la linea de la pagina actual queda ${m.linea} px debajo del texto`);
+      }
+      await ctx.close();
+    }
+    t.chk(menuMal.length === 0, `el menu mide lo mismo que en index.php en ${menuVistas} combinaciones de pagina y ancho, con la linea pegada al texto`
+          + (menuMal.length ? `:\n      ${menuMal.join('\n      ')}` : ''));
 
     // --- 1. Barrido ---------------------------------------------------------------------
     console.log('--- 1. Barrido: desborde, texto invisible y errores ---');
@@ -103,7 +146,8 @@ let nav;
           const caja = el.closest('.tarjeta, .tabla-scroll, section') || document.body;
           const tabla = el.closest('table');
           const sale = (tabla && !el.closest('.tabla-scroll')) ? tabla.getBoundingClientRect().right - caja.getBoundingClientRect().right : 0;
-          salida.push({ texto, renglones: renglones(el), donde: el.tagName.toLowerCase() + '.' + el.className, sale });
+          salida.push({ texto, renglones: renglones(el), donde: el.tagName.toLowerCase() + '.' + el.className, sale,
+                        cifras: getComputedStyle(el).fontVariantNumeric });
         });
         return salida;
       });
@@ -111,11 +155,12 @@ let nav;
         revisados++;
         if (x.renglones > 1) partidos.push(`${vista} ${ancho} ${modo}: "${x.texto}" en ${x.donde} ocupa ${x.renglones} renglones`);
         if (x.sale > 1) partidos.push(`${vista} ${ancho} ${modo}: la tabla de "${x.texto}" se sale ${Math.round(x.sale)} px de su tarjeta`);
+        if (!/lining-nums/.test(x.cifras) || !/tabular-nums/.test(x.cifras)) partidos.push(`${vista} ${ancho} ${modo}: "${x.texto}" en ${x.donde} no lleva cifras parejas de ancho fijo (${x.cifras})`);
       }
       await ctx.close();
     }
     t.chk(revisados > 0 && partidos.length === 0, `${revisados} marcadores revisados (${VISTAS_M.length} vistas × 5 anchos × 2 modos): `
-          + (partidos.length ? `${partidos.length} partidos:\n      ${partidos.join('\n      ')}` : 'ninguno se parte'));
+          + (partidos.length ? `${partidos.length} con problemas:\n      ${partidos.join('\n      ')}` : 'ninguno se parte, todos con cifras parejas'));
 
     // --- 3. Enlaces --------------------------------------------------------------------------
     console.log('--- 3. Enlaces, recursos y formularios ---');

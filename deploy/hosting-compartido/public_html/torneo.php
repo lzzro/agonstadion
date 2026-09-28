@@ -313,14 +313,22 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
 <?php   if (empty($tabla)) { ?>
   <p>La tabla se arma con el fixture.</p>
 <?php   } else {
-          $clasifican = ($config === null) ? 0 : $config->getClasificanPlayoffs(); ?>
+          # Cuantos clasifican sale de la configuracion de la liga (0 =
+          # ninguno), nunca de un numero escrito aca. La columna E va solo
+          # en las ligas que admiten empate. G, E y P (.detalle) no se ven
+          # en el telefono: ahi la tabla deja lo que ordena (tantos, Dif y
+          # Pts), ver style.css.
+          $clasifican = ($config === null) ? 0 : $config->getClasificanPlayoffs();
+          $con_empate = ($config === null) || $config->admiteEmpate();
+          $tantos     = mayuscula($unidad); ?>
   <div class="tabla-scroll" tabindex="0" role="region" aria-label="Tabla de posiciones">
-  <table>
-    <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Dif</th><th>Pts</th></tr></thead>
-    <tbody><?php foreach ($tabla as $i => $fila) { ?><tr<?php if ($i < $clasifican) { echo ' class="clasifica"'; } ?>><td class="num"><?php echo $i + 1; ?></td><td><?php echo htmlspecialchars($fila->getNombreVisible()); ?></td><td><?php echo $fila->getPartidosJugados(); ?></td><td><?php echo $fila->getGanados(); ?></td><td><?php echo $fila->getEmpatados(); ?></td><td><?php echo $fila->getPerdidos(); ?></td><td><?php echo conSigno($fila->getDiferencia()); ?></td><td class="num"><?php echo $fila->getPuntos($config); ?></td></tr><?php } ?></tbody>
+  <table class="posiciones">
+    <thead><tr><th class="pos">#</th><th>Equipo</th><th class="cifra">PJ</th><th class="cifra detalle">G</th><?php if ($con_empate) { ?><th class="cifra detalle">E</th><?php } ?><th class="cifra detalle">P</th><th class="cifra"><?php echo htmlspecialchars($tantos); ?></th><th class="cifra">Dif</th><th class="num">Pts</th></tr></thead>
+    <tbody><?php foreach ($tabla as $i => $fila) {
+      $clasifica = ($i < $clasifican); ?><tr<?php if ($clasifica) { echo ' class="clasifica"'; } ?>><td class="pos num"><?php echo $i + 1; ?></td><td><?php echo htmlspecialchars($fila->getNombreVisible()); ?><?php if ($clasifica) { ?><span class="visualmente-oculto"> · clasifica a playoffs</span><?php } ?></td><td class="cifra"><?php echo $fila->getPartidosJugados(); ?></td><td class="cifra detalle"><?php echo $fila->getGanados(); ?></td><?php if ($con_empate) { ?><td class="cifra detalle"><?php echo $fila->getEmpatados(); ?></td><?php } ?><td class="cifra detalle"><?php echo $fila->getPerdidos(); ?></td><td class="cifra"><?php echo $fila->getFavor() . ':' . $fila->getContra(); ?></td><td class="cifra"><?php echo conSigno($fila->getDiferencia()); ?></td><td class="num"><?php echo $fila->getPuntos($config); ?></td></tr><?php } ?></tbody>
   </table>
   </div>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php if ($clasifican > 0) { echo 'En verde: clasifican a playoffs · '; } ?>Victoria <?php echo $config->getPuntosVictoria(); ?> pts · <?php if ($config->admiteEmpate()) { ?>Empate <?php echo $config->getPuntosEmpate(); ?> pt<?php echo ($config->getPuntosEmpate() === 1) ? '' : 's'; ?><?php } else { ?>Sin empates<?php } ?> · Dif: diferencia de <?php echo $unidad; ?></span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php if ($clasifican > 0) { ?><span class="marca-clasifica" aria-hidden="true"></span>Clasifican a playoffs: los <?php echo $clasifican; ?> primeros · <?php } ?>Victoria <?php echo $config->getPuntosVictoria(); ?> pts · <?php if ($config->admiteEmpate()) { ?>Empate <?php echo $config->getPuntosEmpate(); ?> pt<?php echo ($config->getPuntosEmpate() === 1) ? '' : 's'; ?><?php } else { ?>Sin empates<?php } ?> · <?php echo htmlspecialchars($tantos); ?>: a favor y en contra · Dif: diferencia de <?php echo $unidad; ?></span>
 <?php   } ?>
   </section>
 </div>

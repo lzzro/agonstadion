@@ -106,6 +106,31 @@ function publicos() {
                  modulo: f[8], disciplina: f[9], inscriptos: parseInt(f[10], 10), fechas: parseInt(f[11], 10),
                  actual: parseInt(f[12], 10), en_vivo: f[13] === '1' }));
 }
+// La tabla de posiciones como se ve: el texto visible de cada fila (sin
+// el texto oculto para el lector de pantalla, que va aparte), si lleva
+// la clase y la raya de los que clasifican, los encabezados que se ven,
+// las columnas cuyo encabezado y valores no alinean igual, y las cifras.
+function leerTabla(p) {
+  return p.evaluate(() => {
+    const visible = e => getComputedStyle(e).display !== 'none';
+    const filas = [...document.querySelectorAll('#posiciones tbody tr')].map(tr => {
+      const celdas = [...tr.children].filter(visible);
+      const texto = celdas.map(td => { const c = td.cloneNode(true); c.querySelectorAll('.visualmente-oculto').forEach(x => x.remove()); return c.textContent; });
+      const pos = tr.querySelector('td.pos');
+      const raya = pos ? getComputedStyle(pos).borderLeftColor : '';
+      return { celdas: texto.join(' '), clasifica: tr.classList.contains('clasifica'),
+               raya: raya !== '' && raya !== 'rgba(0, 0, 0, 0)' && raya !== 'transparent',
+               oculto: [...tr.querySelectorAll('.visualmente-oculto')].map(x => x.textContent).join('') };
+    });
+    const ths = [...document.querySelectorAll('#posiciones thead th')].filter(visible);
+    const primera = document.querySelector('#posiciones tbody tr');
+    const tds = primera ? [...primera.children].filter(visible) : [];
+    const alineadas = ths.map((th, i) => tds[i] && getComputedStyle(th).textAlign !== getComputedStyle(tds[i]).textAlign ? th.textContent : null).filter(Boolean);
+    const num = document.querySelector('#posiciones td.num');
+    return { filas, encabezados: ths.map(th => th.textContent).join('|'), alineadas,
+             cifras: num ? getComputedStyle(num).fontVariantNumeric : '' };
+  });
+}
 // Lo que tiene que decir cada tarjeta, con las reglas de apps/ligas.php.
 function chipEsperado(t) {
   if (t.estado === 'inscripcion') return 'estado-inscripcion|Inscripción abierta';
@@ -128,16 +153,18 @@ function porcentajeEsperado(t) {
 }
 // La tabla de una liga, calculada de tabla_posiciones y ordenada con el
 // desempate de la liga (ConfiguracionTorneo::ordenarPosiciones).
+// Como en torneo.php: la columna E solo si la liga admite empate, y los
+// tantos a favor y en contra ("13:4") antes de la diferencia.
 function tablaEsperada(id) {
-  const [pv, pe, pd, criterio] = filas(`SELECT puntos_victoria, puntos_empate, puntos_derrota, criterio_desempate
-                                        FROM configuracion_torneo WHERE id_torneo = ${id}`)[0];
+  const [pv, pe, pd, criterio, admite] = filas(`SELECT puntos_victoria, puntos_empate, puntos_derrota, criterio_desempate, admite_empate
+                                                FROM configuracion_torneo WHERE id_torneo = ${id}`)[0];
   const lista = filas(`SELECT e.nombre, tp.ganados, tp.empatados, tp.perdidos, tp.favor, tp.contra
                        FROM tabla_posiciones tp
                             INNER JOIN participante p ON p.id_participante = tp.id_participante
                             INNER JOIN equipo e ON e.id_equipo = p.id_equipo
                        WHERE p.id_torneo = ${id} AND p.estado IN ('inscripto', 'confirmado')`)
     .map(([nombre, g, e, p, favor, contra]) => {
-      const x = { nombre, g: +g, e: +e, p: +p, favor: +favor, dif: favor - contra };
+      const x = { nombre, g: +g, e: +e, p: +p, favor: +favor, contra: +contra, dif: favor - contra };
       x.pts = x.g * pv + x.e * pe + x.p * pd;
       return x;
     });
@@ -146,8 +173,8 @@ function tablaEsperada(id) {
   lista.sort((a, b) => (b.pts - a.pts) || (primero(b) - primero(a)) || (segundo(b) - segundo(a))
                        || (a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0));
   const signo = n => n > 0 ? `+${n}` : String(n);
-  return lista.map((x, i) => [String(i + 1), x.nombre, String(x.g + x.e + x.p), String(x.g), String(x.e), String(x.p),
-                               signo(x.dif), String(x.pts)].join(' '));
+  return lista.map((x, i) => [String(i + 1), x.nombre, String(x.g + x.e + x.p), String(x.g)]
+    .concat(admite === '1' ? [String(x.e)] : [], [String(x.p), `${x.favor}:${x.contra}`, signo(x.dif), String(x.pts)]).join(' '));
 }
 const idDe = nombre => parseInt(sql(`SELECT id_torneo FROM torneo WHERE nombre = ${texto(nombre)} ORDER BY id_torneo LIMIT 1`), 10);
 
@@ -305,22 +332,40 @@ let nav = null;
         && (await p.textContent('main .torneo-zona > section .fila .estado')) === 'En vivo', 'arriba del nombre: "Liga · Esports · Fecha 8 de 11" y En vivo');
 
   // La tabla.
-  const tabla = await p.$$eval('#posiciones tbody tr', trs => trs.map(tr => ({
-    celdas: [...tr.children].map(td => td.textContent).join(' '), clasifica: tr.classList.contains('clasifica') })));
+  const leida = await leerTabla(p);
+  const tabla = leida.filas;
   t.chk(tabla.length === 12, `la tabla tiene 12 filas (${tabla.length})`);
   // La Liga Valorant se juega al mejor de 3 mapas: sin empates. El orden
   // y las diferencias son los de la maqueta de siempre; los puntos no,
   // porque la maqueta tenia empates (ver sql/migraciones/005_ligas.sql).
-  const esperada8 = ['1 Titanes CS 7 6 0 1 +9 18', '2 Nova Esports 7 5 0 2 +6 15', '3 Vortex 7 4 0 3 +3 12', '4 Delta Gaming 7 4 0 3 +1 12',
-                     '5 Aurora FC 7 3 0 4 0 9', '6 Halcones 7 3 0 4 -1 9', '7 Ping Masters 7 3 0 4 -2 9', '8 Liceo 3 7 3 0 4 -3 9'];
+  const esperada8 = ['1 Titanes CS 7 6 1 13:4 +9 18', '2 Nova Esports 7 5 2 12:6 +6 15', '3 Vortex 7 4 3 11:8 +3 12',
+                     '4 Delta Gaming 7 4 3 10:9 +1 12', '5 Aurora FC 7 3 4 10:10 0 9', '6 Halcones 7 3 4 10:11 -1 9',
+                     '7 Ping Masters 7 3 4 9:11 -2 9', '8 Liceo 3 7 3 4 8:11 -3 9'];
   t.chk(tabla.slice(0, 8).map(x => x.celdas).join('/') === esperada8.join('/'),
-        'las 8 primeras filas: el orden y las diferencias de la maqueta, sin empates');
-  t.chk(tabla.every(x => x.celdas.split(' ').slice(-4, -3)[0] === '0'), 'la columna E, en 0 en las 12 filas');
+        'las 8 primeras filas: el orden y las diferencias de la maqueta, sin empates, con los mapas a favor y en contra');
+  t.chk(leida.encabezados === '#|Equipo|PJ|G|P|Mapas|Dif|Pts',
+        `sin empates, la columna E no esta (ni el encabezado ni las celdas), y los tantos se llaman Mapas (${leida.encabezados})`);
+  t.chk(sql(`SELECT CONCAT(admite_empate, '|', (SELECT SUM(empatados) FROM tabla_posiciones tp JOIN participante pa USING (id_participante)
+                                                WHERE pa.id_torneo = ${V})) FROM configuracion_torneo WHERE id_torneo = ${V}`) === '0|0',
+        'en la base: admite_empate = 0 y ningun empate');
+  t.chk(tabla.slice(7, 10).map(x => x.celdas).join(' / ') === '8 Liceo 3 7 3 4 8:11 -3 9 / 9 Rambla Esports 7 3 4 7:10 -3 9 / 10 Atlántida GG 7 3 4 6:9 -3 9',
+        'Liceo 3, Rambla y Atlantida (9 puntos, -3): la columna Mapas muestra por que van en ese orden (8, 7 y 6 a favor)');
   t.chk(tabla.map(x => x.celdas).join('/') === tablaEsperada(V).join('/'), 'las 12 filas son las de tabla_posiciones, con el orden del desempate');
   const clasifican = parseInt(sql(`SELECT clasifican_playoffs FROM configuracion_torneo WHERE id_torneo = ${V}`), 10);
-  t.chk(clasifican === 4 && tabla.every((x, i) => x.clasifica === (i < 4)), 'las 4 primeras (y solo esas) llevan class="clasifica"');
-  t.chk((await p.textContent('#posiciones .tarjeta > .etiqueta')).includes('En verde: clasifican a playoffs · Victoria 3 pts · Sin empates · Dif: diferencia de mapas'),
-        'debajo de la tabla, los puntos (sin empates: la liga no los admite) y la unidad de la disciplina (mapas)');
+  t.chk(clasifican === 4 && tabla.every((x, i) => x.clasifica === (i < 4)), 'los que clasifican salen de la configuracion (4): las 4 primeras, y solo esas, llevan class="clasifica"');
+  t.chk(tabla.every((x, i) => x.raya === (i < 4) && x.oculto === (i < 4 ? ' · clasifica a playoffs' : '')),
+        'la marca no es solo color: raya vertical al borde de la fila, y "clasifica a playoffs" en texto para el lector de pantalla');
+  t.chk((await p.textContent('#posiciones .tarjeta > .etiqueta')).includes('Clasifican a playoffs: los 4 primeros · Victoria 3 pts · Sin empates · Mapas: a favor y en contra · Dif: diferencia de mapas')
+        && await p.$('#posiciones .tarjeta > .etiqueta .marca-clasifica[aria-hidden="true"]') !== null,
+        'debajo de la tabla, la leyenda con la misma raya: clasifican los 4 primeros, sin empates, mapas y diferencia');
+  t.chk(leida.alineadas.length === 0, `cada columna alinea igual el encabezado y los valores${leida.alineadas.length ? ' (no: ' + leida.alineadas.join(', ') + ')' : ''}`);
+  t.chk(leida.cifras === 'lining-nums tabular-nums', `las cifras de la tabla, de altura pareja y ancho fijo (${leida.cifras})`);
+  await p.setViewportSize({ width: 390, height: 900 });
+  const chica = await leerTabla(p);
+  const marco = await p.$eval('#posiciones .tabla-scroll', x => x.scrollWidth - x.clientWidth);
+  t.chk(chica.encabezados === '#|Equipo|PJ|Mapas|Dif|Pts' && marco <= 0,
+        `en el telefono (390 px) quedan #, equipo, PJ, mapas, Dif y Pts, sin desbordar su recuadro (${chica.encabezados}; ${marco} px de mas)`);
+  await p.setViewportSize({ width: 1280, height: 900 });
 
   // Participantes.
   const equipos_v = await p.$$eval('#participantes tbody tr td:first-child', tds => tds.map(td => td.textContent));
@@ -423,8 +468,11 @@ let nav = null;
   e = await estadoVistas(p);
   t.chk(e.vistas === 'posiciones' && e.menu === 'Torneos|true' && e.saltar === '#posiciones',
         'con #posiciones abre su tabla, y el menu sigue en Torneos (Posiciones es la de la destacada)');
-  const tabla_b = await p.$$eval('#posiciones tbody tr', trs => trs.map(tr => [...tr.children].map(td => td.textContent).join(' ') + (tr.classList.contains('clasifica') ? ' *' : '')));
+  const leida_b = await leerTabla(p);
+  const tabla_b = leida_b.filas.map(x => x.celdas + (x.clasifica ? ' *' : ''));
   t.chk(tabla_b.join('/') === tablaEsperada(B).join('/'), `la tabla de la Barrial es la de la base, sin clasificados (${tabla_b.length} filas)`);
+  t.chk(leida_b.encabezados === '#|Equipo|PJ|G|E|P|Goles|Dif|Pts' && !(await p.textContent('#posiciones .tarjeta > .etiqueta')).includes('Clasifican'),
+        `la Barrial admite empate: la columna E esta, los tantos se llaman Goles, y no hay leyenda de playoffs (${leida_b.encabezados})`);
   t.chk((await p.textContent('main .torneo-zona > section .fila .etiqueta')) === 'Liga · Fútbol 5 · Fecha 4 de 9'
         && (await p.textContent('#posiciones .tarjeta > .etiqueta')).includes('diferencia de goles'), 'la Barrial: "Fecha 4 de 9" y la diferencia de goles');
 

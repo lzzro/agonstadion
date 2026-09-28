@@ -182,6 +182,18 @@ foreach (array('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejem
         "$correo: de muestra, y ninguna clave la abre (ni su propio texto)");
 }
 
+# Lo que la tabla de torneo.php saca de la configuracion de cada liga:
+# cuantos clasifican a playoffs (la franja, nunca un numero escrito en la
+# pagina), si hay columna E (admite empate) y como se llaman los tantos.
+$como = array();
+foreach ($ids as $nombre => $id) {
+    $liga = $torneos->buscarPorId($id);
+    $cfg  = $liga->getConfiguracion();
+    $como[] = $nombre . ': ' . $cfg->getClasificanPlayoffs() . ' ' . ($cfg->admiteEmpate() ? 'con E' : 'sin E') . ' ' . $liga->getDisciplina()->getUnidad();
+}
+chk(implode(' / ', $como) === 'Liga Valorant · Otoño: 4 sin E mapas / Liga Barrial del Cerro: 0 con E goles / Liga Interna Club Sur: 0 con E goles',
+    'la configuracion de la tabla: Valorant clasifica 4 y sin empates (mapas); Barrial e Interna, sin playoffs y con empates (goles)');
+
 # El desempate alfabetico de la tabla ordena como la base
 # (utf8mb4_unicode_ci): tildes, mayusculas y las letras que ese cotejo
 # trata aparte (æ, ł, ø, þ...). Los nombres van a la base como datos de
