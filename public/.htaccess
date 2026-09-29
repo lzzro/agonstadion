@@ -9,6 +9,16 @@
 # index.html; esta linea lo corrige sin tener que tocarlo.
 DirectoryIndex index.php
 
+# Sin listado de carpetas. Pedir una carpeta que no tiene index.php
+# (controllers/, css/, img/, js/) mostraba la lista de sus archivos,
+# porque el hosting trae el listado prendido, igual que el virtual host
+# de XAMPP. Esta linea vale para esta carpeta y todas las de adentro:
+# ahora esas direcciones responden 403. subidas/ la repite en su propio
+# .htaccess.
+# Si el hosting no admitiera "Options" en un .htaccess, todo el sitio
+# daria error 500: ver "Si algo falla" en docs/deploy-hosting-compartido.md.
+Options -Indexes
+
 # Quien tenga guardada una direccion vieja (torneos.html, login.html...)
 # llega a la pagina nueva en vez de a un error. admin.html es ahora
 # admin.php, que lleva a la administracion real, y panel.html es
