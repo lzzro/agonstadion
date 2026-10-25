@@ -1,0 +1,18 @@
+{
+    "name": "agon/stadion",
+    "description": "Stadion: plataforma de torneos de Agón. Composer solo trae PHPUnit para las pruebas: el sitio no usa ninguna dependencia.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

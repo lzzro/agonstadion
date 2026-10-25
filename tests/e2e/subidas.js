@@ -222,7 +222,7 @@ let nav;
       const limpieza = c.limpiarCuentas(propias);
       t.chk(limpieza.faltaban === 0, `al final, las ${limpieza.fotos} fotos de la corrida estaban en la carpeta de las subidas, y se borran`);
       t.chk(c.archivosSubidas() === antes.carpeta, 'la carpeta de las subidas tiene los mismos archivos que antes');
-      t.chk(c.huellaBase() === antes.huella, 'y usuario, usuario_rol, pedido_rol y auditoria quedan iguales (CHECKSUM TABLE)');
+      t.chk(c.huellaBase() === antes.huella, 'y usuario, usuario_rol, pedido_rol, auditoria y medicion quedan iguales (CHECKSUM TABLE)');
     } catch (e) {
       t.chk(false, `la limpieza (${e.message.split('\n')[0]})`);
     }

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------
 //   node tests/e2e/publicas.js
 //
-// Contra la copia del hosting:
+// Contra la copia de publicacion (deploy/sitio):
 //   STADION_URL=http://127.0.0.1:8096 \
 //   STADION_MYSQL="mysql --socket=/srv/m114/run/mysqld.sock sgdm" \
 //   node tests/e2e/publicas.js
@@ -93,7 +93,9 @@ function publicos() {
                        (SELECT COUNT(*) FROM ronda r WHERE r.id_torneo = t.id_torneo),
                        IFNULL((SELECT MIN(r.numero) FROM ronda r WHERE r.id_torneo = t.id_torneo AND r.estado <> 'cerrada'), 0),
                        EXISTS (SELECT 1 FROM enfrentamiento en INNER JOIN ronda r ON r.id_ronda = en.id_ronda
-                               WHERE r.id_torneo = t.id_torneo AND en.estado = 'en_vivo') AS en_vivo
+                               WHERE r.id_torneo = t.id_torneo AND en.estado = 'en_vivo') AS en_vivo,
+                       (SELECT tt.compite_equipo FROM tipo_torneo tt WHERE tt.id_tipo_torneo = t.id_tipo_torneo),
+                       IFNULL((SELECT c.rondas_previstas FROM configuracion_torneo c WHERE c.id_torneo = t.id_torneo), 0)
                 FROM torneo t
                      INNER JOIN usuario o ON o.id_usuario = t.id_usuario_organizador
                      INNER JOIN modulo_competencia m ON m.id_modulo = t.id_modulo
@@ -104,7 +106,8 @@ function publicos() {
     .map(f => ({ id: parseInt(f[0], 10), nombre: f[1], estado: f[2], cupo: parseInt(f[3], 10), inicio: f[4],
                  organizador: `${paraMostrar(f[5])} ${paraMostrar(f[6])}`.trim(), muestra: f[7] === '1',
                  modulo: f[8], disciplina: f[9], inscriptos: parseInt(f[10], 10), fechas: parseInt(f[11], 10),
-                 actual: parseInt(f[12], 10), en_vivo: f[13] === '1' }));
+                 actual: parseInt(f[12], 10), en_vivo: f[13] === '1', equipos: f[14] === '1',
+                 previstas: parseInt(f[15], 10) }));
 }
 // La tabla de posiciones como se ve: el texto visible de cada fila (sin
 // el texto oculto para el lector de pantalla, que va aparte), si lleva
@@ -139,19 +142,25 @@ function chipEsperado(t) {
   if (t.estado === 'en_curso') return t.en_vivo ? 'estado-en-vivo|En vivo' : 'estado-en-juego|En juego';
   return 'estado-cerrado|Finalizado';
 }
+// Desde la fase 3: equipos o jugadores, y en la llave y el suizo,
+// "Ronda N de M" (las previstas), "llave por armar" o "primera ronda
+// por armar".
 function avanceEsperado(t) {
+  const quienes = t.equipos ? 'equipos' : 'jugadores';
   if (t.estado === 'inscripcion') {
-    return `${t.inscriptos} de ${t.cupo} equipos` + (t.inicio ? ` · desde el ${fechaTexto(t.inicio)}` : '');
+    return `${t.inscriptos} de ${t.cupo} ${quienes}` + (t.inicio ? ` · desde el ${fechaTexto(t.inicio)}` : '');
   }
-  const equipos = plural(t.inscriptos, 'equipo', 'equipos');
-  if (t.fechas === 0) return `${equipos} · fixture por armar`;
-  if (t.actual === 0) return `${equipos} · ${plural(t.fechas, 'fecha jugada', 'fechas jugadas')}`;
-  return `${equipos} · Fecha ${t.actual} de ${t.fechas}`;
+  const equipos = t.equipos ? plural(t.inscriptos, 'equipo', 'equipos') : plural(t.inscriptos, 'jugador', 'jugadores');
+  const liga = t.modulo === 'Liga';
+  if (t.fechas === 0) return `${equipos} · ${liga ? 'fixture' : (t.modulo === 'Suizo' ? 'primera ronda' : 'llave')} por armar`;
+  if (t.actual === 0) return `${equipos} · ${liga ? plural(t.fechas, 'fecha jugada', 'fechas jugadas') : plural(t.fechas, 'ronda jugada', 'rondas jugadas')}`;
+  return liga ? `${equipos} · Fecha ${t.actual} de ${t.fechas}` : `${equipos} · Ronda ${t.actual} de ${t.previstas || t.fechas}`;
 }
 function porcentajeEsperado(t) {
   if (t.estado === 'inscripcion') return Math.round(100 * t.inscriptos / Math.max(1, t.cupo));
   if (t.fechas === 0) return 0;
-  return Math.round(100 * (t.actual === 0 ? t.fechas : t.actual) / t.fechas);
+  const total = (t.modulo !== 'Liga' && t.previstas) ? Math.max(t.fechas, t.previstas) : t.fechas;
+  return Math.round(100 * (t.actual === 0 ? total : t.actual) / total);
 }
 // La tabla de una liga, calculada de tabla_posiciones y ordenada con el
 // desempate de la liga (ConfiguracionTorneo::ordenarPosiciones).
@@ -597,13 +606,15 @@ let nav = null;
   vista = await estable(publicos, async () => {
     await p.goto(`${BASE}/llave.php`);
     return { intro: await p.textContent('main .intro'),
-             ligas: await p.$$eval('.lista-apilada li', lis => lis.map(li => li.querySelector('a').getAttribute('href') + '|' + li.querySelectorAll('.muestra').length)) };
+             ligas: await p.$$eval('#tablas .lista-apilada li', lis => lis.map(li => li.querySelector('a').getAttribute('href') + '|' + li.querySelectorAll('.muestra').length)),
+             llaves: await p.$$eval('#llaves .lista-apilada li a', as => as.map(a => a.getAttribute('href'))) };
   });
-  const no_ligas = vista.base.filter(x => x.modulo !== 'Liga').length;
-  t.chk(no_ligas === 0 && vista.visto.intro.includes('Ninguna competencia en juego la usa: por ahora, todas son ligas.'),
-        'en la base solo hay ligas, y la llave lo dice');
+  const llaves_base = vista.base.filter(x => x.modulo === 'Eliminación directa');
+  t.chk(vista.visto.llaves.join(' ') === llaves_base.map(x => `llave.php?id=${x.id}`).join(' ')
+        && (llaves_base.length > 0 || vista.visto.intro.includes('Ninguna competencia en juego la usa todavía.')),
+        `lista las ${llaves_base.length} eliminaciones directas publicas, cada una con su llave`);
   const ligas_llave = vista.visto.ligas;
-  const ligas_base = vista.base.filter(x => x.modulo === 'Liga');
+  const ligas_base = vista.base.filter(x => x.modulo !== 'Eliminación directa');
   t.chk(ligas_llave.join(' ') === ligas_base.map(x => `torneo.php?id=${x.id}#posiciones|${x.muestra ? 1 : 0}`).join(' '),
         `lista las ${ligas_base.length} ligas publicas, cada una con el enlace a su tabla y la marca solo en las de muestra`);
   t.chk(await p.$$eval('nav a.activo', as => as.map(a => a.textContent + '|' + a.getAttribute('aria-current')).join(',')) === 'Torneos|true', 'el menu marca Torneos (true)');
@@ -686,7 +697,8 @@ let nav = null;
   // --- 7. Lo que vale para todas las paginas -----------------------------------
   console.log('--- 7. En todas las paginas ---');
   const paginas = ['index.php', 'torneos.php', 'torneo.php', `torneo.php?id=${B}`, `torneo.php?id=${S}`, 'torneo.php?id=999999',
-                   'calendario.php', `calendario.php?semana=${hoy}`, 'llave.php', `llave.php?id=${V}`, 'login.php', 'registro.php'];
+                   'calendario.php', `calendario.php?semana=${hoy}`, 'llave.php', `llave.php?id=${V}`, 'login.php', 'registro.php',
+                   'ayuda.php', 'terminos.php', 'contacto.php'];
   const marcas = { css: new Map(), js: new Map() };
   for (const pagina of paginas) {
     const q = await ctx.newPage();

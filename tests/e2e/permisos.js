@@ -36,8 +36,8 @@
 // Variables de entorno, ademas de las de comun.js (ver tests/README.md):
 //   STADION_DCL        propio (por defecto): sgdm_app no puede borrar en
 //                      pedido_rol (error 1142), como da el DCL de
-//                      schema.sql. cpanel: el hosting da los permisos de
-//                      la base entera y no se pueden quitar por tabla; la
+//                      schema.sql. entera: sgdm_app tiene los permisos
+//                      sobre la base entera, sin el DCL por tabla; la
 //                      prueba lo mira sin borrar nada (WHERE 1 = 0).
 //   STADION_DB_SOCKET  el socket de MariaDB para las consultas hechas
 //                      como sgdm_app (con apps/config/database.php)
@@ -55,8 +55,8 @@ const { BASE, sql, texto } = c;
 const RAIZ = path.resolve(__dirname, '..', '..');
 const DCL = process.env.STADION_DCL || 'propio';
 const SESIONES = (process.env.STADION_SESIONES !== undefined) ? process.env.STADION_SESIONES : '/var/lib/php/sessions';
-if (DCL !== 'propio' && DCL !== 'cpanel') {
-  console.error('STADION_DCL va en "propio" o "cpanel".');
+if (DCL !== 'propio' && DCL !== 'entera') {
+  console.error('STADION_DCL va en "propio" o "entera".');
   process.exit(2);
 }
 
@@ -123,7 +123,7 @@ let nav;
     // --- Las cuentas de esta corrida ------------------------------------
     const admin = await c.cuentaNueva(nav, 'Ariadna', 'Prueba', propias);
     const jug = await c.cuentaNueva(nav, 'Odiseo', 'Prueba', propias);
-    const nueva = { correo: `prueba-${c.azar()}@ejemplo.invalid`, clave: 'x' + c.azar(12) };   // la del registro, paso 6
+    const nueva = { correo: `prueba-${c.azar()}@ejemplo.invalid`, clave: c.clave() };   // la del registro, paso 6
     propias.push(nueva);
     t.chk(Number.isInteger(admin.id) && Number.isInteger(jug.id), `dos cuentas nuevas de @ejemplo.invalid (${admin.id} y ${jug.id})`);
     sql(fs.readFileSync(path.join(RAIZ, 'sql', 'primer_administrador.sql'), 'utf8').replace(/CORREO_DE_LA_CUENTA/g, admin.correo));
@@ -134,7 +134,7 @@ let nav;
     }
 
     // Las direcciones de los controladores, como las dejo cada
-    // instalacion: la local y la del hosting son distintas.
+    // instalacion: la local y la copia de publicacion son distintas.
     const anon = await nav.newContext();
     const a = await pedir(anon, `${BASE}/admin.php`);
     const ADMIN = absoluta(`${BASE}/admin.php`, a.destino);
@@ -166,7 +166,7 @@ let nav;
     t.chk(r.estado === 403, 'GET a la administracion como jugador: 403');
     t.chk(veces(r.cuerpo, 'Pedidos de rol') + veces(r.cuerpo, admin.correo) + veces(r.cuerpo, 'Registro de auditor') === 0,
           '  ...sin nada de la administracion');
-    t.chk(r.cuerpo.includes('solo para la administracion.'), '  ...con el aviso');
+    t.chk(r.cuerpo.includes('solo para la administración.'), '  ...con el aviso');
     let TJ = await tokenDe(J.ctx, PERFIL);
     r = await c.postear(J.ctx, ADMIN, { accion: 'aprobar', id_pedido: P, token_csrf: TJ });
     t.chk(r.estado === 403, 'POST aprobar como jugador, con su token valido: 403');
@@ -195,7 +195,7 @@ let nav;
     t.chk(sql(`SELECT COUNT(*) FROM auditoria WHERE accion = 'pedido_rol' AND id_usuario = ${jug.id}
                AND id_registro = (SELECT id_pedido_rol FROM pedido_rol WHERE id_usuario = ${jug.id})`) === '1', '  ...y queda en la auditoria');
     r = await c.postear(J.ctx, PERFIL, { accion: 'pedir_rol', token_csrf: TJ });
-    t.chk(r.cuerpo.includes('Ya hay un pedido en revision.') && pendientes() === '1', 'pedir otra vez: aviso, y sigue uno solo');
+    t.chk(r.cuerpo.includes('Ya hay un pedido en revisión.') && pendientes() === '1', 'pedir otra vez: aviso, y sigue uno solo');
     t.chk(comoApp(`INSERT INTO pedido_rol (id_usuario, id_rol) SELECT u.id_usuario, r.id_rol FROM (${laCuenta(jug)}) u
                    JOIN rol r ON r.nombre = 'organizador'`) === '1062',
           'la base frena el segundo pendiente (sgdm_app: error 1062)');
@@ -204,7 +204,7 @@ let nav;
       t.chk(comoApp('DELETE FROM pedido_rol WHERE 1 = 0') === '1142', 'sgdm_app no puede borrar pedidos (DCL: error 1142)');
     } else {
       t.chk(comoApp('DELETE FROM pedido_rol WHERE 1 = 0') === '0',
-            'sgdm_app con los permisos de cPanel (la base entera): el DELETE se permite; aca no borra nada');
+            'sgdm_app con los permisos sobre la base entera: el DELETE se permite; aca no borra nada');
     }
     t.chk(pendientes() === '1', '  ...sigue uno solo');
     const P1 = sql(`SELECT id_pedido_rol FROM pedido_rol WHERE id_usuario = ${jug.id} AND estado = 'pendiente'`);
@@ -236,7 +236,7 @@ let nav;
           '  ...y queda en la auditoria');
     t.chk(roles(jug) === 'jugador', '  ...el jugador sigue sin el rol');
     r = await c.postear(A.ctx, ADMIN, { accion: 'aprobar', id_pedido: P1, token_csrf: TA });
-    t.chk(r.cuerpo.includes('ya no esta pendiente.') && roles(jug) === 'jugador', 'aprobar un pedido ya rechazado: aviso, y nada cambia');
+    t.chk(r.cuerpo.includes('ya no está pendiente.') && roles(jug) === 'jugador', 'aprobar un pedido ya rechazado: aviso, y nada cambia');
     const perfil_j = (await pedir(J.ctx, PERFIL)).cuerpo;
     t.chk(perfil_j.includes('queda rechazado') && perfil_j.includes('Pedir el rol de organizador'),
           'el perfil del jugador dice que queda rechazado, y puede pedirlo otra vez');
@@ -274,7 +274,7 @@ let nav;
     t.chk(comoApp(`UPDATE pedido_rol SET estado = 'aprobado', fecha_resolucion = NOW(), id_usuario_resuelve = id_usuario
                    WHERE id_pedido_rol = ${P3} AND id_usuario IN (${laCuenta(admin)})`) === '4025', 'la base tambien lo frena (CHECK, error 4025)');
     r = await c.postear(A.ctx, ADMIN, { accion: 'borrar', id_pedido: P3, token_csrf: TA });
-    t.chk(r.cuerpo.includes('Solo se aprueba o se rechaza un pedido.') && pendientes() === '1', 'una accion inventada: aviso, y nada cambia');
+    t.chk(r.cuerpo.includes('Esa acción no existe en esta página.') && pendientes() === '1', 'una accion inventada: aviso, y nada cambia');
     const inexistente = parseInt(sql('SELECT IFNULL(MAX(id_pedido_rol), 0) + 1000 FROM pedido_rol'), 10);
     r = await c.postear(A.ctx, ADMIN, { accion: 'aprobar', id_pedido: inexistente, token_csrf: TA });
     t.chk(r.cuerpo.includes('Ese pedido no existe.'), 'un pedido que no existe: aviso');
@@ -285,7 +285,7 @@ let nav;
     // --- 6. El token en los formularios de siempre -------------------------
     console.log('--- 6. El token en los formularios de siempre ---');
     r = await c.postear(J.ctx, PERFIL, { accion: 'datos', nombre: 'Cambio', apellido: 'X' });
-    t.chk(r.estado === 403 && r.cuerpo.includes('El formulario no corresponde a esta sesion') && nombre(jug) === nombre_j,
+    t.chk(r.estado === 403 && r.cuerpo.includes('El formulario no corresponde a esta sesión') && nombre(jug) === nombre_j,
           'datos sin token: 403, con el aviso, y el nombre intacto');
     r = await c.postear(J.ctx, PERFIL, { nombre: 'Cambio', apellido: 'X' });
     t.chk(r.estado === 403 && nombre(jug) === nombre_j, 'datos sin accion ni token: 403, y el nombre intacto');
@@ -368,7 +368,7 @@ let nav;
       c.limpiarCuentas(propias);
       t.chk(sql(`SELECT COUNT(*) FROM usuario WHERE correo IN (${correos()})`) === '0', 'al final, las cuentas de la corrida ya no estan');
       t.chk(rolesAjenos() === antes.roles, 'los roles de las demas cuentas quedan como estaban');
-      t.chk(c.huellaBase() === antes.huella, 'usuario, usuario_rol, pedido_rol y auditoria quedan iguales que antes de empezar (CHECKSUM TABLE)');
+      t.chk(c.huellaBase() === antes.huella, 'usuario, usuario_rol, pedido_rol, auditoria y medicion quedan iguales que antes de empezar (CHECKSUM TABLE)');
     } catch (e) {
       t.chk(false, `la limpieza (${e.message.split('\n')[0]})`);
     }

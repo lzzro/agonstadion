@@ -24,7 +24,7 @@
 //
 // SOLO TOCA LO QUE ELLA MISMA CREA: una cuenta de @ejemplo.invalid, con
 // contrasena al azar, administradora (sql/primer_administrador.sql) y
-// organizadora, para abrir la administracion, el panel y "Nueva liga".
+// organizadora, para abrir la administracion, el panel y "Nuevo torneo".
 // Al final se borra (limpiarCuentas en comun.js) y se comprueba que la
 // base (CHECKSUM TABLE) quedo como estaba.
 // =====================================================================
@@ -35,7 +35,8 @@ const c = require('./comun');
 const { BASE, sql } = c;
 
 const PUBLICAS = ['index.php', 'torneos.php', 'torneo.php', 'torneo.php#resumen', 'torneo.php#calendario', 'torneo.php#posiciones',
-                  'torneo.php#participantes', 'torneo.php#reglas', 'calendario.php', 'llave.php'];
+                  'torneo.php#participantes', 'torneo.php#reglas', 'calendario.php', 'llave.php',
+                  'ayuda.php', 'terminos.php', 'contacto.php'];
 
 let nav;
 (async () => {
@@ -167,7 +168,8 @@ let nav;
     for (const con_sesion of [false, true]) {
       const ctx = await nav.newContext({ storageState: con_sesion ? sesion : undefined });
       const p = await ctx.newPage();
-      const paginas = ['index.php', 'torneos.php', 'torneo.php', 'calendario.php', 'llave.php', 'crear.php', 'panel.php', 'admin.php']
+      const paginas = ['index.php', 'torneos.php', 'torneo.php', 'calendario.php', 'llave.php', 'crear.php', 'panel.php', 'admin.php',
+                       'ayuda.php', 'terminos.php', 'contacto.php']
         .concat(con_sesion ? ['perfil.php'] : ['login.php', 'registro.php']);
       const vistos = new Set();
       const rotos = [];
@@ -194,7 +196,7 @@ let nav;
           const r = (ref.tag === 'FORM')
             ? await ctx.request.post(u.href.split('#')[0], { maxRedirects: 0, failOnStatusCode: false })
             : await ctx.request.get(u.href.split('#')[0], { failOnStatusCode: false });
-          if (ref.tag === 'FORM' && r.status() === 403 && (await r.text()).includes('no corresponde a esta sesion')) continue;
+          if (ref.tag === 'FORM' && r.status() === 403 && (await r.text()).includes('no corresponde a esta sesión')) continue;
           if (r.status() >= 400) rotos.push(`${pagina}: ${ref.tag} ${ref.v} → ${r.status()}`);
         }
       }
@@ -212,7 +214,7 @@ let nav;
   } finally {
     try {
       c.limpiarCuentas(propias);
-      t.chk(c.huellaBase() === antes.huella, 'al final, usuario, usuario_rol, pedido_rol y auditoria quedan iguales (CHECKSUM TABLE)');
+      t.chk(c.huellaBase() === antes.huella, 'al final, usuario, usuario_rol, pedido_rol, auditoria y medicion quedan iguales (CHECKSUM TABLE)');
     } catch (e) {
       t.chk(false, `la limpieza (${e.message.split('\n')[0]})`);
     }

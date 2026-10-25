@@ -46,7 +46,12 @@ chk(!empty(liga(8, '2026-02-30')->validarLiga()) && !empty(liga(8, '4/10/2026')-
 chk(empty(liga(8, '2028-02-29')->validarLiga()), 'el 29 de febrero de un bisiesto, si');
 $individual = new Torneo(1, 'Liga de prueba', new Disciplina(1, 'Ajedrez'), new TipoTorneo(1, 'Individual', 0),
                          new ModuloCompetencia(1, 'Liga'), $organizador, null, null, 8);
-chk(!empty($individual->validarLiga()), 'una liga es por equipos');
+chk(empty($individual->validarLiga()) && !$individual->esPorEquipos() && liga(8)->esPorEquipos(),
+    'desde la fase 3, una liga tambien puede ser individual');
+$c = liga(8);
+chk(empty($c->cancelar()) && $c->estaCancelado() && !empty($c->cancelar()), 'una liga se cancela una vez');
+chk(!empty(liga(8, null, 'finalizado')->cancelar()), 'una terminada no se cancela');
+chk(empty(liga(8, null, 'en_curso')->cancelar()), 'una en curso, si');
 
 $t = liga(8);
 chk(!empty($t->cerrarInscripcion(3)) && $t->tieneInscripcionAbierta(), 'con 3 equipos la inscripcion no se cierra');

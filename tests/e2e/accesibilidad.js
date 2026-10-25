@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------
 //   node tests/e2e/accesibilidad.js
 //
-// Contra la copia del hosting:
+// Contra la copia de publicacion (deploy/sitio):
 //   STADION_URL=http://127.0.0.1:8096 \
 //   STADION_MYSQL="mysql --socket=/srv/m114/run/mysqld.sock sgdm" \
 //   node tests/e2e/accesibilidad.js
@@ -45,12 +45,22 @@
 //                 el panel con una liga con la inscripcion abierta (4
 //                 equipos anotados y un pedido pendiente de un capitan)
 //                 y con la inscripcion cerrada y el fixture armado (con
-//                 la casilla de rehacer)
+//                 la casilla de rehacer); "Fechas y resultados" de esa
+//                 liga: la fecha en juego, con un resultado cargado y
+//                 otro partido en vivo y programado, una fecha por
+//                 jugar, y devuelta con un error (fase 3); el panel con
+//                 una liga individual y su casilla de cancelar; una
+//                 eliminacion directa: su llave en torneo.php y en
+//                 llave.php, y sus rondas y resultados; los reportes
+//   administrador la administracion, y devuelta con un error
 //   jugador       el perfil en Mis torneos con su equipo armado (y
 //                 despues con el equipo jugando la liga), el perfil con
 //                 el aviso del rol de organizador (?aviso=organizador
 //                 #roles), y la liga con la inscripcion abierta con el
-//                 formulario "Pedir lugar"
+//                 formulario "Pedir lugar"; una liga individual con
+//                 "Inscribirse"; el perfil en Rendimiento con mediciones
+//                 (graficos, comparacion, formularios y tabla), y devuelto
+//                 con un error de una medicion
 //
 // Las cuentas se crean en cada corrida (ver comun.js): correo de
 // @ejemplo.invalid y contrasena al azar, solo en memoria. Otras pruebas
@@ -246,6 +256,12 @@ let nav = null;
       es: async p => (await textoDe(p, 'main h1')) === 'Semana del 21 al 27 de septiembre' },
     { vista: 'llave.php', abrir: ir('llave.php'), que: 'la lista de ligas, cada una con su tabla',
       es: async p => (await p.$$('main .lista-apilada li')).length > 0 },
+    { vista: 'ayuda.php', abrir: ir('ayuda.php'), que: 'la ayuda, con las preguntas de los cinco bloques',
+      es: async p => (await p.$$('main section h2')).length === 5 && (await p.$$('main h3')).length > 10 },
+    { vista: 'terminos.php', abrir: ir('terminos.php'), que: 'los terminos, con la tabla de los datos',
+      es: async p => (await textoDe(p, 'main h1')) === 'Términos y privacidad' && await hay(p, 'main .tabla-scroll[role="region"] table') },
+    { vista: 'contacto.php', abrir: ir('contacto.php'), que: 'el contacto, con el correo',
+      es: async p => await hay(p, 'main a[href^="mailto:"]') },
     { vista: 'login.php', abrir: ir('login.php'), que: 'el formulario de acceso',
       es: async p => await hay(p, 'main form input[name="correo"]') && await hay(p, 'main form input[name="password"]') },
     { vista: 'registro.php', abrir: ir('registro.php'), que: 'el formulario de alta',
@@ -264,8 +280,8 @@ let nav = null;
   const orgs = { dia: O.ctx, noche: await contexto(nav, 'noche', org) };
   const jugs = { dia: J.ctx, noche: await contexto(nav, 'noche', jug) };
 
-  await revisar(t, orgs, { vista: 'crear.php (liga nueva)', abrir: ir('crear.php'), que: 'el formulario "Nueva liga", sin avisos',
-    es: async p => (await p.title()) === 'Nueva liga · Stadion' && await hay(p, 'main form input[name="nombre"]') && !(await hay(p, '[role="alert"]')) });
+  await revisar(t, orgs, { vista: 'crear.php (liga nueva)', abrir: ir('crear.php'), que: 'el formulario "Nuevo torneo", sin avisos',
+    es: async p => (await p.title()) === 'Nuevo torneo · Stadion' && await hay(p, 'main form input[name="nombre"]') && !(await hay(p, '[role="alert"]')) });
 
   // El formulario devuelto con un error del servidor: todo lo que el
   // navegador acepta, pero el nombre es el de otra liga vigente.
@@ -279,13 +295,13 @@ let nav = null;
       const [r] = await Promise.all([p.waitForNavigation(), p.click('main form button[type="submit"]')]);
       return r;
     },
-    es: async p => (await p.title()).startsWith('Aviso · Nueva liga') && await hay(p, '[role="alert"] a[href="#campo-nombre"]')
+    es: async p => (await p.title()).startsWith('Aviso · Nuevo torneo') && await hay(p, '[role="alert"] a[href="#campo-nombre"]')
                    && (await textoDe(p, '#error-nombre')) === 'Ya hay una liga en juego con ese nombre.'
                    && await hay(p, '#campo-nombre[aria-invalid="true"]') });
   t.chk(sql(`SELECT COUNT(*) FROM torneo WHERE id_usuario_organizador = ${org.id}`) === '0', 'el formulario con errores no crea nada');
 
-  await revisar(t, orgs, { vista: 'panel sin ligas', abrir: ir('panel.php'), que: 'el panel vacio: "Ninguna liga a cargo de esta cuenta."',
-    es: async p => (await p.title()) === 'Panel del organizador · Stadion' && (await textoDe(p, 'main')).includes('Ninguna liga a cargo de esta cuenta.') });
+  await revisar(t, orgs, { vista: 'panel sin ligas', abrir: ir('panel.php'), que: 'el panel vacio: "Ningún torneo a cargo de esta cuenta."',
+    es: async p => (await p.title()) === 'Panel del organizador · Stadion' && (await textoDe(p, 'main')).includes('Ningún torneo a cargo de esta cuenta.') });
 
   // Una liga con la inscripcion abierta y 4 equipos anotados a mano.
   const liga = `Liga Accesible ${sufijo}`;
@@ -377,6 +393,149 @@ let nav = null;
   await revisar(t, anon, { vista: `torneo.php?id=${id}#calendario (fixture con libre)`, abrir: ir(`torneo.php?id=${id}#calendario`),
     que: 'el fixture de la liga de la prueba, con el equipo libre de cada fecha',
     es: async p => (await vistasAbiertas(p)) === 'calendario' && (await textoDe(p, '#calendario')).includes('queda libre') });
+
+  // --- 6. Fechas y resultados (fase 3) ----------------------------------------------
+  console.log('===== 6. Fechas y resultados =====');
+  await O.p.goto(`${BASE}/panel.php`);
+  await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id} a.btn-primario`)]);
+  const url_partidos = O.p.url().split('?')[0];
+  await revisar(t, orgs, { vista: 'Fechas y resultados (fecha en juego)', abrir: p => p.goto(`${url_partidos}?id=${id}`),
+    que: 'la fecha 1, con el resultado, el dia y lugar y el en vivo de cada partido, y el cierre apagado',
+    es: async p => (await textoDe(p, '#fecha h2')) === 'Fecha 1' && (await p.$$('#fecha form.cargar-resultado')).length === 2
+                   && await hay(p, '#fecha .enlace-apagado') });
+  // Un resultado cargado, otro partido en vivo y programado.
+  const cruces = sql(`SELECT e.id_enfrentamiento FROM enfrentamiento e JOIN ronda r USING (id_ronda)
+                      WHERE r.id_torneo = ${id} AND r.numero = 1 AND e.id_participante_visitante IS NOT NULL ORDER BY e.numero`).split('\n');
+  await O.p.goto(`${url_partidos}?id=${id}`);
+  await O.p.fill(`#partido-${cruces[0]} input[name="local"]`, '3');
+  await O.p.fill(`#partido-${cruces[0]} input[name="visitante"]`, '1');
+  await Promise.all([O.p.waitForNavigation(), O.p.click(`#partido-${cruces[0]} form.cargar-resultado button`)]);
+  await Promise.all([O.p.waitForNavigation(), O.p.click(`#partido-${cruces[1]} form.accion-liga button`)]);
+  await O.p.fill(`#partido-${cruces[1]} input[name="fecha_hora"]`, '2026-11-07T18:00');
+  await O.p.fill(`#partido-${cruces[1]} input[name="lugar"]`, 'Cancha Ágora');
+  await Promise.all([O.p.waitForNavigation(), O.p.click(`#partido-${cruces[1]} form.programar-partido button`)]);
+  const url_cargado = O.p.url();
+  await revisar(t, orgs, { vista: 'Fechas y resultados (cargado, en vivo, programado)', abrir: p => p.goto(url_cargado),
+    que: 'el aviso (role="status"), el marcador, el chip en vivo y el dia en palabras',
+    es: async p => (await textoDe(p, '[role="status"]')) !== '' && (await textoDe(p, `#partido-${cruces[0]}`)).includes('Jugado · 3 – 1')
+                   && await hay(p, `#partido-${cruces[1]} .estado-en-vivo`) && (await textoDe(p, `#partido-${cruces[1]}`)).includes('Cancha Ágora') });
+  await revisar(t, orgs, { vista: 'Fechas y resultados (fecha por jugar)', abrir: p => p.goto(`${url_partidos}?id=${id}&fecha=2`),
+    que: 'la fecha 2: dia y lugar, sin resultados ni cierre',
+    es: async p => (await textoDe(p, '#fecha h2')) === 'Fecha 2' && !(await hay(p, '#fecha form.cargar-resultado'))
+                   && await hay(p, '#fecha form.programar-partido') });
+  await revisar(t, orgs, { vista: 'Fechas y resultados devuelto con un error', que: 'titulo "Aviso ·" y la lista de errores',
+    abrir: async p => {
+      await p.goto(`${url_partidos}?id=${id}`);
+      await p.$eval(`#partido-${cruces[1]} input[name="lugar"]`, e => e.removeAttribute('maxlength'));
+      await p.fill(`#partido-${cruces[1]} input[name="lugar"]`, 'x'.repeat(81));
+      const [r] = await Promise.all([p.waitForNavigation(), p.click(`#partido-${cruces[1]} form.programar-partido button`)]);
+      return r;
+    },
+    es: async p => (await p.title()).startsWith('Aviso · Fechas y resultados') && (await textoDe(p, '[role="alert"]')).includes('80 caracteres') });
+
+  // --- 7. Una liga individual (fase 3) ------------------------------------------------
+  console.log('===== 7. Liga individual =====');
+  const individual = `Liga Individual Accesible ${sufijo}`;
+  await O.p.goto(`${BASE}/crear.php`);
+  await O.p.fill('input[name="nombre"]', individual);
+  await O.p.selectOption('select[name="disciplina"]', { label: 'Ajedrez' });
+  await O.p.check('#compite-jugadores');
+  await O.p.fill('input[name="cupo"]', '8');
+  await Promise.all([O.p.waitForNavigation(), O.p.click('main form button[type="submit"]')]);
+  const id_ind = idDe(individual);
+  await revisar(t, jugs, { vista: 'liga individual con la inscripcion abierta', abrir: ir(`torneo.php?id=${id_ind}`),
+    que: '"Inscribirse", con la nota de la inscripcion directa',
+    es: async p => (await textoDe(p, 'h1')) === individual && await hay(p, 'form.pedir-lugar button') });
+  await revisar(t, orgs, { vista: 'panel con una liga individual', abrir: ir('panel.php'),
+    que: '"Jugadores anotados", sin "Anotar equipo", y "Cancelar la liga" con su casilla',
+    es: async p => (await textoDe(p, `#liga-${id_ind}`)).includes('Jugadores anotados') && !(await hay(p, `#liga-${id_ind} form.anotar-equipo`))
+                   && await hay(p, `#liga-${id_ind} form.cancelar-liga input[type="checkbox"]`) });
+
+  // --- 8. Una eliminacion directa (fase 3) ---------------------------------------------
+  console.log('===== 8. Eliminacion directa =====');
+  const copa = `Copa Accesible ${sufijo}`;
+  await O.p.goto(`${BASE}/crear.php`);
+  await O.p.check('#formato-eliminacion');
+  await O.p.fill('input[name="nombre"]', copa);
+  await O.p.selectOption('select[name="disciplina"]', { label: 'Ajedrez' });
+  await O.p.fill('input[name="cupo"]', '8');
+  await O.p.check('#partido-unico');
+  await Promise.all([O.p.waitForNavigation(), O.p.click('main form button[type="submit"]')]);
+  const id_copa = idDe(copa);
+  for (const n of ['Uno', 'Dos', 'Tres', 'Cuatro', 'Cinco']) {
+    await O.p.goto(`${BASE}/panel.php`);
+    await O.p.fill(`#liga-${id_copa} input[name="equipo"]`, `${n} ${sufijo}`);
+    await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id_copa} form.anotar-equipo button`)]);
+  }
+  for (let i = 0; i < 2; i++) {
+    await O.p.goto(`${BASE}/panel.php`);
+    await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id_copa} form.accion-liga button`)]);
+  }
+  await revisar(t, anon, { vista: 'torneo.php#posiciones (la llave)', abrir: ir(`torneo.php?id=${id_copa}#posiciones`),
+    que: 'la pestana Llave, con tres rondas, pases libres y cruces por definir',
+    es: async p => (await vistasAbiertas(p)) === 'posiciones' && (await p.$$('#posiciones .llave-ronda')).length === 3 });
+  await revisar(t, anon, { vista: 'llave.php?id= (eliminacion directa)', abrir: ir(`llave.php?id=${id_copa}`),
+    que: 'la llave del torneo, dibujada',
+    es: async p => (await p.title()) === `Llave · ${copa} · Stadion` && (await p.$$('main .llave .cruce')).length === 7 });
+  await O.p.goto(`${BASE}/panel.php`);
+  await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id_copa} a.btn-primario`)]);
+  const url_rondas = O.p.url();
+  await revisar(t, orgs, { vista: 'Rondas y resultados (eliminacion directa)', abrir: p => p.goto(url_rondas),
+    que: 'los cuartos, con los pases libres y "Cerrar la ronda" apagado',
+    es: async p => (await textoDe(p, '#fecha h2')) === 'Cuartos de final' && (await textoDe(p, '#fecha')).includes('Pase libre') });
+
+  // --- 9. Rendimiento fisico (RF-29) ---------------------------------------------------
+  console.log('===== 9. Rendimiento fisico =====');
+  sql(`INSERT INTO medicion (id_usuario, prueba, distancia_cm, tiempo_s, masa_kg, fecha) VALUES
+       (${jug.id}, 'reaccion', 14.2, NULL, NULL, '2026-09-01'), (${jug.id}, 'reaccion', 11.1, NULL, NULL, '2026-09-15'),
+       (${jug.id}, 'reaccion', 8.0, NULL, NULL, '2026-10-06'), (${jug.id}, 'sprint', NULL, 2.45, 68, '2026-09-02'),
+       (${jug.id}, 'sprint', NULL, 2.30, 67.5, '2026-10-07'), (${jug.id}, 'salto', NULL, 0.45, 60, '2026-10-08')`);
+  await revisar(t, jugs, { vista: 'perfil#rendimiento (con mediciones)', abrir: p => p.goto(`${perfil}#rendimiento`),
+    que: 'los indicadores, dos graficos, la comparacion, los formularios y la tabla de mediciones',
+    es: async p => (await vistasAbiertas(p)) === 'rendimiento' && (await p.$$('#rendimiento svg.grafico')).length === 2
+                   && (await p.$$('#cargar-medicion form.medicion')).length === 3 && (await p.$$('#mis-mediciones tbody tr')).length === 6 });
+  // Devuelto con un error del servidor: el formulario sin la validacion
+  // del navegador (como uno que no la tiene), con una regla de 31 cm.
+  await revisar(t, jugs, { vista: 'perfil#rendimiento devuelto con un error', que: 'titulo "Aviso ·", el error al lado del formulario y los campos con aria-invalid',
+    abrir: async p => {
+      await p.goto(`${perfil}#rendimiento`);
+      const f = '#cargar-medicion form.medicion:has(input[name="prueba"][value="reaccion"])';
+      await p.$eval(f, e => { e.noValidate = true; });
+      await p.fill(`${f} input[name="distancia"]`, '31');
+      const [r] = await Promise.all([p.waitForNavigation(), p.click(`${f} button[type="submit"]`)]);
+      return r;
+    },
+    es: async p => (await p.title()).startsWith('Aviso · Perfil') && (await vistasAbiertas(p)) === 'rendimiento'
+                   && (await textoDe(p, '#error-medicion-reaccion')) === 'La regla mide 30 cm: la distancia va de 0,5 a 30.'
+                   && await hay(p, 'input[name="distancia"][aria-invalid="true"][aria-describedby="error-medicion-reaccion"]') });
+  t.chk(sql(`SELECT COUNT(*) FROM medicion WHERE id_usuario = ${jug.id}`) === '6', 'el formulario con errores no guarda nada');
+
+  // --- 10. Reportes y administracion (tercera entrega) -------------------------------
+  console.log('===== 10. Reportes y administracion =====');
+  await O.p.goto(`${BASE}/panel.php`);
+  const url_reportes = await O.p.$eval('main a.btn:has-text("Reportes")', a => a.href);
+  await revisar(t, orgs, { vista: 'reportes (organizador)', abrir: p => p.goto(url_reportes),
+    que: 'los totales, los dos graficos y el detalle de sus torneos',
+    es: async p => (await p.title()) === 'Reportes · Stadion' && await hay(p, '#inscriptos svg[role="img"]') && await hay(p, '#detalle tbody tr') });
+  const adm = await c.cuentaNueva(nav, 'Ariadna', 'Accesible');
+  c.darRol(adm, 'administrador');
+  const AD = await c.entrar(nav, adm);
+  const admins = { dia: AD.ctx, noche: await contexto(nav, 'noche', adm) };
+  const url_admin = await c.direccionDe(AD.p, 'admin.php');
+  await revisar(t, admins, { vista: 'administracion', abrir: p => p.goto(url_admin),
+    que: 'pedidos, cuentas con sus botones, modulos reales y el registro con su filtro',
+    es: async p => (await p.title()) === 'Administración · Stadion' && (await p.$$('#modulos .modulo')).length === 3
+                   && await hay(p, '#cuentas .acciones-cuenta') && await hay(p, '#auditoria select[name="filtro"]') });
+  await revisar(t, admins, { vista: 'administracion devuelta con un error', que: 'titulo "Aviso ·" y la lista de errores',
+    abrir: async p => {
+      await p.goto(`${url_admin}#cuentas`);
+      const fila = `#cuenta-${org.id}`;
+      await p.$eval(`${fila} form.baja-cuenta`, f => { f.noValidate = true; });
+      const [r] = await Promise.all([p.waitForNavigation(), p.click(`${fila} form.baja-cuenta button`)]);
+      return r;
+    },
+    es: async p => (await p.title()).startsWith('Aviso ·') && (await textoDe(p, '[role="alert"]')).includes('Dar de baja una cuenta pide marcar la confirmación.') });
+  t.chk(sql(`SELECT activo FROM usuario WHERE id_usuario = ${org.id}`) === '1', 'sin la casilla, la cuenta sigue activa');
 
   // --- Resumen ------------------------------------------------------------------------
   console.log('===== Resumen =====');

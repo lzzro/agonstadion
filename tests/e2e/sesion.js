@@ -18,8 +18,8 @@
 //      queda "logout" en la auditoria
 //   6. media hora sin uso: la cabecera vuelve a Iniciar sesion
 //   7. el perfil con pestanas (Datos, Mis torneos, Rendimiento), sin
-//      JavaScript; las estadisticas reales y las de muestra; la foto y la
-//      portada
+//      JavaScript; las estadisticas, todas de la base; Rendimiento
+//      sin mediciones; la foto y la portada
 //   8. la tarjeta de los roles: pedir el de organizador con clics de
 //      verdad, la administracion (su lista, sus marcas, sin desborde en
 //      tres anchos y dos modos), rechazar, pedir otra vez y aprobar, y el
@@ -168,11 +168,14 @@ let nav;
 
     // --- 4. Nombres para mostrar -----------------------------------------------------
     console.log('--- 4. Nombres para mostrar ---');
+    // Una medicion, para que la cuenta figure en la comparacion de
+    // Rendimiento (se va con la cuenta al final: ON DELETE CASCADE).
+    sql(`INSERT INTO medicion (id_usuario, prueba, distancia_cm, fecha) VALUES (${A.id}, 'reaccion', 10, '2026-10-01')`);
     await p.goto(PERFIL);
     const n = await p.evaluate(() => ({ h1: document.querySelector('main h1').textContent, nombre: document.querySelector('input[name=nombre]').value,
-      apellido: document.querySelector('input[name=apellido]').value, rank: document.querySelector('#rendimiento tr.clasifica td').textContent,
+      apellido: document.querySelector('input[name=apellido]').value, rank: document.querySelector('#rendimiento tr.clasifica td:nth-child(2)').textContent,
       linea: document.querySelector('.perfil-cabecera .intro').textContent }));
-    t.chk(n.h1 === 'Ariadna Minos' && n.rank === 'Ariadna Minos', `guardado "ariadna minos": en pantalla "${n.h1}" (titulo y ranking)`);
+    t.chk(n.h1 === 'Ariadna Minos' && n.rank.startsWith('A. Minos'), `guardado "ariadna minos": en pantalla "${n.h1}" y "${n.rank}" (titulo y comparacion de Rendimiento)`);
     t.chk(n.nombre === 'ariadna' && n.apellido === 'minos' && sql(`SELECT CONCAT(nombre, ' ', apellido) FROM usuario WHERE id_usuario = ${A.id}`) === 'ariadna minos',
           'el formulario muestra lo guardado tal cual, y la base no cambia');
     t.chk(/administrador/.test(n.linea) && /jugador/.test(n.linea), `debajo del nombre, los roles: "${n.linea.trim()}"`);
@@ -239,17 +242,19 @@ let nav;
     t.chk(await pp.$$eval('nav a.activo, nav a[aria-current]', as => as.length) === 0, 'el menu no marca ninguna entrada: el perfil no cuelga de ninguna');
     const datos = await pp.$$eval('.datos > div', ds => ds.map(d => ({ n: d.querySelector('strong').textContent, e: d.querySelector('.etiqueta').textContent, m: !!d.querySelector('.muestra') })));
     t.chk(datos[0].e === 'Torneos' && datos[0].n === '0' && !datos[0].m, 'Torneos: 0, sin marca (sale de la base)');
-    t.chk(datos[1].m && datos[2].m, `${datos[1].e} y ${datos[2].e}: los dos con la marca "De muestra"`);
+    t.chk(datos[1].n === '0' && datos[2].n === '0' && !datos[1].m && !datos[2].m,
+          `${datos[1].e} y ${datos[2].e}: 0, de la base (ya sin la marca "De muestra")`);
     await pp.goto(PERFIL + '#mis-torneos');
     t.chk((await pp.textContent('#mis-torneos')).includes('Ningún torneo a nombre de esta cuenta.') && !(await pp.$('#mis-torneos .muestra')),
           'Mis torneos, vacia: el mensaje, sin datos de ejemplo ni marca');
     await pp.goto(PERFIL + '#rendimiento');
     const rend = await pp.evaluate(() => ({ valores: [...document.querySelectorAll('#rendimiento .medida .valor')].map(x => x.textContent),
-      svg: !!document.querySelector('#rendimiento svg.grafico polyline'), destacada: (document.querySelector('#rendimiento tr.clasifica') || {}).textContent || '',
-      marcas: document.querySelectorAll('#rendimiento .muestra').length, instrumentos: /Phyphox/.test(document.querySelector('#rendimiento').textContent) }));
-    t.chk(rend.valores.join() === '187,3.8,612' && rend.svg, `Rendimiento: ${rend.valores.join(' · ')} y el grafico`);
-    t.chk(/Nausícaa Prueba\s*187/.test(rend.destacada), `el ranking destaca a quien tiene la sesion ("${rend.destacada.replace(/\s+/g, ' ').trim()}")`);
-    t.chk(rend.marcas === 3 && rend.instrumentos, `${rend.marcas} marcas "De muestra" (indicadores, grafico y ranking), y la nota de los instrumentos`);
+      svg: !!document.querySelector('#rendimiento svg.grafico'), formularios: document.querySelectorAll('#rendimiento form.medicion').length,
+      marcas: document.querySelectorAll('#rendimiento .muestra').length, texto: document.querySelector('#rendimiento').textContent }));
+    t.chk(rend.valores.join() === '—,—,—' && !rend.svg && rend.formularios === 3 && (rend.texto.match(/Sin mediciones/g) || []).length === 3,
+          `Rendimiento sin mediciones: ${rend.valores.join(' · ')}, sin grafico, y los tres formularios para cargar`);
+    t.chk(rend.marcas === 0 && rend.texto.includes('Regla de 30 cm, cronómetro del celular y balanza.') && !/Phyphox/.test(rend.texto),
+          'sin datos de muestra ni su marca, y la nota de los instrumentos (el detalle lo prueba rendimiento.js)');
     await pp.goto(PERFIL);
     const sin_img = await pp.evaluate(() => ({ av: document.querySelector('.avatar').tagName + ':' + document.querySelector('.avatar').textContent,
       po: !!document.querySelector('.portada img') }));
@@ -275,7 +280,7 @@ let nav;
     const tb = await pj.locator('aside .tarjeta', { has: pj.locator('form.pedir-rol') }).boundingBox();
     t.chk(bb.width < tb.width - 60, `a 390 px el boton no ocupa toda la tarjeta (${Math.round(bb.width)} de ${Math.round(tb.width)} px)`);
     await Promise.all([pj.waitForNavigation(), boton.click()]);
-    t.chk((await pj.textContent('main')).includes('queda en revision'), 'aviso: el pedido queda en revision');
+    t.chk((await pj.textContent('main')).includes('queda en revisión'), 'aviso: el pedido queda en revision');
     t.chk((await pj.textContent('aside')).includes('pedido en revisión desde el'), 'la tarjeta dice "pedido en revisión desde el …"');
     t.chk(await pj.locator('form.pedir-rol').count() === 0 && await pj.locator('aside a', { hasText: 'Administración' }).count() === 0,
           'sin el boton mientras esta en revision, y sin enlace a la administracion');
@@ -290,11 +295,11 @@ let nav;
     t.chk((await pa.textContent('h1')).includes('Administración'), 'el enlace abre la administracion');
     const suyo = () => pa.locator('#pedidos .pedido', { hasText: O.correo });
     t.chk(await suyo().count() === 1, 'el pedido esta en la lista');
-    t.chk(await pa.locator('#cuentas tbody tr').count() === parseInt(sql('SELECT COUNT(*) FROM usuario'), 10), 'Cuentas: todas las de la base, ninguna mas');
+    t.chk(await pa.locator('#cuentas .cuenta').count() === parseInt(sql('SELECT COUNT(*) FROM usuario'), 10), 'Cuentas: todas las de la base, ninguna mas');
     const de_muestra = parseInt(sql('SELECT COUNT(*) FROM usuario WHERE de_muestra = 1'), 10);
-    t.chk(await pa.locator('#cuentas .muestra').count() === de_muestra && await pa.locator('#modulos .muestra').count() === 1
-          && await pa.locator('#pedidos .muestra, #auditoria .muestra').count() === 0,
-          `la marca "De muestra" en las ${de_muestra} cuentas de muestra y en Modulos; lo demas es real, sin marca`);
+    t.chk(await pa.locator('#cuentas .muestra').count() === de_muestra
+          && await pa.locator('#pedidos .muestra, #modulos .muestra, #auditoria .muestra').count() === 0,
+          `la marca "De muestra" en las ${de_muestra} cuentas de muestra; lo demas es real, sin marca (tambien Modulos)`);
     t.chk(await pa.locator('header a.sesion-circulo').count() === 1 && await pa.locator('nav a.activo').count() === 0,
           'la cabecera con el circulo, y el menu propio sin entrada marcada');
     for (const id of ['pedidos', 'cuentas', 'modulos', 'auditoria']) t.chk(await pa.locator(`#${id}`).count() === 1, `la seccion #${id} existe, para su enlace`);
@@ -352,7 +357,7 @@ let nav;
       const limpieza = c.limpiarCuentas(propias);
       t.chk(limpieza.faltaban === 0, `al final, las ${limpieza.fotos} fotos de la corrida estaban en la carpeta de las subidas, y se borran`);
       t.chk(c.archivosSubidas() === antes.carpeta, 'la carpeta de las subidas tiene los mismos archivos que antes');
-      t.chk(c.huellaBase() === antes.huella, 'y usuario, usuario_rol, pedido_rol y auditoria quedan iguales (CHECKSUM TABLE)');
+      t.chk(c.huellaBase() === antes.huella, 'y usuario, usuario_rol, pedido_rol, auditoria y medicion quedan iguales (CHECKSUM TABLE)');
     } catch (e) {
       t.chk(false, `la limpieza (${e.message.split('\n')[0]})`);
     }

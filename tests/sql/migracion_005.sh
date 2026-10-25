@@ -7,8 +7,8 @@
 # Prueba sql/migraciones/005_ligas.sql en cada servidor de MariaDB cuyo
 # socket se le pase. Sin argumentos, en los dos de la maquina de prueba:
 # /run/mysqld/mysqld.sock (la 10.11, la de la VM) y
-# /srv/m114/run/mysqld.sock (la 11.4, la del hosting, que arranca en
-# latin1 como el de cPanel).
+# /srv/m114/run/mysqld.sock (la 11.4, que arranca en latin1, la
+# codificacion de fabrica).
 #
 # En cada servidor crea sus propias bases, todas con el prefijo t005_ y
 # un sufijo al azar, y las borra al terminar, tambien si algo falla en
@@ -19,15 +19,16 @@
 #
 # Necesita el historial de git: el esquema de antes de la 005 sale del
 # commit 469a990 (el ultimo antes de la fase 2), sin los bloques
-# "[solo servidor propio]", con el mismo awk de scripts/armar-deploy.sh.
-# La 005 se corre como en el hosting: tambien sin esos bloques.
+# "[solo servidor propio]". La 005 se corre tambien sin esos bloques
+# (el permiso de sgdm_app se prueba aparte, en el caso 8).
 #
 # Casos:
 #   1. Base vieja (antes de la 005): la ultima consulta da exactamente
 #      los numeros de la cabecera de la 005.
 #   2. La misma base, la 005 otra vez: frena con ck_005_ya_esta_aplicada
 #      y no cambia nada; la consulta del final, sola, da lo mismo.
-#   3. Base nueva (el schema.sql de ahora) con la 005: el mismo resultado,
+#   3. Base nueva (el schema.sql de la fase 2, el del commit 5d8c612: el
+#      de ahora ya trae la 006, que prueba migracion_006.sh) con la 005: el mismo resultado,
 #      los mismos datos y SHOW CREATE TABLE de las 18 tablas identico al
 #      de la base vieja migrada (sin AUTO_INCREMENT=N); ahi la parte de
 #      estructura de la 005 no cambia nada.
@@ -44,8 +45,8 @@
 #   7. Una falla a mitad de la carga (una restriccion de prueba en
 #      tabla_posiciones): no queda ningun dato de muestra, la estructura
 #      si; sin la restriccion, la 005 otra vez carga todo.
-#   8. La copia del hosting no trae el GRANT y es el original sin el
-#      bloque; el original lo trae, dentro del bloque. Corrido con root
+#   8. El original trae el GRANT, dentro del bloque, y fuera del bloque
+#      no trae permisos. Corrido con root
 #      donde existe sgdm_app, el original tambien anda y da el permiso
 #      (que la prueba saca enseguida, y otra vez al terminar).
 #
@@ -67,8 +68,10 @@ else
 fi
 
 COMMIT_VIEJO=469a990
+# El ultimo commit con la 005 como ultima migracion: su schema.sql es la
+# "base nueva" del caso 3 (el de ahora suma la 006).
+COMMIT_FASE2=5d8c612
 MIGRACION=sql/migraciones/005_ligas.sql
-COPIA_HOSTING=deploy/hosting-compartido/sql/migraciones/005_ligas.sql
 
 TMP=$(mktemp -d) || exit 2
 SUFIJO=$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')
@@ -334,8 +337,8 @@ solo_bloques() {
         dentro { print }' "$@"
 }
 
-# Lo que no puede estar en la copia del hosting de una migracion (fuera
-# de los comentarios): la misma lista que mira armar-deploy.sh.
+# Lo que no puede estar en una migracion fuera de los bloques
+# "[solo servidor propio]" (y fuera de los comentarios).
 trae_permisos() {
     tr -d '\r' < "$1" | grep -v '^[[:space:]]*--' \
         | grep -Eiq '^[[:space:]]*(GRANT|REVOKE|CREATE[[:space:]]+USER|USE)[[:space:]]'
@@ -344,18 +347,14 @@ trae_el_grant() {
     tr -d '\r' < "$1" | grep -v '^[[:space:]]*--' \
         | grep -Eq "^GRANT INSERT, UPDATE ON pedido_inscripcion TO 'sgdm_app'@'localhost';"
 }
-copia_al_dia() {
-    head -n 2 "$COPIA_HOSTING" | grep -q '^-- GENERADO' \
-        && tail -n +3 "$COPIA_HOSTING" | cmp -s - "$TMP/005_hosting.sql"
-}
 
 if ! git show "$COMMIT_VIEJO:sql/schema.sql" > "$TMP/schema_viejo_entero.sql" 2>/dev/null; then
     echo "No se puede leer sql/schema.sql del commit $COMMIT_VIEJO: hace falta el historial de git."
     exit 2
 fi
 if ! sin_bloques "$TMP/schema_viejo_entero.sql" > "$TMP/schema_viejo.sql" \
-   || ! sin_bloques sql/schema.sql > "$TMP/schema_nuevo.sql" \
-   || ! sin_bloques "$MIGRACION" > "$TMP/005_hosting.sql"; then
+   || ! git show "$COMMIT_FASE2:sql/schema.sql" 2>/dev/null | sin_bloques > "$TMP/schema_nuevo.sql" \
+   || ! sin_bloques "$MIGRACION" > "$TMP/005_sin_bloque.sql"; then
     echo "Las marcas [solo servidor propio] no cierran en alguno de los archivos."
     exit 2
 fi
@@ -365,18 +364,13 @@ solo_bloques "$MIGRACION" > "$TMP/005_bloque.sql"
 sed -n '/^-- 6\. El resultado/,$p' "$MIGRACION" > "$TMP/005_consulta_final.sql"
 
 # El renglon de la primera consulta (1a), la que frena sin la 003.
-RENGLON_1A=$(grep -n '^SELECT COUNT(\*) AS pedidos_de_rol FROM pedido_rol;' "$TMP/005_hosting.sql" | head -n 1 | cut -d: -f1)
+RENGLON_1A=$(grep -n '^SELECT COUNT(\*) AS pedidos_de_rol FROM pedido_rol;' "$TMP/005_sin_bloque.sql" | head -n 1 | cut -d: -f1)
 
 echo "===== Migracion 005 (bases t005_${SUFIJO}_*) ====="
 echo "--- 8. Los archivos ---"
 chk "caso 8: el original trae el GRANT a sgdm_app sobre pedido_inscripcion" trae_el_grant "$MIGRACION"
 chk "caso 8: en el original, el GRANT esta dentro del bloque [solo servidor propio]" trae_el_grant "$TMP/005_bloque.sql"
-chk "caso 8: fuera del bloque, el original no trae GRANT, REVOKE, usuarios ni USE" no trae_permisos "$TMP/005_hosting.sql"
-if chk "caso 8: esta la copia del hosting ($COPIA_HOSTING)" test -f "$COPIA_HOSTING"; then
-    chk "caso 8: la copia del hosting no trae GRANT, REVOKE, usuarios ni USE" no trae_permisos "$COPIA_HOSTING"
-    chk "caso 8: la copia del hosting es el original sin el bloque (y las dos lineas de GENERADO)" copia_al_dia \
-        || diff <(tail -n +3 "$COPIA_HOSTING") "$TMP/005_hosting.sql" | detalle
-fi
+chk "caso 8: fuera del bloque, el original no trae GRANT, REVOKE, usuarios ni USE" no trae_permisos "$TMP/005_sin_bloque.sql"
 
 # ---------------------------------------------------------------------
 # Un servidor
@@ -400,8 +394,8 @@ probar() {
                                     WHERE TABLE_SCHEMA = '$BASE' AND TABLE_TYPE = 'BASE TABLE'),
                                   (SELECT COUNT(*) FROM \`$BASE\`.torneo) + (SELECT COUNT(*) FROM \`$BASE\`.equipo)")" \
                "$(printf '17\t0')"
-    correr "$BASE" "$TMP/005_hosting.sql"
-    chk "caso 1: la 005 (sin el bloque, como en el hosting) corre sin error" corrio_bien || mostrar_error
+    correr "$BASE" "$TMP/005_sin_bloque.sql"
+    chk "caso 1: la 005 (sin el bloque del permiso) corre sin error" corrio_bien || mostrar_error
     resultado_esperado "caso 1: la ultima consulta da los numeros de la cabecera de la 005"
     chk "caso 1: la base y sus 18 tablas quedan en utf8mb4_unicode_ci" \
         iguales "$(sql -e "SELECT CONCAT((SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA
@@ -415,7 +409,7 @@ probar() {
     # --- 2 ------------------------------------------------------------
     echo "--- 2. La 005 otra vez ---"
     antes "$caso1"
-    correr "$caso1" "$TMP/005_hosting.sql"
+    correr "$caso1" "$TMP/005_sin_bloque.sql"
     chk "caso 2: frena con ck_005_ya_esta_aplicada" frena_con 'ck_005_ya_esta_aplicada' || mostrar_error
     despues "$caso1"
     sin_cambios "caso 2"
@@ -424,11 +418,11 @@ probar() {
     resultado_esperado "caso 2: y sigue dando los numeros de la cabecera"
 
     # --- 3 ------------------------------------------------------------
-    echo "--- 3. Base nueva (schema.sql de ahora) ---"
+    echo "--- 3. Base nueva (schema.sql de la fase 2, $COMMIT_FASE2) ---"
     crear_base nueva
-    if chk "caso 3: se carga el schema.sql de ahora, sin los bloques" cargar "$BASE" "$TMP/schema_nuevo.sql"; then
+    if chk "caso 3: se carga el schema.sql de la fase 2, sin los bloques" cargar "$BASE" "$TMP/schema_nuevo.sql"; then
         estructura "$BASE" sin_autoinc > "$TMP/nueva_sin_005"
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 3: la 005 corre sin error" corrio_bien || mostrar_error
         resultado_esperado "caso 3: la ultima consulta da lo mismo que en el caso 1"
         estructura "$caso1" sin_autoinc > "$TMP/estructura_1"
@@ -452,7 +446,7 @@ probar() {
     echo "--- 4. Sin la 003 ---"
     if base_vieja sin003 "caso 4" ", sin pedido_rol" <<< 'DROP TABLE pedido_rol;'; then
         antes "$BASE"
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 4: frena en la primera consulta (renglon $RENGLON_1A): pedido_rol doesn't exist" \
             frena_con "at line $RENGLON_1A: Table '$BASE.pedido_rol' doesn't exist" || mostrar_error
         despues "$BASE"
@@ -464,7 +458,7 @@ probar() {
     echo "--- 5. Sin la 004 ---"
     if base_vieja sin004 "caso 5" ", con equipo en latin1" <<< 'ALTER TABLE equipo CONVERT TO CHARACTER SET latin1;'; then
         antes "$BASE"
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 5: frena con ck_005_falta_la_004" frena_con 'ck_005_falta_la_004' || mostrar_error
         despues "$BASE"
         sin_cambios "caso 5"
@@ -498,7 +492,7 @@ probar() {
                          CROSS JOIN (SELECT 'Liga Repetida' AS nombre, '2026-10-01' AS inicio, 'inscripcion' AS estado
                                      UNION ALL SELECT 'LIGA REPETIDA', '2026-11-01', 'en_curso') f;"
         antes "$BASE"
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 6 (dos ligas vigentes con el mismo nombre, en distinta mayuscula): frena con ck_005_nombres_libres" \
             frena_con 'ck_005_nombres_libres' || mostrar_error
         chk "caso 6: la consulta 2c las lista como torneo vigente repetido" grep -qix -- $'torneo vigente repetido\tLiga Repetida' "$TMP/salida"
@@ -506,7 +500,7 @@ probar() {
         sin_cambios "caso 6 (ligas vigentes repetidas)"
         # Una vigente y otra ya terminada, con el mismo nombre: no chocan.
         sql "$BASE" -e "UPDATE torneo SET estado = 'finalizado' WHERE nombre = 'LIGA REPETIDA' COLLATE utf8mb4_bin;"
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 6: una vigente y una finalizada con el mismo nombre no frenan la 005" corrio_bien || mostrar_error
         chk "caso 6: y nombre_vigente las distingue (el nombre en la vigente, NULL en la finalizada)" \
             iguales "$(sql "$BASE" -e "SELECT GROUP_CONCAT(CONCAT(estado, '=', IFNULL(nombre_vigente, 'NULL')) ORDER BY estado)
@@ -517,7 +511,7 @@ probar() {
     echo "--- 7. Falla a mitad de la carga ---"
     if base_vieja atomica "caso 7" " con ck_prueba (ganados < 5) en tabla_posiciones" \
          <<< 'ALTER TABLE tabla_posiciones ADD CONSTRAINT ck_prueba CHECK (ganados < 5);'; then
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 7: la 005 falla en la carga de la tabla (ck_prueba)" frena_con 'ck_prueba' || mostrar_error
         chk "caso 7: no queda ningun dato de muestra (0 cuentas, 0 torneos, 0 equipos, nada)" \
             iguales "$(filas_de_datos "$BASE")" "$SIN_DATOS" \
@@ -525,7 +519,7 @@ probar() {
         chk "caso 7: la estructura de la 005 si queda (de_muestra, criterio_desempate, pedido_inscripcion)" \
             con_estructura_005 "$BASE"
         sql "$BASE" -e 'ALTER TABLE tabla_posiciones DROP CONSTRAINT ck_prueba;'
-        correr "$BASE" "$TMP/005_hosting.sql"
+        correr "$BASE" "$TMP/005_sin_bloque.sql"
         chk "caso 7: sin ck_prueba, la 005 otra vez corre sin error" corrio_bien || mostrar_error
         resultado_esperado "caso 7: y carga todo: la ultima consulta da lo mismo que en el caso 1"
         estructura "$caso1" sin_autoinc > "$TMP/estructura_1"
@@ -557,7 +551,7 @@ probar() {
 # dice que esta ocupado.
 ocupado() {  # caso fila_de_2c
     antes "$BASE"
-    correr "$BASE" "$TMP/005_hosting.sql"
+    correr "$BASE" "$TMP/005_sin_bloque.sql"
     chk "$1: frena con ck_005_nombres_libres" frena_con 'ck_005_nombres_libres' || mostrar_error
     chk "$1: la consulta 2c lo lista ($(tr '\t' ' ' <<< "$2"))" grep -qxF -- "$2" "$TMP/salida"
     despues "$BASE"

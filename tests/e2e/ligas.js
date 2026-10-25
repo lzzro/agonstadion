@@ -54,7 +54,7 @@ let nav = null;
   // --- 1. Crear una liga ----------------------------------------------
   console.log('--- 1. Crear una liga ---');
   await O.p.goto(`${BASE}/crear.php`);
-  t.chk(await O.p.title() === 'Nueva liga · Stadion', 'el formulario abre para un organizador');
+  t.chk(await O.p.title() === 'Nuevo torneo · Stadion', 'el formulario abre para un organizador');
   t.chk(await O.p.$eval('nav a.activo', a => a.textContent + '|' + a.getAttribute('aria-current')) === 'Organizadores|true',
         'el menu marca Organizadores con aria-current="true"');
   t.chk(await O.p.$('input[name="token_csrf"]') !== null, 'el formulario lleva el token');
@@ -64,7 +64,7 @@ let nav = null;
   const nombre_malo = `Li`;
   let r = await c.postear(O.ctx, url_crear, { token_csrf: tk, nombre: nombre_malo, disciplina: '9999', cupo: '50',
     vueltas: 'tres', victoria: '0', empate: '1', derrota: '0', desempate: 'azar', inicio: '2026-02-30' });
-  t.chk(r.estado === 200 && /<title>Aviso · Nueva liga/.test(r.cuerpo), 'con errores: 200 y el titulo empieza con "Aviso ·"');
+  t.chk(r.estado === 200 && /<title>Aviso · Nuevo torneo/.test(r.cuerpo), 'con errores: 200 y el titulo empieza con "Aviso ·"');
   for (const campo of ['nombre', 'disciplina', 'cupo', 'vueltas', 'victoria', 'desempate', 'inicio']) {
     t.chk(r.cuerpo.includes(`id="error-${campo}"`), `el error de ${campo} va al lado de su campo`);
   }
@@ -74,13 +74,13 @@ let nav = null;
 
   // Empate que vale mas que la victoria, y derrota mas que el empate.
   r = await c.postear(O.ctx, url_crear, { token_csrf: tk, nombre: `Liga X ${sufijo}`, disciplina: sql(`SELECT id_disciplina FROM disciplina WHERE nombre = 'Ajedrez'`),
-    cupo: '8', vueltas: 'una', victoria: '2', empate: '3', derrota: '0', desempate: 'diferencia', inicio: '' });
+    cupo: '8', vueltas: 'una', victoria: '2', empate: '3', derrota: '0', desempate: 'diferencia', partido: 'empate', compite: 'equipos', formato: 'liga', inicio: '' });
   t.chk(r.cuerpo.includes('El empate no vale más que la victoria.'), 'el empate no puede valer mas que la victoria');
 
   // Una fecha de inicio que ya paso (ayer, en Montevideo), y el minimo
   // del campo, que es hoy.
   r = await c.postear(O.ctx, url_crear, { token_csrf: tk, nombre: `Liga Y ${sufijo}`, disciplina: sql(`SELECT id_disciplina FROM disciplina WHERE nombre = 'Ajedrez'`),
-    cupo: '8', vueltas: 'una', victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', inicio: diaMvd(-1) });
+    cupo: '8', vueltas: 'una', victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', partido: 'empate', compite: 'equipos', formato: 'liga', inicio: diaMvd(-1) });
   t.chk(r.cuerpo.includes('La fecha de inicio va de hoy en adelante.') && r.cuerpo.includes('id="error-inicio"'),
         'una fecha de inicio pasada no se acepta, con el error al lado del campo');
   t.chk(r.cuerpo.includes(`min="${diaMvd(0)}"`), `el campo de la fecha tiene de minimo el dia de hoy (${diaMvd(0)})`);
@@ -96,7 +96,7 @@ let nav = null;
   await O.p.selectOption('select[name="desempate"]', 'favor');
   await Promise.all([O.p.waitForNavigation(), O.p.click('main form button[type="submit"]')]);
   t.chk(/panel/i.test(O.p.url()) && O.p.url().includes('aviso=liga-creada'), `despues de crear, al panel (${O.p.url().replace(BASE, '')})`);
-  t.chk((await O.p.textContent('[role="status"]')).includes('La liga queda creada'), 'el panel confirma la liga nueva (role="status")');
+  t.chk((await O.p.textContent('[role="status"]')).includes('El torneo queda creado'), 'el panel confirma la liga nueva (role="status")');
   const id = parseInt(sql(`SELECT id_torneo FROM torneo WHERE nombre = ${texto(liga)}`), 10);
   const fila = sql(`SELECT t.estado, IFNULL(t.fecha_inicio, 'NULL'), t.max_participantes, t.id_usuario_organizador, c.criterio_desempate,
                            c.ida_y_vuelta, c.puntos_victoria, c.puntos_empate, c.puntos_derrota, m.nombre, tt.nombre
@@ -110,7 +110,7 @@ let nav = null;
 
   // El mismo nombre otra vez.
   r = await c.postear(O.ctx, url_crear, { token_csrf: tk, nombre: liga.toUpperCase(), disciplina: sql(`SELECT id_disciplina FROM disciplina WHERE nombre = 'Ajedrez'`),
-    cupo: '8', vueltas: 'una', victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', inicio: '' });
+    cupo: '8', vueltas: 'una', victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', partido: 'empate', compite: 'equipos', formato: 'liga', inicio: '' });
   t.chk(r.cuerpo.includes('id="error-nombre"') && r.cuerpo.includes('Ya hay una liga en juego con ese nombre.'),
         'dos ligas vigentes no comparten nombre (ni cambiando mayusculas)');
 
@@ -130,7 +130,7 @@ let nav = null;
              WHERE a.accion = 'alta' AND a.tabla_afectada = 'equipo' AND e.nombre LIKE 'Equipo _ ${sufijo}'`) === '3',
         'y el alta de cada equipo nuevo, con el id del equipo');
   await anotar(`equipo a ${sufijo}`);
-  t.chk((await O.p.title()).startsWith('Aviso ·') && (await O.p.textContent(`#error-equipo-${id}`)).includes('ya juega esta liga'),
+  t.chk((await O.p.title()).startsWith('Aviso ·') && (await O.p.textContent(`#error-equipo-${id}`)).includes('ya juega esta competencia'),
         'el mismo equipo otra vez (en minuscula): aviso al lado del campo');
   const tko = await c.token(O.p);
   r = await c.postear(O.ctx, url_panel, { token_csrf: tko, accion: 'cerrar', id_torneo: String(id) });
@@ -151,7 +151,7 @@ let nav = null;
   r = await c.postear(J.ctx, url_panel, { token_csrf: tkj, accion: 'cerrar', id_torneo: String(id) });
   t.chk(r.estado === 403, 'un POST al panel sin el rol: 403');
   r = await c.postear(J.ctx, url_crear, { token_csrf: tkj, nombre: `Liga Intrusa ${sufijo}`, disciplina: '1', cupo: '8', vueltas: 'una',
-    victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', inicio: '' });
+    victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', partido: 'empate', compite: 'equipos', formato: 'liga', inicio: '' });
   t.chk(r.estado === 403 && sql(`SELECT COUNT(*) FROM torneo WHERE nombre = 'Liga Intrusa ${sufijo}'`) === '0', 'crear sin el rol: 403 y nada');
 
   await J.p.goto(`${BASE}/torneo.php?id=${id}`);
@@ -213,7 +213,7 @@ let nav = null;
         && sql(`SELECT estado FROM pedido_inscripcion WHERE id_pedido_inscripcion = ${id_ped1}`) === 'pendiente', 'otro organizador no acepta pedidos ajenos');
   for (const accion of ['cerrar', 'fixture', 'agregar']) {
     r = await c.postear(O2.ctx, url_panel, { token_csrf: tko2, accion, id_torneo: String(id), equipo: `Colado ${sufijo}` });
-    t.chk(r.cuerpo.includes('Esa liga no está a cargo de esta cuenta.'), `ni ${accion} en una liga ajena`);
+    t.chk(r.cuerpo.includes('Esa competencia no está a cargo de esta cuenta.'), `ni ${accion} en una liga ajena`);
   }
   t.chk(sql(`SELECT COUNT(*) FROM equipo WHERE nombre = 'Colado ${sufijo}'`) === '0', 'y no quedo nada anotado');
 
