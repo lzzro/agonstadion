@@ -16,7 +16,7 @@
 #                        con un aviso
 #   sin el rol, con un POST armado a mano: 403, sin hacer nada
 #
-# Recibe seis formularios, que se distinguen por el campo "accion":
+# Recibe siete formularios, que se distinguen por el campo "accion":
 #   agregar     anotar un equipo a mano, por nombre (ver
 #               ParticipanteRepositorio::agregarEquipo)
 #   aceptar     aceptar el pedido de lugar de un capitan
@@ -25,6 +25,8 @@
 #   fixture     armar el fixture (con la inscripcion cerrada)
 #   rehacer     borrar el fixture y armarlo de nuevo: solo sin
 #               resultados, y con la casilla de confirmacion marcada
+#   cancelar    cancelar la liga (RF-17, fase 3): no se borra, deja de
+#               verse; con su propia casilla de confirmacion
 # De cada formulario se leen solo numeros (el de la liga o el del
 # pedido), el nombre del equipo y la casilla. Quien actua es siempre la
 # cuenta de la sesion, y cada repositorio comprueba, con la fila del
@@ -45,6 +47,7 @@ require_once __DIR__ . '/../models/TorneoRepositorio.php';
 require_once __DIR__ . '/../models/ParticipanteRepositorio.php';
 require_once __DIR__ . '/../models/PedidoInscripcionRepositorio.php';
 require_once __DIR__ . '/../models/FixtureRepositorio.php';
+require_once __DIR__ . '/../models/ResultadoRepositorio.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
@@ -52,6 +55,8 @@ if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_crear))   { $ruta_crear   = 'crearController.php'; }
 if (!isset($ruta_panel))   { $ruta_panel   = 'panelController.php'; }
+if (!isset($ruta_partidos)) { $ruta_partidos = 'partidosController.php'; }
+if (!isset($ruta_reportes)) { $ruta_reportes = 'reportesController.php'; }
 
 $titulo  = 'Panel del organizador';
 $mensaje = '';
@@ -63,13 +68,14 @@ $valor_equipo   = array();   # id de liga => lo que se escribio
 # codigo, nunca como texto: la direccion no puede poner palabras en la
 # pagina.
 $avisos = array(
-    'liga-creada'        => 'La liga queda creada, con la inscripción abierta.',
+    'liga-creada'        => 'El torneo queda creado, con la inscripción abierta.',
     'equipo-anotado'     => 'El equipo queda anotado.',
     'pedido-aceptado'    => 'El pedido queda aceptado: el equipo juega la liga.',
     'pedido-rechazado'   => 'El pedido queda rechazado.',
-    'inscripcion-cerrada'=> 'La inscripción queda cerrada. Falta el fixture.',
-    'fixture-armado'     => 'El fixture queda armado.',
-    'fixture-rehecho'    => 'El fixture queda armado de nuevo.'
+    'inscripcion-cerrada'=> 'La inscripción queda cerrada. Falta armar el calendario.',
+    'fixture-armado'     => 'El calendario queda armado.',
+    'fixture-rehecho'    => 'El calendario queda armado de nuevo.',
+    'liga-cancelada'     => 'El torneo queda cancelado: deja de verse en el sitio, y lo jugado queda guardado.'
 );
 
 # --- 1. Sin sesion vigente, al acceso --------------------------------
@@ -146,17 +152,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-    } elseif (in_array($accion, array('agregar', 'cerrar', 'fixture', 'rehacer'))) {
+    } elseif (in_array($accion, array('agregar', 'cerrar', 'fixture', 'rehacer', 'cancelar'))) {
         # La liga, y que sea de esta cuenta. Los repositorios lo vuelven a
         # mirar con la fila bloqueada; esto da el aviso claro.
         $torneo = ($id_torneo > 0) ? $torneos->buscarPorId($id_torneo) : null;
         if ($torneo === null || (int)$torneo->getOrganizador()->getIdUsuario() !== $id_usuario) {
-            $errores[] = 'Esa liga no está a cargo de esta cuenta.';
+            $errores[] = 'Esa competencia no está a cargo de esta cuenta.';
+
+        } elseif ($accion === 'cancelar') {
+            # Pide su casilla marcada: sin ella no se cancela nada.
+            if (!isset($_POST['confirmo_cancelar'])) {
+                $errores[] = 'Cancelar la liga pide marcar la confirmación.';
+            } else {
+                $resultado = $torneos->cancelar($torneo, $organizador);
+                $errores = $resultado['errores'];
+                if (empty($errores)) {
+                    $detalle = $torneo->getNombre();
+                    if ($resultado['rechazados'] > 0) {
+                        $detalle .= ' · ' . $resultado['rechazados']
+                                  . ($resultado['rechazados'] === 1 ? ' pedido sin lugar' : ' pedidos sin lugar');
+                    }
+                    $auditorias->registrar(new Auditoria(null, $organizador, 'torneo', 'cancelacion',
+                        $id_torneo, mb_substr($detalle, 0, 255), $ip));
+                    $hecho = 'liga-cancelada';
+                }
+            }
 
         } elseif ($accion === 'agregar') {
             $nombre = (isset($_POST['equipo']) && is_string($_POST['equipo'])) ? trim($_POST['equipo']) : '';
             $valor_equipo[$id_torneo] = $nombre;
-            $resultado = $participantes->agregarEquipo($torneo, $organizador, $nombre);
+            # En una liga individual, cada jugador se anota con su cuenta.
+            $resultado = $torneo->esPorEquipos() ? $participantes->agregarEquipo($torneo, $organizador, $nombre)
+                       : array('errores' => array('En esta competencia compiten jugadores: cada uno se anota con su cuenta.'));
             if (empty($resultado['errores'])) {
                 # El equipo nuevo (si hubo que crearlo) y la inscripcion,
                 # cada una con el id de su propia fila.
@@ -198,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errores = $resultado['errores'];
                 if (empty($errores)) {
                     $auditorias->registrar(new Auditoria(null, $organizador, 'torneo', 'fixture',
-                        $id_torneo, mb_substr($torneo->getNombre() . ' · ' . $resultado['fechas'] . ' fechas, '
+                        $id_torneo, mb_substr($torneo->getNombre() . ' · ' . $resultado['fechas'] . ($torneo->esLiga() ? ' fechas, ' : ' rondas, ')
                                               . $resultado['partidos'] . ' partidos'
                                               . ($rehacer ? ' · rehecho' : ''), 0, 255), $ip));
                     $hecho = $rehacer ? 'fixture-rehecho' : 'fixture-armado';
@@ -212,7 +239,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($hecho !== '') {
         $conexion->close();
-        header('Location: ' . $ruta_panel . '?aviso=' . $hecho . '#liga-' . $id_torneo);
+        # Una liga cancelada ya no esta en el panel: se vuelve arriba.
+        header('Location: ' . $ruta_panel . '?aviso=' . $hecho
+               . (($hecho === 'liga-cancelada') ? '' : '#liga-' . $id_torneo));
         exit;
     }
 }
@@ -229,11 +258,17 @@ if (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos[$_GET['a
 $ligas = $torneos->listarDeOrganizador($id_usuario);
 $equipos_de   = array();   # id de liga => participantes
 $pendientes_de = array();  # id de liga => pedidos pendientes
+$campeon_de    = array();  # id de torneo terminado => su campeon (Participante), o null
 if (is_array($ligas)) {
     foreach ($ligas as $fila) {
         $id = (int)$fila['torneo']->getIdTorneo();
         $equipos_de[$id] = $participantes->listarDeTorneo($id);
         $pendientes_de[$id] = $fila['torneo']->tieneInscripcionAbierta() ? $pedidos->pendientesDe($id) : array();
+        if ($fila['torneo']->getEstado() === 'finalizado') {
+            $todos  = $participantes->listarDeTorneo($id, true);
+            $rondas = ($todos === null) ? null : $fixtures->fechasDe($id, $todos);
+            $campeon_de[$id] = ($rondas === null) ? null : ResultadoRepositorio::campeon($fila['torneo'], $todos, $rondas);
+        }
     }
 }
 

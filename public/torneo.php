@@ -6,6 +6,7 @@ require_once $carpeta_app . '/models/FixtureRepositorio.php';
 require_once $carpeta_app . '/models/PosicionRepositorio.php';
 require_once $carpeta_app . '/models/EquipoRepositorio.php';
 require_once $carpeta_app . '/models/PedidoInscripcionRepositorio.php';
+require_once $carpeta_app . '/models/ResultadoRepositorio.php';
 require_once $carpeta_app . '/ligas.php';
 
 # =====================================================================
@@ -26,8 +27,10 @@ require_once $carpeta_app . '/ligas.php';
 # destacada, asi que ahi el menu marca siempre Torneos.
 #
 # Con la inscripcion abierta, un capitan con sesion pide lugar para su
-# equipo (formulario a inscripcionController.php, con el token). La
-# vuelta trae un codigo (?aviso=...) que se traduce aca a su mensaje.
+# equipo (formulario a inscripcionController.php, con el token); en una
+# liga individual (fase 3), cada jugador se inscribe solo, con su
+# cuenta (CU-09). La vuelta trae un codigo (?aviso=...) que se traduce
+# aca a su mensaje.
 #
 # Lo que organiza una cuenta de muestra lleva la marca "De muestra".
 # =====================================================================
@@ -111,16 +114,23 @@ $config  = ($torneo === null) ? null : $torneo->getConfiguracion();
 $unidad  = ($torneo === null) ? 'tantos' : $torneo->getDisciplina()->getUnidad();
 $fechas  = count($rondas);
 
-# El aviso de la vuelta de "Pedir lugar": array(es error, texto).
+# El aviso de la vuelta de "Pedir lugar": array(es error, texto). Las
+# palabras cambian con el formato: "la liga" o "el torneo".
+$pal = ($torneo === null) ? array('el' => 'la competencia', 'El' => 'La competencia', 'Un' => 'Una competencia')
+                          : palabrasDe($torneo);
 $avisos_lugar = array(
-    'pedido-enviado' => array(false, 'El pedido queda en revisión. Lo resuelve quien organiza la liga.'),
+    'pedido-enviado' => array(false, 'El pedido queda en revisión. Lo resuelve quien organiza ' . $pal['el'] . '.'),
     'sin-equipo'     => array(true, 'El lugar lo pide el capitán del equipo, con su propia cuenta.'),
-    'cerrada'        => array(true, 'La inscripción de esta liga está cerrada.'),
-    'cupo'           => array(true, 'La liga ya tiene su cupo completo.'),
-    'ya-juega'       => array(true, 'Ese equipo ya juega esta liga.'),
-    'en-revision'    => array(true, 'Ese equipo ya tiene un pedido en revisión en esta liga.'),
+    'cerrada'        => array(true, 'La inscripción de esta competencia está cerrada.'),
+    'cupo'           => array(true, $pal['El'] . ' ya tiene su cupo completo.'),
+    'ya-juega'       => array(true, 'Ese equipo ya juega esta competencia.'),
+    'en-revision'    => array(true, 'Ese equipo ya tiene un pedido en revisión en esta competencia.'),
     'no-disponible'  => array(true, 'El pedido no se puede registrar por ahora.'),
-    'muestra'        => array(true, 'Una liga de muestra no recibe pedidos.')
+    'muestra'        => array(true, $pal['Un'] . ' de muestra no recibe pedidos.'),
+    'inscripto'      => array(false, 'La inscripción queda hecha: la cuenta juega esta competencia.'),
+    'ya-inscripto'   => array(true, 'Esa cuenta ya juega esta competencia.'),
+    'muestra-jugador'=> array(true, $pal['Un'] . ' de muestra no recibe inscripciones.'),
+    'de-equipos'     => array(true, 'En esta competencia compiten equipos: el lugar lo pide el capitán.')
 );
 $aviso = (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos_lugar[$_GET['aviso']]))
        ? $avisos_lugar[$_GET['aviso']] : null;
@@ -129,7 +139,7 @@ $aviso = (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos_lu
 $avance = '';
 if ($torneo !== null) {
     if ($torneo->tieneInscripcionAbierta()) {
-        $avance = count($en_competencia) . ' de ' . $torneo->getMaxParticipantes() . ' equipos';
+        $avance = count($en_competencia) . ' de ' . $torneo->getMaxParticipantes() . ' ' . nombreParticipantes($torneo);
     } elseif ($fechas === 0) {
         $avance = 'fixture por armar';
     } elseif ($actual === null) {
@@ -163,7 +173,7 @@ foreach ($equipos_propios as $equipo) {
     }
     $ultimo = isset($ultimos[$id_e]) ? $ultimos[$id_e] : null;
     if ($juega) {
-        $situacion[] = $equipo->getNombre() . ': juega esta liga.';
+        $situacion[] = $equipo->getNombre() . ': juega ' . $pal['el'] . '.';
     } elseif ($ultimo !== null && $ultimo->estaPendiente()) {
         $situacion[] = $equipo->getNombre() . ': pedido en revisión desde el ' . fechaTexto($ultimo->getFechaPedido()) . '.';
     } else {
@@ -174,6 +184,26 @@ foreach ($equipos_propios as $equipo) {
     }
 }
 $cupo_lleno = ($torneo !== null && count($en_competencia) >= $torneo->getMaxParticipantes());
+
+# Las palabras del formato (fecha o ronda; fixture, llave o primera
+# ronda) y el nombre de la pestana de la tabla: en la eliminacion
+# directa, la pestana Posiciones muestra la llave (mismo ancla, para que
+# el menu siga llevando ahi).
+$w = ($torneo === null) ? null : palabrasDe($torneo);
+$pestana_tabla = ($torneo !== null && $torneo->esEliminacion()) ? 'Llave' : 'Posiciones';
+$campeon = null;
+if ($torneo !== null && $torneo->getEstado() === 'finalizado') {
+    $campeon = ResultadoRepositorio::campeon($torneo, $todos, $rondas);
+}
+
+# En una liga individual: si la cuenta de la sesion ya juega.
+$de_equipos = ($torneo === null) || $torneo->esPorEquipos();
+$ya_juega = false;
+if (!$de_equipos && $persona_sesion !== null) {
+    foreach ($en_competencia as $p) {
+        if ($p->esIndividual() && (int)$p->getUsuario()->getIdUsuario() === (int)$persona_sesion->getIdUsuario()) { $ya_juega = true; }
+    }
+}
 
 # El titulo: "Aviso ·" si hay un aviso de error.
 $titulo_pagina = ($torneo === null) ? 'Torneo no encontrado' : $torneo->getNombre();
@@ -234,8 +264,11 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
   <p class="etiqueta">Torneos / <?php echo htmlspecialchars($torneo->getDisciplina()->getNombre()); ?></p>
   <div class="fila"><span class="etiqueta"><?php echo htmlspecialchars($torneo->getModulo()->getNombre() . ' · ' . $torneo->getDisciplina()->getNombre() . ' · ' . $avance); ?></span><?php echo chipLigaHtml($torneo, $en_vivo !== null); ?></div>
   <h1><?php echo $nom; ?></h1>
-  <p class="intro">Organiza <strong><?php echo htmlspecialchars($torneo->getOrganizador()->getNombreCompletoVisible()); ?></strong> · <?php echo plural(count($en_competencia), 'equipo', 'equipos'); ?> · <?php echo htmlspecialchars($periodo); ?><?php if (!empty($torneo->getSede())) { echo ' · ' . htmlspecialchars($torneo->getSede()); } ?></p>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Seguir torneo</span><?php if ($torneo->esDeMuestra()) { echo marcaMuestra(); } ?></div>
+  <p class="intro">Organiza <strong><?php echo htmlspecialchars($torneo->getOrganizador()->getNombreCompletoVisible()); ?></strong> · <?php echo participantesDe($torneo, count($en_competencia)); ?> · <?php echo htmlspecialchars($periodo); ?><?php if (!empty($torneo->getSede())) { echo ' · ' . htmlspecialchars($torneo->getSede()); } ?></p>
+  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Seguir torneo</span><?php if ($torneo->esDeMuestra()) { echo marcaMuestra(); } ?><?php
+    # Quien organiza la liga llega desde aca a cargar sus resultados.
+    if ($persona_sesion !== null && $fechas > 0
+        && (int)$persona_sesion->getIdUsuario() === (int)$torneo->getOrganizador()->getIdUsuario()) { ?><a href="<?php echo htmlspecialchars($ruta_partidos); ?>?id=<?php echo (int)$torneo->getIdTorneo(); ?>">Fechas y resultados <span aria-hidden="true">→</span></a><?php } ?></div>
 <?php   if ($aviso !== null) { ?>
 <?php     if ($aviso[0]) { ?>
   <div role="alert"><ul class="avisos"><li><?php echo htmlspecialchars($aviso[1]); ?></li></ul></div>
@@ -243,12 +276,31 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
   <p class="intro" role="status"><?php echo htmlspecialchars($aviso[1]); ?></p>
 <?php     } ?>
 <?php   } ?>
-<?php   if ($torneo->tieneInscripcionAbierta()) { ?>
+<?php   if ($torneo->tieneInscripcionAbierta() && !$de_equipos) { ?>
+  <div class="pedir-lugar">
+<?php     if ($ya_juega) { ?>
+    <p><small>Inscripción hecha: esta cuenta juega <?php echo $pal['el']; ?>.</small></p>
+<?php     } elseif ($torneo->esDeMuestra()) { ?>
+    <p><span class="enlace-apagado" aria-disabled="true">Inscribirse</span> <small><?php echo $pal['Un']; ?> de muestra no recibe inscripciones.</small></p>
+<?php     } elseif ($cupo_lleno) { ?>
+    <p><span class="enlace-apagado" aria-disabled="true">Inscribirse</span> <small><?php echo $pal['El']; ?> tiene su cupo completo.</small></p>
+<?php     } elseif ($persona_sesion === null) { ?>
+    <p><a class="btn" href="login.php">Iniciar sesión para inscribirse</a></p>
+<?php     } else { ?>
+    <form class="pedir-lugar" action="<?php echo htmlspecialchars($ruta_inscripcion); ?>" method="post">
+      <input type="hidden" name="id_torneo" value="<?php echo (int)$torneo->getIdTorneo(); ?>">
+      <?php echo campoCsrf(); ?>
+      <p><small>Competencia individual: la inscripción es directa, con esta cuenta, mientras haya lugar.</small></p>
+      <button class="btn btn-primario" type="submit">Inscribirse<span class="visualmente-oculto"> en <?php echo $nom; ?></span></button>
+    </form>
+<?php     } ?>
+  </div>
+<?php   } elseif ($torneo->tieneInscripcionAbierta()) { ?>
   <div class="pedir-lugar">
 <?php     if ($torneo->esDeMuestra()) { ?>
-    <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small>Una liga de muestra no recibe pedidos.</small></p>
+    <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small><?php echo $pal['Un']; ?> de muestra no recibe pedidos.</small></p>
 <?php     } elseif ($cupo_lleno) { ?>
-    <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small>La liga tiene su cupo completo.</small></p>
+    <p><span class="enlace-apagado" aria-disabled="true">Pedir lugar</span> <small><?php echo $pal['El']; ?> tiene su cupo completo.</small></p>
 <?php     } elseif ($persona_sesion === null) { ?>
     <p><a class="btn" href="login.php">Iniciar sesión para pedir lugar</a></p>
 <?php     } elseif (empty($equipos_propios)) { ?>
@@ -268,7 +320,7 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
           <option value="<?php echo (int)$equipo->getIdEquipo(); ?>"><?php echo htmlspecialchars($equipo->getNombre()); ?></option>
 <?php         } ?>
         </select></label>
-        <p class="ayuda-campo" id="ayuda-pedir-lugar">Lo acepta o lo rechaza quien organiza la liga.</p>
+        <p class="ayuda-campo" id="ayuda-pedir-lugar">Lo acepta o lo rechaza quien organiza <?php echo $pal['el']; ?>.</p>
       </div>
       <button class="btn btn-primario" type="submit">Pedir lugar<span class="visualmente-oculto"> en <?php echo $nom; ?></span></button>
     </form>
@@ -278,11 +330,11 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
 <?php   } ?>
 </section>
 <div class="vista" id="calendario">
-  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario" class="activo" aria-current="page">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
+  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario" class="activo" aria-current="page">Calendario</a><a href="#posiciones"><?php echo $pestana_tabla; ?></a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Calendario del torneo</h2>
 <?php   if (empty($rondas)) { ?>
-  <p><?php echo $torneo->tieneInscripcionAbierta() ? 'El fixture se arma al cerrar la inscripción.' : 'El fixture está por armarse.'; ?></p>
+  <p><?php echo mayuscula($w['calendario']) . ($torneo->tieneInscripcionAbierta() ? ' se arma al cerrar la inscripción.' : ' está por armarse.'); ?></p>
 <?php   } else { ?>
   <div class="agenda">
 <?php     foreach ($rondas as $ronda) {
@@ -302,16 +354,31 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
   </div>
 <?php     } ?>
   </div>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Las fechas jugadas quedan en la tabla de posiciones.</span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo $torneo->esEliminacion() ? 'Cada ronda se arma al cerrar la anterior, con los que pasan.'
+      : ($torneo->esSuizo() ? 'Cada ronda se arma al cerrar la anterior, según la tabla.' : 'Las fechas jugadas quedan en la tabla de posiciones.'); ?></span>
 <?php   } ?>
   </section>
 </div>
 <div class="vista" id="posiciones">
-  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones" class="activo" aria-current="page">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
+  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones" class="activo" aria-current="page"><?php echo $pestana_tabla; ?></a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
+<?php   if ($torneo->esEliminacion()) {
+          $total_llave = ($config !== null && $config->getRondasPrevistas() !== null) ? $config->getRondasPrevistas()
+                       : Llave::cantidadRondas(max(2, count($en_competencia))); ?>
+  <h2>Llave</h2>
+<?php     if (empty($rondas)) { ?>
+  <p>La llave se arma al cerrar la inscripción.</p>
+<?php     } else { ?>
+  <?php echo llaveHtml($rondas, $total_llave); ?>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em">El que pasa de cada cruce va en olivo · un pase libre pasa sin jugar</span>
+<?php     } ?>
+<?php   } else { ?>
   <h2>Tabla de posiciones</h2>
-<?php   if (empty($tabla)) { ?>
-  <p>La tabla se arma con el fixture.</p>
+<?php   } ?>
+<?php   if ($torneo->esEliminacion()) {
+          # La llave ya esta arriba.
+        } elseif (empty($tabla)) { ?>
+  <p>La tabla se arma con <?php echo $w['calendario']; ?>.</p>
 <?php   } else {
           # Cuantos clasifican sale de la configuracion de la liga (0 =
           # ninguno), nunca de un numero escrito aca. La columna E va solo
@@ -323,7 +390,7 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
           $tantos     = mayuscula($unidad); ?>
   <div class="tabla-scroll" tabindex="0" role="region" aria-label="Tabla de posiciones">
   <table class="posiciones">
-    <thead><tr><th class="pos">#</th><th>Equipo</th><th class="cifra">PJ</th><th class="cifra detalle">G</th><?php if ($con_empate) { ?><th class="cifra detalle">E</th><?php } ?><th class="cifra detalle">P</th><th class="cifra"><?php echo htmlspecialchars($tantos); ?></th><th class="cifra">Dif</th><th class="num">Pts</th></tr></thead>
+    <thead><tr><th class="pos">#</th><th><?php echo $de_equipos ? 'Equipo' : 'Jugador'; ?></th><th class="cifra">PJ</th><th class="cifra detalle">G</th><?php if ($con_empate) { ?><th class="cifra detalle">E</th><?php } ?><th class="cifra detalle">P</th><th class="cifra"><?php echo htmlspecialchars($tantos); ?></th><th class="cifra">Dif</th><th class="num">Pts</th></tr></thead>
     <tbody><?php foreach ($tabla as $i => $fila) {
       $clasifica = ($i < $clasifican); ?><tr<?php if ($clasifica) { echo ' class="clasifica"'; } ?>><td class="pos num"><?php echo $i + 1; ?></td><td><?php echo htmlspecialchars($fila->getNombreVisible()); ?><?php if ($clasifica) { ?><span class="visualmente-oculto"> · clasifica a playoffs</span><?php } ?></td><td class="cifra"><?php echo $fila->getPartidosJugados(); ?></td><td class="cifra detalle"><?php echo $fila->getGanados(); ?></td><?php if ($con_empate) { ?><td class="cifra detalle"><?php echo $fila->getEmpatados(); ?></td><?php } ?><td class="cifra detalle"><?php echo $fila->getPerdidos(); ?></td><td class="cifra"><?php echo $fila->getFavor() . ':' . $fila->getContra(); ?></td><td class="cifra"><?php echo conSigno($fila->getDiferencia()); ?></td><td class="num"><?php echo $fila->getPuntos($config); ?></td></tr><?php } ?></tbody>
   </table>
@@ -333,11 +400,19 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
   </section>
 </div>
 <div class="vista" id="participantes">
-  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes" class="activo" aria-current="page">Participantes</a><a href="#reglas">Reglas</a></div>
+  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones"><?php echo $pestana_tabla; ?></a><a href="#participantes" class="activo" aria-current="page">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Participantes</h2>
 <?php   if (empty($en_competencia)) { ?>
-  <p>Sin equipos anotados.</p>
+  <p><?php echo $de_equipos ? 'Sin equipos anotados.' : 'Sin jugadores anotados.'; ?></p>
+<?php   } elseif (!$de_equipos) { ?>
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Participantes">
+  <table>
+    <thead><tr><th>Jugador</th></tr></thead>
+    <tbody><?php foreach ($en_competencia as $p) { ?><tr><td><?php echo htmlspecialchars($p->getNombreVisible()); ?></td></tr><?php } ?></tbody>
+  </table>
+  </div>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo mayuscula(participantesDe($torneo, count($en_competencia))); ?><?php if ($torneo->tieneInscripcionAbierta()) { echo ' de ' . $torneo->getMaxParticipantes() . ' lugares'; } ?></span>
 <?php   } else {
           $con_capitan = 0;
           foreach ($en_competencia as $p) { if ($p->esEquipo() && $p->getEquipo()->getCapitan() !== null) { $con_capitan++; } } ?>
@@ -354,30 +429,48 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
   </section>
 </div>
 <div class="vista" id="reglas">
-  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas" class="activo" aria-current="page">Reglas</a></div>
+  <div class="pestanas"><a href="#resumen">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones"><?php echo $pestana_tabla; ?></a><a href="#participantes">Participantes</a><a href="#reglas" class="activo" aria-current="page">Reglas</a></div>
   <section class="tarjeta">
   <h2>Reglas</h2>
 <?php   if ($config === null) { ?>
-  <p>Las reglas de esta liga no se pueden leer por ahora.</p>
+  <p>Las reglas de esta competencia no se pueden leer por ahora.</p>
 <?php   } else {
           $reglas = array();
-          $reglas['Formato'] = 'Liga de ' . ($torneo->tieneInscripcionAbierta() ? 'hasta ' . $torneo->getMaxParticipantes() : count($en_competencia))
-                             . ' equipos, todos contra todos, ' . vueltasTexto($config) . '.';
+          $cuantos = ($torneo->tieneInscripcionAbierta() ? 'hasta ' . $torneo->getMaxParticipantes() : count($en_competencia))
+                   . ' ' . nombreParticipantes($torneo);
+          if ($torneo->esEliminacion()) {
+              $reglas['Formato'] = 'Eliminación directa de ' . $cuantos . ': quien pierde queda afuera, quien gana pasa a la ronda siguiente.'
+                                 . ' Si los inscriptos no llenan la llave, los primeros inscriptos pasan la primera ronda sin jugar.';
+          } elseif ($torneo->esSuizo()) {
+              $reglas['Formato'] = 'Sistema suizo de ' . $cuantos
+                                 . (($config->getRondasPrevistas() === null) ? '' : ', a ' . plural($config->getRondasPrevistas(), 'ronda', 'rondas'))
+                                 . ': en cada ronda se cruzan los de puntaje parecido, sin repetir rival. Quedar libre suma como partido ganado.';
+          } else {
+              $reglas['Formato'] = 'Liga de ' . $cuantos . ', todos contra todos, ' . vueltasTexto($config) . '.';
+          }
+          # Las series (fase 3): al mejor de 3, 5 o 7.
+          if ($config->esSerie()) {
+              $reglas['Series'] = $config->textoSerie();
+          }
           # Una liga sin empates (admite_empate = 0, como las de series al
           # mejor de un numero impar) no nombra los puntos del empate.
-          if ($config->admiteEmpate()) {
+          if ($torneo->esEliminacion()) {
+              $reglas['Partidos'] = 'Ningún partido termina empatado: alguien pasa.';
+          } elseif ($config->admiteEmpate()) {
               $reglas['Puntaje'] = $config->getPuntosVictoria() . ' puntos la victoria, ' . $config->getPuntosEmpate()
                                  . ' el empate y ' . $config->getPuntosDerrota() . ' la derrota.';
           } else {
               $reglas['Puntaje'] = $config->getPuntosVictoria() . ' puntos la victoria y ' . $config->getPuntosDerrota()
                                  . ' la derrota. Ningún partido termina empatado.';
           }
-          $reglas['Desempate'] = $config->textoDesempate($unidad);
+          if (!$torneo->esEliminacion()) {
+              $reglas['Desempate'] = $config->textoDesempate($unidad);
+          }
           if ($config->getClasificanPlayoffs() > 0) {
               $reglas['Playoffs'] = 'Clasifican los ' . $config->getClasificanPlayoffs() . ' primeros de la tabla.';
           }
           if (!empty($config->getReglas())) {
-              $reglas['Partidos'] = $config->getReglas();
+              $reglas[$torneo->esEliminacion() ? 'Más reglas' : 'Partidos'] = $config->getReglas();
           } ?>
   <table>
     <tbody>
@@ -386,24 +479,33 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
 <?php     } ?>
     </tbody>
   </table>
-  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo mayuscula(plural(count($reglas), 'regla', 'reglas')); ?> · las mismas para toda la liga</span>
+  <span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo mayuscula(plural(count($reglas), 'regla', 'reglas')); ?> · las mismas para todo <?php echo $torneo->esLiga() ? 'la liga' : 'el torneo'; ?></span>
 <?php   } ?>
   </section>
 </div>
 <div class="vista" id="resumen">
-  <div class="pestanas"><a href="#resumen" class="activo" aria-current="page">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones">Posiciones</a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
+  <div class="pestanas"><a href="#resumen" class="activo" aria-current="page">Resumen</a><a href="#calendario">Calendario</a><a href="#posiciones"><?php echo $pestana_tabla; ?></a><a href="#participantes">Participantes</a><a href="#reglas">Reglas</a></div>
   <section class="tarjeta">
   <h2>Resumen</h2>
   <p class="intro"><?php
+    $como = $torneo->esEliminacion() ? 'Eliminación directa' : ($torneo->esSuizo() ? 'Sistema suizo' : 'Todos contra todos, ' . vueltasTexto($config));
     if ($torneo->tieneInscripcionAbierta()) {
-        echo 'Todos contra todos, ' . vueltasTexto($config) . '. La inscripción sigue abierta: '
+        echo $como . '. La inscripción sigue abierta: '
            . count($en_competencia) . ' de ' . $torneo->getMaxParticipantes() . ' lugares ocupados. '
            . (empty($torneo->getFechaInicio()) ? 'La fecha de inicio queda a definir.'
-                                              : 'La primera fecha, el ' . htmlspecialchars(fechaConDia($torneo->getFechaInicio())) . '.');
+                                              : 'La primera ' . $w['ronda'] . ', el ' . htmlspecialchars(fechaConDia($torneo->getFechaInicio())) . '.');
     } elseif ($fechas === 0) {
-        echo 'Inscripción cerrada con ' . plural(count($en_competencia), 'equipo', 'equipos') . '. El fixture está por armarse.';
+        echo 'Inscripción cerrada con ' . participantesDe($torneo, count($en_competencia)) . '. ' . mayuscula($w['calendario']) . ' está por armarse.';
+    } elseif (!$torneo->esLiga()) {
+        $total = ($config === null || $config->getRondasPrevistas() === null) ? $fechas : $config->getRondasPrevistas();
+        echo $como . ' a ' . plural($total, 'ronda', 'rondas') . '. ';
+        if ($actual === null) {
+            echo 'Todas las rondas quedan atrás.';
+        } else {
+            echo 'En juego: ' . htmlspecialchars($actual->getNombreVisible()) . '.';
+        }
     } else {
-        echo plural($fechas, 'fecha', 'fechas') . ', ' . vueltasTexto($config) . ': cada equipo se cruza '
+        echo plural($fechas, 'fecha', 'fechas') . ', ' . vueltasTexto($config) . ': ' . ($de_equipos ? 'cada equipo' : 'cada jugador') . ' se cruza '
            . ($config !== null && $config->esIdaYVuelta() ? 'dos veces' : 'una vez') . ' con cada rival. ';
         if ($actual === null) {
             echo 'Todas las fechas quedan atrás.';
@@ -431,7 +533,26 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
   <p><a href="#calendario">Ver el calendario del torneo <span aria-hidden="true">→</span></a></p>
   </section>
 <?php   } ?>
-<?php   if (!empty($tabla) && $tabla[0]->getPartidosJugados() > 0) {
+<?php   if ($campeon !== null) {
+          # En la liga y el suizo, su fila de la tabla; en la llave, la final.
+          $fila_campeon = null;
+          foreach ($tabla as $f) {
+              if ((int)$f->getParticipante()->getIdParticipante() === (int)$campeon->getIdParticipante()) { $fila_campeon = $f; }
+          } ?>
+  <section class="tarjeta tarjeta-olivo">
+  <div class="fila" style="justify-content:space-between"><span class="etiqueta"><?php echo $torneo->esLiga() ? 'Liga terminada' : 'Torneo terminado'; ?></span><?php echo chipVencedor(); ?></div>
+  <h3><?php echo htmlspecialchars($campeon->getNombreVisible()); ?></h3>
+<?php     if ($torneo->esEliminacion()) { ?>
+  <p>Ganador de la final</p>
+  <p><a href="#posiciones">Ver la llave <span aria-hidden="true">→</span></a></p>
+<?php     } elseif ($fila_campeon !== null) { ?>
+  <p><?php echo plural($fila_campeon->getPuntos($config), 'punto', 'puntos'); ?> en <?php echo plural($fila_campeon->getPartidosJugados(), 'partido', 'partidos'); ?> · <?php echo conSigno($fila_campeon->getDiferencia()); ?> de diferencia de <?php echo $unidad; ?></p>
+  <p><a href="#posiciones">Ver la tabla final <span aria-hidden="true">→</span></a></p>
+<?php     } ?>
+  </section>
+<?php   } elseif ($torneo->esEliminacion()) {
+          # Sin tabla que mostrar: la llave esta en su pestana.
+        } elseif (!empty($tabla) && $tabla[0]->getPartidosJugados() > 0) {
           $primero = $tabla[0];
           $marca = array();
           if ($primero->getGanados() > 0)   { $marca[] = plural($primero->getGanados(), 'ganado', 'ganados'); }
@@ -453,13 +574,19 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
 <div class="tarjeta">
   <span class="etiqueta">Reglas en breve</span>
   <p><?php
-    $breve = 'Todos contra todos, ' . vueltasTexto($config) . '.';
+    $breve = $torneo->esEliminacion() ? 'Eliminación directa: quien pierde queda afuera.'
+           : ($torneo->esSuizo() ? 'Sistema suizo: en cada ronda, rivales de puntaje parecido.' : 'Todos contra todos, ' . vueltasTexto($config) . '.');
     if ($config !== null) {
         if (!empty($config->getReglas())) {
             $oraciones = explode('. ', $config->getReglas());
             $breve .= ' ' . rtrim($oraciones[0], '.') . '.';
         }
-        if ($config->admiteEmpate()) {
+        if ($config->esSerie()) {
+            $breve .= ' Series al mejor de ' . $config->getMejorDe() . '.';
+        }
+        if ($torneo->esEliminacion()) {
+            # Sin puntos: pasa el que gana.
+        } elseif ($config->admiteEmpate()) {
             $breve .= ' Victoria ' . $config->getPuntosVictoria() . ' pts, empate ' . $config->getPuntosEmpate()
                     . ' pt' . (($config->getPuntosEmpate() === 1) ? '' : 's') . '.';
         } else {
@@ -480,6 +607,6 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
 </div>
 </aside>
 <?php } ?>
-<?php piePagina(true); ?>
+<?php piePagina(true, $ruta_publica); ?>
 </body>
 </html>

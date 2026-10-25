@@ -70,7 +70,7 @@ class Participante
             return $this->equipo->getNombre();
         }
         if ($this->esIndividual()) {
-            return $this->usuario->getNombreCompleto();
+            return $this->usuario->getNombreCompletoVisible();
         }
         return '';
     }
@@ -99,10 +99,10 @@ class Participante
             $errores[] = 'El participante no puede ser un usuario y un equipo a la vez.';
         }
         if ($this->usuario !== null && !($this->usuario instanceof Usuario)) {
-            $errores[] = 'El competidor individual no es un usuario valido.';
+            $errores[] = 'El competidor individual no es un usuario válido.';
         }
         if ($this->equipo !== null && !($this->equipo instanceof Equipo)) {
-            $errores[] = 'El competidor colectivo no es un equipo valido.';
+            $errores[] = 'El competidor colectivo no es un equipo válido.';
         }
 
         $estados = array('inscripto', 'confirmado', 'baja', 'descalificado');

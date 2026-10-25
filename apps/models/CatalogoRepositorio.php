@@ -8,8 +8,10 @@
 # van escritos en el codigo: salen del catalogo por su nombre, igual
 # que el rol en UsuarioRepositorio::asignarRolPorNombre.
 #
-# Solo lectura: sgdm_app no puede cambiar los catalogos (los mantiene
-# sgdm_admin, ver el DCL de schema.sql).
+# Solo lectura, salvo una cosa: habilitar o deshabilitar un modulo de
+# competencia (RF-24, desde la administracion; la migracion 008 le da a
+# sgdm_app el UPDATE de esa tabla). El resto de los catalogos lo
+# mantiene sgdm_admin (ver el DCL de schema.sql).
 # =====================================================================
 
 require_once __DIR__ . '/Disciplina.php';
@@ -64,7 +66,7 @@ class CatalogoRepositorio
 
     public function moduloPorNombre($nombre)
     {
-        $sentencia = $this->conexion->prepare('SELECT id_modulo, nombre, descripcion
+        $sentencia = $this->conexion->prepare('SELECT id_modulo, nombre, descripcion, habilitado
                                                FROM modulo_competencia WHERE nombre = ?');
         if ($sentencia === false) {
             return null;
@@ -74,7 +76,79 @@ class CatalogoRepositorio
         $fila = $sentencia->get_result()->fetch_assoc();
         $sentencia->close();
         return ($fila === null) ? null
-             : new ModuloCompetencia($fila['id_modulo'], $fila['nombre'], $fila['descripcion']);
+             : new ModuloCompetencia($fila['id_modulo'], $fila['nombre'], $fila['descripcion'], $fila['habilitado']);
+    }
+
+    # Los modulos de competencia, en el orden del catalogo, indexados por
+    # nombre. null si la consulta no se puede hacer.
+    public function modulos()
+    {
+        $sentencia = $this->conexion->prepare('SELECT id_modulo, nombre, descripcion, habilitado
+                                               FROM modulo_competencia ORDER BY id_modulo');
+        if ($sentencia === false) {
+            return null;
+        }
+        $sentencia->execute();
+        $resultado = $sentencia->get_result();
+        $lista = array();
+        while ($fila = $resultado->fetch_assoc()) {
+            $lista[$fila['nombre']] = new ModuloCompetencia($fila['id_modulo'], $fila['nombre'],
+                                                           $fila['descripcion'], $fila['habilitado']);
+        }
+        $sentencia->close();
+        return $lista;
+    }
+
+    # Habilita o deshabilita un modulo. Siempre queda al menos uno
+    # habilitado: sin ninguno, "Nuevo torneo" no tendria que ofrecer. La
+    # cuenta y el cambio van en una transaccion, con las filas bloqueadas
+    # (FOR UPDATE): dos administradores a la vez no dejan el catalogo sin
+    # ninguno. Devuelve un arreglo de errores, vacio si quedo hecho.
+    public function cambiarModulo($id_modulo, $habilitar)
+    {
+        $id = (int)$id_modulo;
+        $nuevo = $habilitar ? 1 : 0;
+        $this->conexion->begin_transaction();
+        $sentencia = $this->conexion->prepare('SELECT id_modulo, habilitado FROM modulo_competencia FOR UPDATE');
+        if ($sentencia === false) {
+            $this->conexion->rollback();
+            return array('El módulo no se puede cambiar por ahora.');
+        }
+        $sentencia->execute();
+        $resultado = $sentencia->get_result();
+        $existe = false;
+        $habilitados = 0;
+        $actual = null;
+        while ($fila = $resultado->fetch_assoc()) {
+            if ((int)$fila['habilitado'] === 1) {
+                $habilitados++;
+            }
+            if ((int)$fila['id_modulo'] === $id) {
+                $existe = true;
+                $actual = (int)$fila['habilitado'];
+            }
+        }
+        $sentencia->close();
+        if (!$existe) {
+            $this->conexion->rollback();
+            return array('Ese módulo no existe.');
+        }
+        if ($actual === $nuevo) {
+            $this->conexion->rollback();
+            return array($nuevo === 1 ? 'Ese módulo ya está habilitado.' : 'Ese módulo ya está deshabilitado.');
+        }
+        if ($nuevo === 0 && $habilitados <= 1) {
+            $this->conexion->rollback();
+            return array('Siempre queda al menos un módulo de competencia habilitado.');
+        }
+        $cambio = $this->conexion->prepare('UPDATE modulo_competencia SET habilitado = ? WHERE id_modulo = ?');
+        if ($cambio === false || !$cambio->bind_param('ii', $nuevo, $id) || !$cambio->execute()) {
+            $this->conexion->rollback();
+            return array('El módulo no se puede cambiar por ahora.');
+        }
+        $cambio->close();
+        $this->conexion->commit();
+        return array();
     }
 
     # Cuantos formatos de competencia tiene el catalogo.

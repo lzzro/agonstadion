@@ -7,8 +7,8 @@
 # sistema (32 caracteres al azar y .jpg, .png o .webp).
 #
 # Son varias capas a proposito, porque no todos los servidores ejecutan
-# PHP de la misma manera: XAMPP lo hace con el modulo de Apache, y un
-# hosting con cPanel suele hacerlo con PHP-FPM. Probado con Apache
+# PHP de la misma manera: XAMPP lo hace con el modulo de Apache, y
+# otros servidores con PHP-FPM. Probado con Apache
 # real en los dos casos, sacando capas de a una: la 2 y el SetHandler
 # de la 4 frenan cada una por su cuenta en los dos servidores; la 3
 # frena solo con el modulo de Apache. Si una fallara, quedan las otras.
@@ -26,8 +26,8 @@ Require all denied
 </FilesMatch>
 
 # 3. PHP apagado en esta carpeta cuando corre como modulo de Apache
-#    (XAMPP). En un hosting con PHP-FPM este bloque no aplica y se
-#    saltea solo, sin error.
+#    (XAMPP). Con PHP-FPM este bloque no aplica y se saltea solo,
+#    sin error.
 <IfModule mod_php.c>
     php_flag engine off
 </IfModule>
@@ -36,12 +36,12 @@ Require all denied
 </IfModule>
 
 # 4. Sin manejador que ejecute nada, se asocie PHP como se asocie.
-#    SetHandler none le gana al "SetHandler" con que un hosting conecta
+#    SetHandler none le gana al "SetHandler" con que un servidor conecta
 #    PHP-FPM (y tambien al del modulo de XAMPP): el archivo se entrega
 #    como texto, sin correr. RemoveHandler y RemoveType son para los
 #    servidores que asocian PHP por extension con AddHandler, que no es
-#    el caso de ninguno de los dos probados, pero si el de algunos
-#    hosting.
+#    el caso de ninguno de los dos probados, pero si el de otros
+#    servidores.
 <FilesMatch "(?i)\.(php[0-9]?|phtml|phar|pht|phps|cgi|pl|py|sh)$">
     SetHandler none
 </FilesMatch>

@@ -50,11 +50,12 @@ class IntegranteEquipo
     public function validar()
     {
         $errores = array();
-        if ($this->dorsal !== null && ($this->dorsal < 0 || $this->dorsal > 255)) {
-            $errores[] = 'El dorsal tiene que estar entre 0 y 255.';
+        # El dorsal es la camiseta: de 0 a 99 (la base admite hasta 255).
+        if ($this->dorsal !== null && ($this->dorsal < 0 || $this->dorsal > 99)) {
+            $errores[] = 'El dorsal va de 0 a 99.';
         }
         if ($this->activo !== 0 && $this->activo !== 1) {
-            $errores[] = 'El estado de alta solo admite si o no.';
+            $errores[] = 'Un integrante está activo o de baja.';
         }
         return $errores;
     }

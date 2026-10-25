@@ -9,22 +9,33 @@
 #   $pendientes     pedidos de rol pendientes (arreglo de PedidoRol)
 #   $lista          cuentas con roles y ultimo acceso, o null si no se
 #                   pudo leer (ver UsuarioRepositorio::listarConRoles)
-#   $registro       ultimas filas de la auditoria (arreglo de
-#                   Auditoria), o null si no se pudo leer
+#   $registro       las filas de la pagina del registro de auditoria
+#                   (arreglo de Auditoria), o null si no se pudo leer
+#   $filtro, $pagina, $paginas, $total_registro   el filtro por accion
+#                   y la pagina del registro
+#   $modulos        los modulos de competencia (CatalogoRepositorio), o
+#                   null si no se pudieron leer
 #   $mensaje, $errores
-#   $ruta_publica, $ruta_perfil, $ruta_admin   direcciones
+#   $ruta_publica, $ruta_perfil, $ruta_admin, $ruta_reportes   direcciones
 #
 # Reemplaza a la maqueta public/admin.html. Lo que habia ahi:
 #   (Las tres organizadoras de muestra de la migracion 005 figuran con
 #   la marca "De muestra" en vez de su estado: no inician sesion nunca.)
 #   Usuarios administrativos   REAL: todas las cuentas de la base, con
-#                              sus roles. Las cuentas inventadas de la
-#                              maqueta (Comunidad Vortice, Club Sur...)
-#                              no estan: no existen en la base.
-#   Registro de auditoria      REAL: las ultimas filas de la tabla.
-#   Modulos del sistema        DE MUESTRA: la base tiene los modulos
-#                              pero no si estan encendidos o no. Van
-#                              con la marca "De muestra".
+#                              sus roles. Desde la tercera entrega, con
+#                              la baja logica y la vuelta (RF-11) y el
+#                              rol administrador para dar o quitar. Las
+#                              cuentas inventadas de la maqueta
+#                              (Comunidad Vortice, Club Sur...) no estan.
+#   Registro de auditoria      REAL: de a paginas de 30, con un filtro
+#                              por accion (un formulario GET: no cambia
+#                              nada en la base).
+#   Modulos del sistema        REAL desde la tercera entrega (RF-24, la
+#                              migracion 008): los tres modulos de
+#                              competencia, cada uno habilitado o no.
+#                              Las filas de la maqueta que no son un
+#                              modulo de la base (Consulta publica,
+#                              Registro, Exportacion CSV) no estan.
 #   Ultimo respaldo            FUERA: el sitio no ve los respaldos, que
 #                              hace un script del servidor.
 # Y se suma lo nuevo: los pedidos de rol pendientes.
@@ -44,6 +55,12 @@ if (!isset($registro)) { $registro = null; }
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
+if (!isset($ruta_reportes)) { $ruta_reportes = 'reportesController.php'; }
+if (!isset($modulos)) { $modulos = null; }
+if (!isset($filtro)) { $filtro = ''; }
+if (!isset($pagina)) { $pagina = 1; }
+if (!isset($paginas)) { $paginas = 1; }
+if (!isset($total_registro)) { $total_registro = null; }
 
 require_once __DIR__ . '/cabecera.php';
 require_once __DIR__ . '/config/recursos.php';
@@ -63,6 +80,12 @@ function fechaRegistro($fecha)
          . ' · ' . substr($fecha, 11, 5);
 }
 
+# "1 movimiento", "30 movimientos".
+function cantidadTexto($cantidad, $singular, $plural)
+{
+    return $cantidad . ' ' . (((int)$cantidad === 1) ? $singular : $plural);
+}
+
 # Como se nombra cada accion de la auditoria en pantalla: en
 # sustantivos, como pide la voz del sitio.
 $acciones = array(
@@ -75,19 +98,30 @@ $acciones = array(
     'pedido_rol'   => 'Pedido de rol',
     'aprobacion'   => 'Aprobación de rol',
     'rechazo'      => 'Rechazo de pedido de rol',
-    'inscripcion'  => 'Inscripción de equipo',
+    'inscripcion'  => 'Inscripción en un torneo',
     'solicitud'    => 'Pedido de inscripción',
     'cierre'       => 'Cierre de inscripción',
-    'fixture'      => 'Armado de fixture'
+    'fixture'      => 'Armado de fixture',
+    'resultado'    => 'Carga de resultado',
+    'programacion' => 'Programación de partido',
+    'final'        => 'Final de torneo',
+    'cancelacion'  => 'Cancelación de torneo',
+    'medicion'     => 'Carga de medición'
 );
 # Las que se nombran distinto segun la tabla: el alta de una liga o de
 # un equipo no es el alta de una cuenta, y aprobar o rechazar un pedido
 # de inscripcion no es lo mismo que uno de rol.
 $acciones_por_tabla = array(
-    'alta|torneo'                    => 'Alta de liga',
+    'alta|torneo'                    => 'Alta de torneo',
     'alta|equipo'                    => 'Alta de equipo',
     'aprobacion|pedido_inscripcion'  => 'Aceptación de inscripción',
-    'rechazo|pedido_inscripcion'     => 'Rechazo de pedido de inscripción'
+    'rechazo|pedido_inscripcion'     => 'Rechazo de pedido de inscripción',
+    'cierre|ronda'                   => 'Cierre de fecha',
+    'baja|medicion'                  => 'Baja de medición',
+    'alta|usuario_rol'               => 'Alta de rol',
+    'baja|usuario_rol'               => 'Baja de rol',
+    'alta|integrante_equipo'         => 'Alta de integrante',
+    'baja|integrante_equipo'         => 'Baja de integrante'
 );
 
 # Cuentas por rol, para el resumen del costado.
@@ -193,40 +227,96 @@ if (is_array($lista)) {
 <?php if ($lista === null) { ?>
   <p>La lista de cuentas no se puede leer por ahora.</p>
 <?php } else { ?>
-  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Cuentas">
-  <table>
-    <thead><tr><th>Nombre</th><th>Correo</th><th>Roles</th><th>Estado</th><th>Último acceso</th></tr></thead>
-    <tbody>
+<?php   # Un renglon por cuenta, como los pedidos: con los botones de cada
+        # una, una tabla se desplazaria a lo ancho y los dejaria fuera de
+        # la vista en el telefono. ?>
+  <div class="pedidos cuentas-lista">
 <?php   foreach ($lista as $cuenta) {
           $u = $cuenta['usuario'];
           $roles = array();
-          foreach ($u->getRoles() as $rol) { $roles[] = $rol->getNombre(); } ?>
-      <tr>
-        <td><?php echo htmlspecialchars($u->getNombreCompletoVisible()); ?></td>
-        <td><?php echo htmlspecialchars($u->getCorreo()); ?></td>
-        <td><?php echo htmlspecialchars(empty($roles) ? 'Sin roles' : implode(' · ', $roles)); ?></td>
-        <td><?php if ($u->esDeMuestra()) { ?><span class="muestra">De muestra</span><?php } elseif ($u->estaActivo()) { ?><span class="estado estado-inscripcion">Activa</span><?php } else { ?><span class="estado estado-cerrado">De baja</span><?php } ?></td>
-        <td class="fecha"><?php echo ($cuenta['ultimo_acceso'] === null) ? 'Sin acceso' : htmlspecialchars(fechaRegistro($cuenta['ultimo_acceso'])); ?></td>
-      </tr>
+          foreach ($u->getRoles() as $rol) { $roles[] = $rol->getNombre(); }
+          $propia = ((int)$u->getIdUsuario() === (int)$administrador->getIdUsuario());
+          $nombre_u = htmlspecialchars($u->getNombreCompletoVisible()); ?>
+    <div class="pedido cuenta" id="cuenta-<?php echo (int)$u->getIdUsuario(); ?>">
+      <span class="pedido-texto"><strong><?php echo $nombre_u; ?></strong><span class="pedido-dato"><?php echo htmlspecialchars($u->getCorreo()); ?> · <?php echo htmlspecialchars(empty($roles) ? 'sin roles' : implode(' · ', $roles)); ?> · <span class="fecha"><?php echo ($cuenta['ultimo_acceso'] === null) ? 'sin acceso' : 'último acceso ' . htmlspecialchars(fechaRegistro($cuenta['ultimo_acceso'])); ?></span></span><span><?php if ($u->esDeMuestra()) { ?><span class="muestra">De muestra</span><?php } elseif ($u->estaActivo()) { ?><span class="estado estado-inscripcion">Activa</span><?php } else { ?><span class="estado estado-cerrado">De baja</span><?php } ?></span></span>
+<?php     if ($u->esDeMuestra()) { ?>
+      <small>No inicia sesión</small>
+<?php     } elseif ($propia) { ?>
+      <small>Esta cuenta: la cambia otra cuenta de la administración</small>
+<?php     } else { ?>
+      <span class="acciones-cuenta">
+<?php       if ($u->estaActivo()) { ?>
+<?php         if ($u->tieneRol('administrador')) { ?>
+        <form action="<?php echo htmlspecialchars($ruta_admin); ?>#cuentas" method="post">
+          <?php echo campoCsrf(); ?>
+          <input type="hidden" name="accion" value="quitar_admin">
+          <input type="hidden" name="id_usuario" value="<?php echo (int)$u->getIdUsuario(); ?>">
+          <button class="btn" type="submit">Quitar de la administración<span class="visualmente-oculto"> a <?php echo $nombre_u; ?></span></button>
+        </form>
+<?php         } else { ?>
+        <form action="<?php echo htmlspecialchars($ruta_admin); ?>#cuentas" method="post">
+          <?php echo campoCsrf(); ?>
+          <input type="hidden" name="accion" value="dar_admin">
+          <input type="hidden" name="id_usuario" value="<?php echo (int)$u->getIdUsuario(); ?>">
+          <button class="btn" type="submit">Sumar a la administración<span class="visualmente-oculto"> a <?php echo $nombre_u; ?></span></button>
+        </form>
+<?php         } ?>
+        <form class="baja-cuenta" action="<?php echo htmlspecialchars($ruta_admin); ?>#cuentas" method="post">
+          <?php echo campoCsrf(); ?>
+          <input type="hidden" name="accion" value="baja_cuenta">
+          <input type="hidden" name="id_usuario" value="<?php echo (int)$u->getIdUsuario(); ?>">
+          <label class="casilla"><input type="checkbox" name="confirmo_baja" value="1" required>Confirmar<span class="visualmente-oculto"> la baja de <?php echo $nombre_u; ?></span></label>
+          <button class="btn" type="submit">Dar de baja<span class="visualmente-oculto"> a <?php echo $nombre_u; ?></span></button>
+        </form>
+<?php       } else { ?>
+        <form action="<?php echo htmlspecialchars($ruta_admin); ?>#cuentas" method="post">
+          <?php echo campoCsrf(); ?>
+          <input type="hidden" name="accion" value="reactivar_cuenta">
+          <input type="hidden" name="id_usuario" value="<?php echo (int)$u->getIdUsuario(); ?>">
+          <button class="btn" type="submit">Reactivar<span class="visualmente-oculto"> a <?php echo $nombre_u; ?></span></button>
+        </form>
+<?php       } ?>
+      </span>
+<?php     } ?>
+    </div>
 <?php   } ?>
-    </tbody>
-  </table>
   </div>
 <?php } ?>
 </section>
 
 <section class="tarjeta" id="modulos">
-  <div class="fila" style="justify-content:space-between"><h2>Módulos del sistema</h2><span class="muestra">De muestra</span></div>
-    <div class="modulo"><span class="modulo-texto"><strong>Liga</strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Todos contra todos</span></span><span class="modulo-estado"><span class="etiqueta">Activo</span><span class="llave-visual encendida" role="img" aria-label="Activo"></span></span></div>
-    <div class="modulo"><span class="modulo-texto"><strong>Eliminación directa</strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Llaves</span></span><span class="modulo-estado"><span class="etiqueta">Activo</span><span class="llave-visual encendida" role="img" aria-label="Activo"></span></span></div>
-    <div class="modulo"><span class="modulo-texto"><strong>Sistema suizo</strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Emparejamiento por puntaje</span></span><span class="modulo-estado"><span class="etiqueta">Activo</span><span class="llave-visual encendida" role="img" aria-label="Activo"></span></span></div>
-    <div class="modulo"><span class="modulo-texto"><strong>Consulta pública</strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Torneos visibles sin cuenta</span></span><span class="modulo-estado"><span class="etiqueta">Activo</span><span class="llave-visual encendida" role="img" aria-label="Activo"></span></span></div>
-    <div class="modulo"><span class="modulo-texto"><strong>Registro de participantes</strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Alta de nuevas cuentas</span></span><span class="modulo-estado"><span class="etiqueta">Activo</span><span class="llave-visual encendida" role="img" aria-label="Activo"></span></span></div>
-    <div class="modulo"><span class="modulo-texto"><strong>Exportación CSV</strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em">Descarga de tablas y resultados</span><span class="chip">Opcional · en pruebas</span></span><span class="modulo-estado"><span class="etiqueta">En pausa</span><span class="llave-visual" role="img" aria-label="En pausa"></span></span></div>
+  <h2>Módulos del sistema</h2>
+  <p><small>Un módulo deshabilitado no se ofrece en "Nuevo torneo"; los torneos que ya lo usan siguen igual. Siempre queda al menos uno habilitado.</small></p>
+<?php if ($modulos === null) { ?>
+  <p>Los módulos no se pueden leer por ahora.</p>
+<?php } else {
+        $descripciones = array('Liga' => 'Todos contra todos', 'Eliminación directa' => 'Llaves', 'Suizo' => 'Emparejamiento por puntaje');
+        foreach ($modulos as $modulo) {
+          $prendido = $modulo->estaHabilitado();
+          $nombre_m = htmlspecialchars($modulo->getNombre());
+          $texto_m = isset($descripciones[$modulo->getNombre()]) ? $descripciones[$modulo->getNombre()] : (string)$modulo->getDescripcion(); ?>
+    <div class="modulo"><span class="modulo-texto"><strong><?php echo $nombre_m; ?></strong><span class="etiqueta" style="text-transform:none;letter-spacing:.04em"><?php echo htmlspecialchars($texto_m); ?></span></span><span class="modulo-estado"><span class="etiqueta"><?php echo $prendido ? 'Habilitado' : 'Deshabilitado'; ?></span><span class="llave-visual<?php if ($prendido) { echo ' encendida'; } ?>" role="img" aria-label="<?php echo $prendido ? 'Habilitado' : 'Deshabilitado'; ?>"></span>
+      <form action="<?php echo htmlspecialchars($ruta_admin); ?>#modulos" method="post">
+        <?php echo campoCsrf(); ?>
+        <input type="hidden" name="accion" value="<?php echo $prendido ? 'deshabilitar_modulo' : 'habilitar_modulo'; ?>">
+        <input type="hidden" name="id_modulo" value="<?php echo (int)$modulo->getIdModulo(); ?>">
+        <button class="btn" type="submit"><?php echo $prendido ? 'Deshabilitar' : 'Habilitar'; ?><span class="visualmente-oculto"> el módulo <?php echo $nombre_m; ?></span></button>
+      </form></span></div>
+<?php   }
+      } ?>
 </section>
 
 <section class="tarjeta" id="auditoria">
   <h2>Registro de auditoría</h2>
+  <form class="filtro-registro" action="<?php echo htmlspecialchars($ruta_admin); ?>#auditoria" method="get">
+    <label>Acción<select name="filtro">
+      <option value=""<?php if ($filtro === '') { echo ' selected'; } ?>>Todas</option>
+<?php foreach (Auditoria::acciones() as $clave) { ?>
+      <option value="<?php echo $clave; ?>"<?php if ($clave === $filtro) { echo ' selected'; } ?>><?php echo htmlspecialchars(isset($acciones[$clave]) ? $acciones[$clave] : $clave); ?></option>
+<?php } ?>
+    </select></label>
+    <button class="btn" type="submit">Filtrar<span class="visualmente-oculto"> el registro</span></button>
+  </form>
 <?php if ($registro === null) { ?>
   <p>El registro no se puede leer por ahora.</p>
 <?php } elseif (empty($registro)) { ?>
@@ -261,7 +351,16 @@ if (is_array($lista)) {
     <div class="registro-linea"><span class="cuando"><?php echo htmlspecialchars(fechaRegistro($fila->getFechaHora())); ?></span><span class="quien"><?php echo htmlspecialchars($quien); ?></span><span><?php echo htmlspecialchars($que); ?></span></div>
 <?php   } ?>
   </div>
-  <p><small><?php echo (count($registro) === 1) ? 'El último movimiento.' : 'Los últimos ' . count($registro) . ' movimientos.'; ?></small></p>
+<?php   $base_pagina = htmlspecialchars($ruta_admin) . '?' . (($filtro === '') ? '' : 'filtro=' . urlencode($filtro) . '&amp;') . 'pagina='; ?>
+  <div class="fila paginas-registro">
+    <small>Página <?php echo $pagina; ?> de <?php echo $paginas; ?><?php if ($total_registro !== null) { echo ' · ' . cantidadTexto($total_registro, 'movimiento', 'movimientos'); } ?></small>
+<?php   if ($pagina > 1) { ?>
+    <a href="<?php echo $base_pagina . ($pagina - 1); ?>#auditoria"><span aria-hidden="true">←</span> Más recientes</a>
+<?php   } ?>
+<?php   if ($pagina < $paginas) { ?>
+    <a href="<?php echo $base_pagina . ($pagina + 1); ?>#auditoria">Anteriores <span aria-hidden="true">→</span></a>
+<?php   } ?>
+  </div>
 <?php } ?>
 </section>
 </main>
@@ -278,6 +377,10 @@ if (is_array($lista)) {
 <div class="tarjeta">
   <span class="etiqueta">Pedidos en revisión</span>
   <h3><?php echo count($pendientes); ?></h3>
+</div>
+<div class="tarjeta">
+  <span class="etiqueta">Reportes</span>
+  <p><a href="<?php echo htmlspecialchars($ruta_reportes); ?>">Reportes de todos los torneos <span aria-hidden="true">→</span></a></p>
 </div>
 </aside>
 <footer>

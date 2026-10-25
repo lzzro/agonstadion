@@ -24,6 +24,12 @@
 # Las cuentas de muestra (de_muestra = 1) se rechazan siempre, antes de
 # mirar la clave: ver Usuario::esDeMuestra().
 #
+# Bloqueo (tercera entrega): con 5 intentos fallidos con el mismo correo
+# en 15 minutos, el inicio de sesion con ese correo queda en pausa hasta
+# que pasen 15 minutos del quinto. Se cuenta con las filas login_error de
+# la auditoria, que ya guardaban el correo intentado: no hace falta una
+# tabla nueva.
+#
 # Al entrar se guarda ademas la hora de la ultima actividad. Con ella,
 # config/sesion.php cierra la sesion que queda media hora sin uso.
 #
@@ -33,7 +39,8 @@
 # igual que el identificador de sesion.
 # =====================================================================
 
-session_start();
+require_once __DIR__ . '/../config/sesion.php';
+abrirSesion();
 
 require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/database.php';
@@ -42,12 +49,17 @@ require_once __DIR__ . '/../models/UsuarioRepositorio.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
-$titulo  = 'Inicio de sesion';
+# El bloqueo tras varios intentos fallidos (politica de contrasenas de
+# Ciberseguridad, tercera entrega).
+const INTENTOS_ANTES_DEL_BLOQUEO = 5;
+const MINUTOS_BLOQUEO = 15;
+
+$titulo  = 'Inicio de sesión';
 $mensaje = '';
 $errores = array();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    $errores[] = 'El inicio de sesion llega desde el formulario de la pagina de acceso.';
+    $errores[] = 'El inicio de sesión llega desde el formulario de la página de acceso.';
 } elseif (!csrfValido()) {
     $errores[] = rechazarCsrf();
 } else {
@@ -58,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $clave  = (isset($_POST['password']) && is_string($_POST['password'])) ? $_POST['password'] : '';
 
     if (empty($correo) || empty($clave)) {
-        $errores[] = 'El correo y la contrasena son obligatorios.';
+        $errores[] = 'El correo y la contraseña son obligatorios.';
     }
 
     if (empty($errores)) {
@@ -76,7 +88,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
             $usuario = $repositorio->buscarPorCorreo($correo);
 
-            if ($usuario !== null && $usuario->esDeMuestra()) {
+            # Bloqueo de la politica de contrasenas: con 5 fallos con
+            # este correo en los ultimos 15 minutos no se mira la clave,
+            # ni siquiera la correcta. El aviso es el mismo exista o no
+            # la cuenta. El intento queda en la auditoria con otro
+            # detalle, que no suma al conteo (ver intentosFallidos).
+            $fallidos = $auditorias->intentosFallidos($correo_intentado, MINUTOS_BLOQUEO);
+
+            if ($fallidos !== null && $fallidos >= INTENTOS_ANTES_DEL_BLOQUEO) {
+                $errores[] = 'Demasiados intentos fallidos con ese correo. El acceso queda en pausa por '
+                           . MINUTOS_BLOQUEO . ' minutos.';
+                $auditorias->registrar(new Auditoria(
+                    null, null, 'usuario', 'login_error', null,
+                    mb_substr('Bloqueo: ' . $correo_intentado, 0, 255), $ip));
+
+            } elseif ($usuario !== null && $usuario->esDeMuestra()) {
                 # Las cuentas de muestra (las organizadoras de las ligas
                 # de muestra) no abren sesion con ninguna clave. Se
                 # rechazan antes de mirar la clave, aunque su hash tampoco
@@ -89,12 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     $usuario->getIdUsuario(), 'Cuenta de muestra: ' . $correo_intentado, $ip));
 
             } elseif ($usuario === null || !$usuario->verificarClave($clave)) {
-                $errores[] = 'El correo o la contrasena no coinciden.';
+                $errores[] = 'El correo o la contraseña no coinciden.';
                 $auditorias->registrar(new Auditoria(
                     null, null, 'usuario', 'login_error', null, $correo_intentado, $ip));
 
             } elseif (!$usuario->estaActivo()) {
-                $errores[] = 'Esa cuenta esta dada de baja.';
+                $errores[] = 'Esa cuenta está dada de baja.';
                 $auditorias->registrar(new Auditoria(
                     null, null, 'usuario', 'login_error',
                     $usuario->getIdUsuario(), $correo_intentado, $ip));
@@ -115,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     null, $usuario, 'usuario', 'login_ok',
                     $usuario->getIdUsuario(), null, $ip));
 
-                $mensaje = 'La sesion queda abierta a nombre de '
+                $mensaje = 'La sesión queda abierta a nombre de '
                          . $usuario->getNombreCompletoVisible() . '.';
 
                 # La cuenta, para el circulo de la cabecera de la vista

@@ -18,20 +18,32 @@
 # formulario o por la direccion. Si viniera de afuera, cambiando un
 # numero en la URL cualquiera editaria el perfil de otro.
 #
-# El correo no se edita: identifica la cuenta. La contrasena tampoco:
-# se cambia por su propio camino. El formulario solo manda los cuatro
-# campos que si son del perfil.
+# El correo no se edita: identifica la cuenta. La contrasena se cambia
+# por su propio formulario (accion "clave"), que pide la actual. El
+# formulario de datos solo manda los cuatro campos que si son del perfil.
 #
 # Recibe cuatro formularios, que se distinguen por el campo "accion":
 #   datos      nombre, apellido, alias y presentacion (el de siempre;
 #              si no llega "accion" tambien es este)
 #   foto       la foto de perfil
 #   portada    la imagen de portada
+#   clave      el cambio de contrasena (tercera entrega): la actual, la
+#              nueva y su repeticion
 #   pedir_rol  el pedido del rol de organizador, que despues aprueba o
 #              rechaza la administracion (ver adminController.php)
 #   crear_equipo  un equipo nuevo, con esta cuenta de capitan (ver
 #              EquipoRepositorio): con el, se pide lugar en una liga
 #              desde la pagina de la liga
+#   medicion   una medicion de rendimiento fisico (RF-29): la prueba,
+#              sus datos crudos y la fecha (ver Medicion)
+#   borrar_medicion  borra una medicion de esta cuenta (una de otra
+#              cuenta no se borra: el repositorio filtra por la cuenta)
+#   sumar_integrante, dorsal_integrante, baja_integrante   los
+#              integrantes de un equipo que capitanea esta cuenta, con
+#              su dorsal (RF-12; ver EquipoRepositorio): de cada uno se
+#              leen solo el numero de equipo, el correo, la cuenta y el
+#              dorsal, y el repositorio comprueba que el capitan sea la
+#              cuenta de la sesion
 # Todos traen el token de config/csrf.php. Sin el, o con uno que no es
 # el de esta sesion, no se toca nada: se responde 403 con el aviso.
 # Las dos imagenes pasan por ImagenSubida, que decide si se aceptan.
@@ -57,6 +69,12 @@ require_once __DIR__ . '/../models/ImagenSubida.php';
 require_once __DIR__ . '/../models/PedidoRolRepositorio.php';
 require_once __DIR__ . '/../models/Equipo.php';
 require_once __DIR__ . '/../models/EquipoRepositorio.php';
+require_once __DIR__ . '/../models/MedicionRepositorio.php';
+require_once __DIR__ . '/../models/EnfrentamientoRepositorio.php';
+require_once __DIR__ . '/../models/ParticipanteRepositorio.php';
+require_once __DIR__ . '/../models/FixtureRepositorio.php';
+require_once __DIR__ . '/../models/ResultadoRepositorio.php';
+require_once __DIR__ . '/../fechas.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
@@ -68,15 +86,20 @@ if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_salir))   { $ruta_salir   = 'salirController.php'; }
 if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 
-# Donde se guardan las imagenes, en el disco. En el hosting la deja
-# preparada el puente, porque ahi la carpeta publica es public_html.
+# Donde se guardan las imagenes, en el disco. En la copia de publicacion
+# la deja preparada el puente, porque ahi la carpeta publica es public_html.
 if (!isset($carpeta_subidas)) { $carpeta_subidas = __DIR__ . '/../../public/subidas'; }
 
 $titulo  = 'Perfil';
 $mensaje = '';
 $errores = array();
 $errores_equipo = array();   # campo del equipo nuevo => mensaje
+$errores_medicion = array(); # prueba => mensaje, al lado de su formulario
+$valores_medicion = array(); # prueba => lo que se escribio, si hubo un error
 $valores_equipo = array('nombre' => '', 'ciudad' => '');
+$errores_clave = array();       # los del cambio de contrasena, al lado de su formulario
+$errores_integrante = array();  # id de equipo => mensaje, al lado de su formulario
+$valores_integrante = array();  # id de equipo => array('correo', 'dorsal'), si hubo un error
 
 # --- 1. Sin sesion vigente no hay nada que mostrar -------------------
 if (!sesionVigente()) {
@@ -129,6 +152,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         # imagenes, ni pedidos.
         $errores[] = rechazarCsrf();
 
+    } elseif ($accion === 'clave') {
+
+        # --- 3x. Cambio de contrasena (tercera entrega) ---------------
+        # Pide la clave actual: una sesion abierta y olvidada en otra
+        # computadora no alcanza para cambiarla. La nueva pasa por las
+        # mismas reglas que en el alta (Usuario::asignarClave). Al
+        # cambiarla, identificador de sesion y token nuevos, igual que
+        # al iniciar sesion. Queda en la auditoria, sin la clave.
+        $actual  = (isset($_POST['clave_actual']) && is_string($_POST['clave_actual'])) ? $_POST['clave_actual'] : '';
+        $nueva   = (isset($_POST['clave_nueva']) && is_string($_POST['clave_nueva'])) ? $_POST['clave_nueva'] : '';
+        $repetir = (isset($_POST['clave_repetir']) && is_string($_POST['clave_repetir'])) ? $_POST['clave_repetir'] : '';
+
+        if (empty($actual) || empty($nueva) || empty($repetir)) {
+            $errores_clave[] = 'Las tres contraseñas son obligatorias.';
+        } elseif (!$usuario->verificarClave($actual)) {
+            $errores_clave[] = 'La contraseña actual no coincide.';
+            $auditorias->registrar(new Auditoria(
+                null, $usuario, 'usuario', 'login_error',
+                $usuario->getIdUsuario(), 'Cambio de contraseña con la actual equivocada', $ip));
+        } elseif ($nueva !== $repetir) {
+            $errores_clave[] = 'La contraseña nueva y su repetición no coinciden.';
+        } elseif ($nueva === $actual) {
+            $errores_clave[] = 'La contraseña nueva es igual a la actual.';
+        } else {
+            $errores_clave = $usuario->asignarClave($nueva);
+            if (empty($errores_clave)) {
+                $errores_clave = $repositorio->actualizarClave($usuario);
+            }
+            if (empty($errores_clave)) {
+                session_regenerate_id(true);
+                renovarCsrf();
+                $mensaje = 'La contraseña queda cambiada.';
+                $auditorias->registrar(new Auditoria(
+                    null, $usuario, 'usuario', 'modificacion',
+                    $usuario->getIdUsuario(), 'Cambio de contraseña', $ip));
+            }
+        }
+        # Los errores van tambien arriba, en la lista general, para el
+        # "Aviso ·" del titulo.
+        $errores = array_merge($errores, $errores_clave);
+
     } elseif ($accion === 'pedir_rol') {
 
         # --- 3a. Pedido del rol de organizador ------------------------
@@ -144,12 +208,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($usuario->tieneRol('organizador')) {
             $errores[] = 'La cuenta ya tiene el rol de organizador.';
         } elseif ($anterior !== null && $anterior->estaPendiente()) {
-            $errores[] = 'Ya hay un pedido en revision.';
+            $errores[] = 'Ya hay un pedido en revisión.';
         } else {
             $errores = $pedidos->crear($usuario, 'organizador');
             if (empty($errores)) {
                 $nuevo = $pedidos->ultimoDe($id_usuario, 'organizador');
-                $mensaje = 'El pedido del rol de organizador queda en revision.';
+                $mensaje = 'El pedido del rol de organizador queda en revisión.';
                 $auditorias->registrar(new Auditoria(
                     null, $usuario, 'pedido_rol', 'pedido_rol',
                     ($nuevo === null) ? null : $nuevo->getIdPedidoRol(),
@@ -188,6 +252,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $errores = $resultado;
+        }
+
+    } elseif ($accion === 'sumar_integrante' || $accion === 'dorsal_integrante' || $accion === 'baja_integrante') {
+
+        # --- 3g. Los integrantes de un equipo (RF-12) -------------------
+        # Solo numeros y el correo. El dorsal vacio es "sin dorsal".
+        $id_equipo  = (isset($_POST['id_equipo']) && is_string($_POST['id_equipo'])) ? (int)$_POST['id_equipo'] : 0;
+        $id_cuenta  = (isset($_POST['id_usuario']) && is_string($_POST['id_usuario'])) ? (int)$_POST['id_usuario'] : 0;
+        $correo     = (isset($_POST['correo']) && is_string($_POST['correo'])) ? trim($_POST['correo']) : '';
+        $dorsal_txt = (isset($_POST['dorsal']) && is_string($_POST['dorsal'])) ? trim($_POST['dorsal']) : '';
+        $dorsal     = ($dorsal_txt === '') ? null : (ctype_digit($dorsal_txt) ? (int)$dorsal_txt : -1);
+        $equipos_repo = new EquipoRepositorio($conexion);
+
+        if ($accion === 'sumar_integrante') {
+            $resultado = ($correo === '') ? array('errores' => array('Falta el correo de la cuenta.'), 'nombre' => null)
+                       : $equipos_repo->sumarIntegrante($id_equipo, $usuario, $correo, $dorsal);
+            if (empty($resultado['errores'])) {
+                $mensaje = $resultado['nombre'] . ' queda en el equipo'
+                         . (($dorsal === null) ? ', sin dorsal.' : ', con el dorsal ' . $dorsal . '.');
+                $auditorias->registrar(new Auditoria(null, $usuario, 'integrante_equipo', 'alta', $id_equipo,
+                    mb_substr($resultado['nombre'] . ((($dorsal === null) ? '' : ' · dorsal ' . $dorsal)), 0, 255), $ip));
+            } else {
+                $errores = $resultado['errores'];
+                $errores_integrante[$id_equipo] = implode(' ', $resultado['errores']);
+                $valores_integrante[$id_equipo] = array('correo' => $correo, 'dorsal' => $dorsal_txt);
+            }
+        } else {
+            # El nombre del integrante, para el aviso y la auditoria.
+            $otra = ($id_cuenta > 0) ? $repositorio->buscarPorId($id_cuenta) : null;
+            $quien = ($otra === null) ? 'El integrante' : $otra->getNombreCompletoVisible();
+            if ($accion === 'dorsal_integrante') {
+                $errores = $equipos_repo->cambiarDorsal($id_equipo, $usuario, $id_cuenta, $dorsal);
+                if (empty($errores)) {
+                    $mensaje = $quien . (($dorsal === null) ? ' queda sin dorsal.' : ' queda con el dorsal ' . $dorsal . '.');
+                    $auditorias->registrar(new Auditoria(null, $usuario, 'integrante_equipo', 'modificacion', $id_equipo,
+                        mb_substr('Cambio de dorsal · ' . $quien . (($dorsal === null) ? ' · sin dorsal' : ' · ' . $dorsal), 0, 255), $ip));
+                }
+            } else {
+                $errores = $equipos_repo->bajaIntegrante($id_equipo, $usuario, $id_cuenta);
+                if (empty($errores)) {
+                    $mensaje = $quien . ' queda de baja en el equipo.';
+                    $auditorias->registrar(new Auditoria(null, $usuario, 'integrante_equipo', 'baja', $id_equipo,
+                        mb_substr($quien, 0, 255), $ip));
+                }
+            }
+        }
+
+    } elseif ($accion === 'medicion') {
+
+        # --- 3e. Una medicion de rendimiento fisico --------------------
+        # Siempre de la cuenta de la sesion. Los numeros llegan con punto
+        # o con coma decimal; se leen solo si son numeros.
+        $prueba = (isset($_POST['prueba']) && is_string($_POST['prueba'])) ? $_POST['prueba'] : '';
+        $leer = function ($campo) {
+            if (!isset($_POST[$campo]) || !is_string($_POST[$campo])) { return null; }
+            $texto = str_replace(',', '.', trim($_POST[$campo]));
+            return is_numeric($texto) ? (float)$texto : null;
+        };
+        $fecha = (isset($_POST['fecha']) && is_string($_POST['fecha'])) ? trim($_POST['fecha']) : '';
+        $medicion = new Medicion(null, $usuario, $prueba,
+                                 ($prueba === 'reaccion') ? $leer('distancia') : null,
+                                 ($prueba === 'reaccion') ? null : $leer('tiempo'),
+                                 ($prueba === 'reaccion') ? null : $leer('masa'), $fecha);
+        $resultado = (new MedicionRepositorio($conexion))->insertar($medicion, date('Y-m-d'));
+        if (empty($resultado)) {
+            $datos = Medicion::pruebas();
+            $mensaje = $datos[$prueba]['indicador'] . ': ' . Medicion::formatear($prueba, $medicion->indicador())
+                     . ' ' . $datos[$prueba]['corta'] . '. La medición queda guardada.';
+            $auditorias->registrar(new Auditoria(null, $usuario, 'medicion', 'medicion',
+                $medicion->getIdMedicion(), mb_substr($datos[$prueba]['indicador'] . ' · ' . $fecha, 0, 255), $ip));
+        } else {
+            $errores = $resultado;
+            if (array_key_exists($prueba, Medicion::pruebas())) {
+                $errores_medicion[$prueba] = implode(' ', $resultado);
+                $valores_medicion[$prueba] = array(
+                    'fecha'     => $fecha,
+                    'distancia' => (isset($_POST['distancia']) && is_string($_POST['distancia'])) ? $_POST['distancia'] : '',
+                    'tiempo'    => (isset($_POST['tiempo']) && is_string($_POST['tiempo'])) ? $_POST['tiempo'] : '',
+                    'masa'      => (isset($_POST['masa']) && is_string($_POST['masa'])) ? $_POST['masa'] : '');
+            }
+        }
+
+    } elseif ($accion === 'borrar_medicion') {
+
+        # --- 3f. Borrar una medicion propia ---------------------------
+        $id_medicion = (isset($_POST['id_medicion']) && is_string($_POST['id_medicion'])) ? (int)$_POST['id_medicion'] : 0;
+        if ((new MedicionRepositorio($conexion))->borrar($id_medicion, $id_usuario)) {
+            $mensaje = 'La medición queda borrada.';
+            $auditorias->registrar(new Auditoria(null, $usuario, 'medicion', 'baja', $id_medicion,
+                'Baja de medición', $ip));
+        } else {
+            $errores[] = 'Esa medición no es de esta cuenta.';
         }
 
     } elseif ($accion === 'foto' || $accion === 'portada') {
@@ -301,13 +457,80 @@ $pedido_organizador = $usuario->tieneRol('organizador') ? null
 $aviso_organizador = isset($_GET['aviso']) && is_string($_GET['aviso']) && $_GET['aviso'] === 'organizador'
                      && !$usuario->tieneRol('organizador');
 
-# Los equipos que capitanea, para la pestana Mis torneos.
-$equipos = (new EquipoRepositorio($conexion))->listarDeCapitan($usuario);
+# Los equipos que capitanea, con sus integrantes (RF-12), y los que
+# integra sin ser capitan, para la pestana Mis torneos.
+$equipos_repo = new EquipoRepositorio($conexion);
+$equipos = $equipos_repo->listarDeCapitan($usuario);
+$integrantes_de = array();   # id de equipo => integrantes (IntegranteEquipo), o null
+if (is_array($equipos)) {
+    foreach ($equipos as $equipo) {
+        $integrantes_de[(int)$equipo->getIdEquipo()] = $equipos_repo->integrantesDe($equipo);
+    }
+}
+$equipos_ajenos = $equipos_repo->listarDeIntegrante($usuario);
 
 # Los torneos de la persona, de la base. null si la consulta falla,
 # para que la vista no confunda "no se pudo leer" con "ninguno".
 $torneos = new TorneoRepositorio($conexion);
 $inscripciones = $torneos->buscarPorUsuario($id_usuario);
+
+# Mis resultados (RF-26): los partidos jugados de la persona (los suyos
+# y los de sus equipos), y lo que cuentan las estadisticas de arriba:
+# las finales jugadas (la ultima ronda de una eliminacion directa) y
+# los kotinos (cada torneo terminado que gana). null si no se pueden
+# leer.
+$mis_partidos = null;
+$finales = null;
+$kotinos = null;
+if (is_array($inscripciones)) {
+    $ids_participante = array();
+    foreach ($inscripciones as $inscripcion) {
+        $ids_participante[] = (int)$inscripcion['participante']->getIdParticipante();
+    }
+    $mis_partidos = (new EnfrentamientoRepositorio($conexion))->jugadosDe($ids_participante);
+    if (is_array($mis_partidos)) {
+        $finales = 0;
+        foreach ($mis_partidos as $partido) {
+            if ($partido['torneo']->esEliminacion() && $partido['ronda']->getNombre() === 'Final') {
+                $finales++;
+            }
+        }
+    }
+    $ganados = array();     # id de torneo => true
+    $participantes_repo = new ParticipanteRepositorio($conexion);
+    $fixtures = new FixtureRepositorio($conexion);
+    $se_pudo = true;
+    foreach ($inscripciones as $inscripcion) {
+        $torneo_jugado = $inscripcion['torneo'];
+        if ($torneo_jugado->getEstado() !== 'finalizado') {
+            continue;
+        }
+        $id_torneo = (int)$torneo_jugado->getIdTorneo();
+        $todos  = $participantes_repo->listarDeTorneo($id_torneo, true);
+        $rondas = ($todos === null) ? null : $fixtures->fechasDe($id_torneo, $todos);
+        if ($rondas === null) {
+            $se_pudo = false;
+            break;
+        }
+        $campeon = ResultadoRepositorio::campeon($torneo_jugado, $todos, $rondas);
+        if ($campeon !== null
+            && (int)$campeon->getIdParticipante() === (int)$inscripcion['participante']->getIdParticipante()) {
+            $ganados[$id_torneo] = true;
+        }
+    }
+    $kotinos = $se_pudo ? count($ganados) : null;
+}
+
+# El rendimiento fisico (RF-29): las mediciones de la cuenta, y la
+# comparacion de cada prueba con las demas cuentas. null si no se
+# pueden leer.
+$mediciones_repo = new MedicionRepositorio($conexion);
+$mediciones = $mediciones_repo->listarDeUsuario($usuario);
+$comparaciones = array();
+foreach (array_keys(Medicion::pruebas()) as $prueba) {
+    $comparaciones[$prueba] = $mediciones_repo->comparacion($prueba);
+}
+$hoy = date('Y-m-d');
 
 $conexion->close();
 

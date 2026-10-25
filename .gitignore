@@ -9,6 +9,14 @@ apps/config/database.local.php
 # Credenciales de sgdm_admin que usa el script de respaldo.
 scripts/respaldo.local.cnf
 
+# Credenciales de sgdm_consulta que usa el script de monitoreo de la base.
+scripts/consultas.local.cnf
+
+# Las claves del cifrado y la firma de los respaldos (las crea
+# scripts/generar-claves-respaldo.sh en el servidor). La privada y la
+# frase no salen nunca de ahi.
+scripts/firma/
+
 # Por si alguna vez se usan otros nombres para lo mismo
 *.local.php
 *.local.cnf
@@ -31,6 +39,11 @@ metricas/
 public/subidas/*
 !public/subidas/.htaccess
 
+# Lo que baja Composer (PHPUnit, solo para las pruebas): se instala con
+# composer install, no se versiona.
+/vendor/
+/composer.lock
+
 # ---------------------------------------------------------------------
 # Basura del sistema y de los editores
 # ---------------------------------------------------------------------
@@ -41,3 +54,6 @@ desktop.ini
 .idea/
 *.swp
 *~
+
+# El cache que deja PHPUnit al correr.
+.phpunit.result.cache

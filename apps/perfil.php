@@ -22,6 +22,15 @@
 #   $errores_equipo, $valores_equipo   el formulario de equipo nuevo
 #   $aviso_organizador  true si llega de crear.php o del panel sin el
 #                   rol: la tarjeta de los roles lo explica
+#   $integrantes_de id de equipo propio => sus integrantes (RF-12)
+#   $equipos_ajenos los equipos que integra sin ser capitan
+#   $errores_integrante, $valores_integrante   el formulario de sumar
+#                   un integrante, por equipo
+#   $mis_partidos   los partidos jugados de la persona (RF-26; ver
+#                   EnfrentamientoRepositorio::jugadosDe), o null
+#   $finales, $kotinos  las finales jugadas y los torneos ganados, o null
+#   $mediciones, $comparaciones, $errores_medicion, $valores_medicion,
+#   $hoy            el rendimiento fisico (RF-29)
 #
 # Todo formulario lleva el token de config/csrf.php (campoCsrf()).
 #
@@ -35,11 +44,18 @@
 # por eso va ultima (la regla esta explicada en style.css).
 #
 #   Datos         lo que sale de la base, y se edita: nombre, alias,
-#                 presentacion, foto y portada
+#                 presentacion, foto y portada; y el cambio de la
+#                 contrasena (tercera entrega)
 #   Mis torneos   de la base: los torneos en los que compite la persona,
 #                 sola o con un equipo
-#   Rendimiento   DE MUESTRA: todavia no hay tabla de mediciones. Son
-#                 los valores de la maqueta, marcados en pantalla
+#   Rendimiento   de la base (RF-29, desde la tercera entrega): el ultimo
+#                 valor de cada indicador, su evolucion (con dos
+#                 mediciones o mas), la comparacion con las otras
+#                 cuentas, el formulario de cada prueba y la lista de
+#                 mediciones, cada una con "Borrar". Solo el nombre del
+#                 indicador y su valor: como se mide va en el documento
+#                 de Fisica, no en la pantalla (salvo la nota de los
+#                 instrumentos, al pie).
 #
 # Lo real y lo de muestra no se mezclan sin aviso: todo numero que no
 # sale de la base lleva al lado la marca "De muestra".
@@ -58,7 +74,30 @@ if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 if (!isset($pedido_organizador)) { $pedido_organizador = null; }
 if (!isset($carpeta_subidas)) { $carpeta_subidas = __DIR__ . '/../public/subidas'; }
 if (!isset($equipos)) { $equipos = null; }
+if (!isset($mediciones)) { $mediciones = null; }
+if (!isset($comparaciones)) { $comparaciones = array(); }
+if (!isset($errores_medicion)) { $errores_medicion = array(); }
+if (!isset($errores_clave)) { $errores_clave = array(); }
+if (!isset($valores_medicion)) { $valores_medicion = array(); }
+if (!isset($hoy)) { $hoy = date('Y-m-d'); }
+require_once __DIR__ . '/rendimiento.php';
+require_once __DIR__ . '/ligas.php';
+
+# Las mediciones de cada prueba, de la mas vieja a la mas nueva.
+$por_prueba = array('reaccion' => array(), 'sprint' => array(), 'salto' => array());
+if (is_array($mediciones)) {
+    foreach ($mediciones as $m) { $por_prueba[$m->getPrueba()][] = $m; }
+}
+# Lo que muestra cada formulario: lo que se escribio, si hubo un error.
+$vm = function ($prueba, $campo) use ($valores_medicion, $hoy) {
+    if (isset($valores_medicion[$prueba][$campo])) { return htmlspecialchars($valores_medicion[$prueba][$campo]); }
+    return ($campo === 'fecha') ? $hoy : '';
+};
 if (!isset($errores_equipo)) { $errores_equipo = array(); }
+if (!isset($integrantes_de)) { $integrantes_de = array(); }
+if (!isset($equipos_ajenos)) { $equipos_ajenos = array(); }
+if (!isset($errores_integrante)) { $errores_integrante = array(); }
+if (!isset($valores_integrante)) { $valores_integrante = array(); }
 if (!isset($valores_equipo)) { $valores_equipo = array('nombre' => '', 'ciudad' => ''); }
 if (!isset($aviso_organizador)) { $aviso_organizador = false; }
 
@@ -200,8 +239,8 @@ $estados = array(
 
 <div class="datos">
   <div><strong><?php echo $cantidad_torneos; ?></strong><span class="etiqueta">Torneos</span></div>
-  <div><strong>3</strong><span class="etiqueta">Finales</span><span class="muestra">De muestra</span></div>
-  <div><strong style="color:var(--olivo)">2</strong><span class="etiqueta">Kotinos · victorias</span><span class="muestra">De muestra</span></div>
+  <div><strong><?php echo ($finales === null) ? '—' : $finales; ?></strong><span class="etiqueta">Finales</span></div>
+  <div><strong style="color:var(--olivo)"><?php echo ($kotinos === null) ? '—' : $kotinos; ?></strong><span class="etiqueta">Kotinos · victorias</span></div>
 </div>
 
 <div class="vista" id="mis-torneos">
@@ -231,6 +270,38 @@ $estados = array(
   </div>
 <?php } ?>
   </section>
+  <section class="tarjeta" id="mis-resultados">
+  <h2>Mis resultados</h2>
+<?php if ($mis_partidos === null) { ?>
+  <p>Los resultados no se pueden leer por ahora.</p>
+<?php } elseif (empty($mis_partidos)) { ?>
+  <p>Ningún partido jugado a nombre de esta cuenta.</p>
+<?php } else {
+        $vistos_desde = array();
+        $cuenta = array('G' => 0, 'E' => 0, 'P' => 0);
+        foreach ($mis_partidos as $partido) {
+            $desde = partidoDesde($partido['enfrentamiento'], $partido['propio']);
+            $vistos_desde[] = $desde;
+            $cuenta[$desde['desenlace']]++;
+        }
+        $palabra = array('G' => 'Victoria', 'E' => 'Empate', 'P' => 'Derrota'); ?>
+  <p><?php echo plural(count($mis_partidos), 'partido jugado', 'partidos jugados'); ?> · <?php echo $cuenta['G']; ?> <?php echo ($cuenta['G'] === 1) ? 'ganado' : 'ganados'; ?> · <?php echo $cuenta['E']; ?> <?php echo ($cuenta['E'] === 1) ? 'empatado' : 'empatados'; ?> · <?php echo $cuenta['P']; ?> <?php echo ($cuenta['P'] === 1) ? 'perdido' : 'perdidos'; ?></p>
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mis resultados">
+  <table class="mis-resultados">
+    <thead><tr><th>Fecha</th><th>Torneo</th><th>Rival</th><th class="num">Marcador</th><th>Resultado</th></tr></thead>
+    <tbody>
+<?php   foreach ($mis_partidos as $i => $partido) {
+          $t = $partido['torneo'];
+          $desde = $vistos_desde[$i];
+          $cuando = ($partido['dia'] !== null) ? $partido['dia'] : substr((string)$partido['enfrentamiento']->getResultado()->getFechaCarga(), 0, 10);
+          $publico = in_array($t->getEstado(), array('inscripcion', 'en_curso', 'finalizado'), true); ?>
+      <tr><td class="fecha"><?php echo htmlspecialchars(diaMes($cuando) . '/' . substr($cuando, 0, 4)); ?></td><td><?php if ($publico) { ?><a href="<?php echo $ruta_publica; ?>/torneo.php?id=<?php echo (int)$t->getIdTorneo(); ?>"><?php echo htmlspecialchars($t->getNombre()); ?></a><?php } else { echo htmlspecialchars($t->getNombre()); } ?><br><small><?php echo htmlspecialchars($partido['ronda']->getNombre()); ?></small></td><td><?php echo htmlspecialchars($desde['rival']->getNombreVisible()); ?></td><td class="num marcador"><?php echo htmlspecialchars($desde['marcador']); ?></td><td><?php echo $palabra[$desde['desenlace']] . ($desde['walkover'] ? ' por W.O.' : ''); ?></td></tr>
+<?php   } ?>
+    </tbody>
+  </table>
+  </div>
+<?php } ?>
+  </section>
   <section class="tarjeta" id="mis-equipos">
   <h2>Mis equipos</h2>
 <?php if ($equipos === null) { ?>
@@ -238,12 +309,80 @@ $estados = array(
 <?php } elseif (empty($equipos)) { ?>
   <p>Ningún equipo con esta cuenta de capitán. Con un equipo, se pide lugar en una liga desde su página.</p>
 <?php } else { ?>
+<?php   foreach ($equipos as $equipo) {
+          $id_e  = (int)$equipo->getIdEquipo();
+          $nom_e = htmlspecialchars($equipo->getNombre());
+          $integ = isset($integrantes_de[$id_e]) ? $integrantes_de[$id_e] : null;
+          $error_i = isset($errores_integrante[$id_e]) ? $errores_integrante[$id_e] : null;
+          $valor_i = isset($valores_integrante[$id_e]) ? $valores_integrante[$id_e] : array('correo' => '', 'dorsal' => ''); ?>
+  <div class="equipo-propio" id="equipo-<?php echo $id_e; ?>">
+    <h3><?php echo $nom_e; ?></h3>
+    <p><small><?php echo ($equipo->getCiudad() === null || $equipo->getCiudad() === '') ? 'Capitanía de esta cuenta' : htmlspecialchars($equipo->getCiudad()) . ' · capitanía de esta cuenta'; ?></small></p>
+<?php     if ($integ === null) { ?>
+    <p>Los integrantes no se pueden leer por ahora.</p>
+<?php     } else { ?>
+    <ul class="lista-apilada integrantes">
+<?php       foreach ($integ as $integrante) {
+              $persona_i = $integrante->getUsuario();
+              $id_p = (int)$persona_i->getIdUsuario();
+              $nom_p = htmlspecialchars($persona_i->getNombreCompletoVisible());
+              $es_capitan = ($id_p === (int)$usuario->getIdUsuario()); ?>
+      <li>
+        <span><strong><?php echo $nom_p; ?></strong><?php if ($es_capitan) { echo ' · capitán'; } ?> · <?php echo ($integrante->getDorsal() === null) ? 'sin dorsal' : 'dorsal ' . (int)$integrante->getDorsal(); ?></span>
+        <span class="acciones-integrante">
+          <form class="dorsal-integrante" action="<?php echo htmlspecialchars($ruta_perfil); ?>#mis-torneos" method="post">
+            <input type="hidden" name="accion" value="dorsal_integrante">
+            <input type="hidden" name="id_equipo" value="<?php echo $id_e; ?>">
+            <input type="hidden" name="id_usuario" value="<?php echo $id_p; ?>">
+            <?php echo campoCsrf(); ?>
+            <label>Dorsal<span class="visualmente-oculto"> de <?php echo $nom_p; ?></span><input type="number" name="dorsal" value="<?php echo ($integrante->getDorsal() === null) ? '' : (int)$integrante->getDorsal(); ?>" min="0" max="99" inputmode="numeric"></label>
+            <button class="btn" type="submit">Guardar<span class="visualmente-oculto"> el dorsal de <?php echo $nom_p; ?></span></button>
+          </form>
+<?php         if (!$es_capitan) { ?>
+          <form class="baja-integrante" action="<?php echo htmlspecialchars($ruta_perfil); ?>#mis-torneos" method="post">
+            <input type="hidden" name="accion" value="baja_integrante">
+            <input type="hidden" name="id_equipo" value="<?php echo $id_e; ?>">
+            <input type="hidden" name="id_usuario" value="<?php echo $id_p; ?>">
+            <?php echo campoCsrf(); ?>
+            <button class="btn" type="submit">Dar de baja<span class="visualmente-oculto"> a <?php echo $nom_p; ?> de <?php echo $nom_e; ?></span></button>
+          </form>
+<?php         } ?>
+        </span>
+      </li>
+<?php       } ?>
+    </ul>
+<?php     } ?>
+    <form class="sumar-integrante" action="<?php echo htmlspecialchars($ruta_perfil); ?>#mis-torneos" method="post">
+      <input type="hidden" name="accion" value="sumar_integrante">
+      <input type="hidden" name="id_equipo" value="<?php echo $id_e; ?>">
+      <?php echo campoCsrf(); ?>
+      <div class="grilla">
+        <div class="campo">
+          <label>Correo de la cuenta<input type="email" name="correo" value="<?php echo htmlspecialchars($valor_i['correo']); ?>" required maxlength="120" spellcheck="false" autocapitalize="off" aria-describedby="ayuda-correo-<?php echo $id_e; ?><?php if ($error_i !== null) { echo ' error-integrante-' . $id_e; } ?>"<?php if ($error_i !== null) { echo ' aria-invalid="true"'; } ?>></label>
+          <p class="ayuda-campo" id="ayuda-correo-<?php echo $id_e; ?>">La de quien se suma: una cuenta abierta en Stadion.</p>
+        </div>
+        <div class="campo">
+          <label>Dorsal<input type="number" name="dorsal" value="<?php echo htmlspecialchars($valor_i['dorsal']); ?>" min="0" max="99" inputmode="numeric" aria-describedby="ayuda-dorsal-<?php echo $id_e; ?>"></label>
+          <p class="ayuda-campo" id="ayuda-dorsal-<?php echo $id_e; ?>">De 0 a 99, sin repetir en el equipo. Opcional.</p>
+        </div>
+      </div>
+<?php     if ($error_i !== null) { ?>
+      <p class="error-campo" id="error-integrante-<?php echo $id_e; ?>"><?php echo htmlspecialchars($error_i); ?></p>
+<?php     } ?>
+      <button class="btn" type="submit">Sumar integrante<span class="visualmente-oculto"> a <?php echo $nom_e; ?></span></button>
+    </form>
+  </div>
+<?php   } ?>
+  <p><a href="<?php echo $ruta_publica; ?>/torneos.php">Ver las ligas con la inscripción abierta <span aria-hidden="true">→</span></a></p>
+<?php } ?>
+<?php if (!empty($equipos_ajenos)) { ?>
+  <h3>Integrante de</h3>
   <ul class="lista-apilada">
-<?php   foreach ($equipos as $equipo) { ?>
-    <li><span><?php echo htmlspecialchars($equipo->getNombre()); ?></span><small><?php echo ($equipo->getCiudad() === null || $equipo->getCiudad() === '') ? 'Capitanía de esta cuenta' : htmlspecialchars($equipo->getCiudad()) . ' · capitanía de esta cuenta'; ?></small></li>
+<?php   foreach ($equipos_ajenos as $ajeno) {
+          $cap = $ajeno['equipo']->getCapitan(); ?>
+    <li><span><?php echo htmlspecialchars($ajeno['equipo']->getNombre()); ?></span><small><?php echo ($ajeno['dorsal'] === null) ? 'Sin dorsal' : 'Dorsal ' . (int)$ajeno['dorsal']; ?><?php if ($cap !== null) { echo ' · capitanía de ' . htmlspecialchars($cap->getNombreCompletoVisible()); } ?></small></li>
 <?php   } ?>
   </ul>
-  <p><a href="<?php echo $ruta_publica; ?>/torneos.php">Ver las ligas con la inscripción abierta <span aria-hidden="true">→</span></a></p>
 <?php } ?>
   <form class="crear-equipo" action="<?php echo htmlspecialchars($ruta_perfil); ?>#mis-torneos" method="post">
     <input type="hidden" name="accion" value="crear_equipo">
@@ -272,56 +411,106 @@ $estados = array(
 <div class="vista" id="rendimiento">
   <div class="pestanas"><a href="#datos">Datos</a><a href="#mis-torneos">Mis torneos</a><a href="#rendimiento" class="activo" aria-current="page">Rendimiento</a></div>
   <section class="tarjeta">
-  <div class="fila" style="justify-content:space-between"><h2>Rendimiento físico</h2><span class="muestra">De muestra</span></div>
+  <h2>Rendimiento físico</h2>
+<?php if ($mediciones === null) { ?>
+  <p>Las mediciones no se pueden leer por ahora.</p>
+<?php } ?>
   <div class="grilla">
-<div class="tarjeta"><span class="etiqueta">Cinemática · caída libre</span><h3>Tiempo de reacción</h3><p class="medida"><span class="valor">187</span><span class="unidad">milisegundos</span></p></div>
-<div class="tarjeta"><span class="etiqueta">Dinámica · fuerza neta</span><h3>Aceleración de salida</h3><p class="medida"><span class="valor">3.8</span><span class="unidad">metros / s²</span></p></div>
-<div class="tarjeta"><span class="etiqueta">Trabajo y energía</span><h3>Potencia de salto</h3><p class="medida"><span class="valor">612</span><span class="unidad">watts</span></p></div>
+<?php foreach (Medicion::pruebas() as $prueba => $d) {
+        $lista  = $por_prueba[$prueba];
+        $ultima = empty($lista) ? null : $lista[count($lista) - 1]; ?>
+<div class="tarjeta"><span class="etiqueta"><?php echo htmlspecialchars($d['modelo']); ?></span><h3><?php echo htmlspecialchars($d['indicador']); ?></h3><p class="medida"><span class="valor"><?php echo ($ultima === null) ? '—' : Medicion::formatear($prueba, $ultima->indicador()); ?></span><span class="unidad"><?php echo htmlspecialchars($d['unidad']); ?></span></p><p><small><?php echo empty($lista) ? 'Sin mediciones' : plural(count($lista), 'medición', 'mediciones') . ' · la última, el ' . htmlspecialchars(fechaTexto($ultima->getFecha(), true)); ?></small></p></div>
+<?php } ?>
   </div>
   </section>
+<?php foreach (Medicion::pruebas() as $prueba => $d) {
+        if (count($por_prueba[$prueba]) < 2) { continue; } ?>
   <section class="tarjeta">
-  <div class="fila" style="justify-content:space-between"><div></div><span class="muestra">De muestra</span></div>
-  <h3>Tiempo de reacción</h3>
-  <span class="etiqueta">Seis mediciones · milisegundos</span>
-    <svg class="grafico" viewBox="0 0 560 212" role="img" aria-label="Tiempo de reacción de marzo a septiembre: baja de 230 a 187 milisegundos en seis mediciones.">
-      <line class="reja" x1="52" y1="30" x2="530" y2="30"/>
-      <text class="rotulo" x="44" y="34" text-anchor="end">240</text>
-      <line class="reja" x1="52" y1="80" x2="530" y2="80"/>
-      <text class="rotulo" x="44" y="84" text-anchor="end">220</text>
-      <line class="reja" x1="52" y1="130" x2="530" y2="130"/>
-      <text class="rotulo" x="44" y="134" text-anchor="end">200</text>
-      <line class="reja" x1="52" y1="180" x2="530" y2="180"/>
-      <text class="rotulo" x="44" y="184" text-anchor="end">180</text>
-      <polyline class="trazo" points="60,55.0 152,77.5 244,100.0 336,117.5 428,145.0 520,162.5"/>
-      <circle class="punto" cx="60" cy="55.0" r="4"><title>Mar: 230 ms</title></circle>
-      <circle class="punto" cx="152" cy="77.5" r="4"><title>Abr: 221 ms</title></circle>
-      <circle class="punto" cx="244" cy="100.0" r="4"><title>May: 212 ms</title></circle>
-      <circle class="punto" cx="336" cy="117.5" r="4"><title>Jun: 205 ms</title></circle>
-      <circle class="punto" cx="428" cy="145.0" r="4"><title>Ago: 194 ms</title></circle>
-      <circle class="punto" cx="520" cy="162.5" r="4"><title>Sep: 187 ms</title></circle>
-      <text class="rotulo-dato" x="72" y="50" text-anchor="start">230</text>
-      <text class="rotulo-dato" x="508" y="151" text-anchor="end">187</text>
-      <text class="rotulo" x="60" y="200" text-anchor="middle">Mar</text>
-      <text class="rotulo" x="152" y="200" text-anchor="middle">Abr</text>
-      <text class="rotulo" x="244" y="200" text-anchor="middle">May</text>
-      <text class="rotulo" x="336" y="200" text-anchor="middle">Jun</text>
-      <text class="rotulo" x="428" y="200" text-anchor="middle">Ago</text>
-      <text class="rotulo" x="520" y="200" text-anchor="middle">Sep</text>
-    </svg>
+  <h3><?php echo htmlspecialchars($d['indicador']); ?></h3>
+  <span class="etiqueta"><?php echo plural(count($por_prueba[$prueba]), 'medición', 'mediciones'); ?> · <?php echo htmlspecialchars($d['unidad']); ?></span>
+  <?php echo graficoEvolucion($por_prueba[$prueba], $prueba); ?>
   </section>
+<?php } ?>
+<?php $con_comparacion = false;
+      foreach ($comparaciones as $c) { if (!empty($c)) { $con_comparacion = true; } }
+      if ($con_comparacion) { ?>
   <section class="tarjeta">
-  <div class="fila" style="justify-content:space-between"><div></div><span class="muestra">De muestra</span></div>
-  <span class="etiqueta">Tiempo de reacción · comparado</span>
+  <h3>Comparado</h3>
+  <p><small>La mejor marca de cada cuenta.</small></p>
+  <div class="grilla">
+<?php   foreach (Medicion::pruebas() as $prueba => $d) {
+          $lista = isset($comparaciones[$prueba]) ? $comparaciones[$prueba] : null;
+          if (empty($lista)) { continue; }
+          # Los 5 primeros, y esta cuenta si queda mas abajo.
+          $mostrar = array();
+          foreach ($lista as $i => $fila) {
+              $propia = ((int)$fila['usuario']->getIdUsuario() === (int)$usuario->getIdUsuario());
+              if ($i < 5 || $propia) { $mostrar[$i] = $fila; }
+          } ?>
+  <div>
+  <span class="etiqueta"><?php echo htmlspecialchars($d['indicador']); ?> · <?php echo htmlspecialchars($d['corta']); ?></span>
   <table>
-    <tr><td>M. Ferreira</td><td class="num">164</td></tr>
-    <tr class="clasifica"><td><?php echo htmlspecialchars($usuario->getNombreCompletoVisible()); ?></td><td class="num">187</td></tr>
-    <tr><td>N. Suárez</td><td class="num">201</td></tr>
-    <tr><td>D. Acosta</td><td class="num">219</td></tr>
+    <tbody>
+<?php     foreach ($mostrar as $i => $fila) {
+            $propia = ((int)$fila['usuario']->getIdUsuario() === (int)$usuario->getIdUsuario()); ?>
+      <tr<?php if ($propia) { echo ' class="clasifica"'; } ?>><td class="pos num"><?php echo $i + 1; ?></td><td><?php echo htmlspecialchars(nombreCorto($fila['usuario'])); ?><?php if ($propia) { ?><span class="visualmente-oculto"> · esta cuenta</span><?php } ?><?php if ($fila['usuario']->esDeMuestra()) { echo ' ' . marcaMuestra(); } ?></td><td class="num"><?php echo Medicion::formatear($prueba, $fila['mejor']->indicador()); ?></td></tr>
+<?php     } ?>
+    </tbody>
   </table>
+  </div>
+<?php   } ?>
+  </div>
   </section>
+<?php } ?>
+  <section class="tarjeta" id="cargar-medicion">
+  <h3>Cargar una medición</h3>
+  <div class="grilla">
+<?php foreach (Medicion::pruebas() as $prueba => $d) {
+        $error = isset($errores_medicion[$prueba]) ? $errores_medicion[$prueba] : null;
+        $describe = $error === null ? '' : ' aria-describedby="error-medicion-' . $prueba . '"';
+        $invalido = $error === null ? '' : ' aria-invalid="true"'; ?>
+  <form class="medicion" action="<?php echo htmlspecialchars($ruta_perfil); ?>#rendimiento" method="post">
+    <input type="hidden" name="accion" value="medicion">
+    <input type="hidden" name="prueba" value="<?php echo $prueba; ?>">
+    <?php echo campoCsrf(); ?>
+    <fieldset>
+      <legend><?php echo htmlspecialchars($d['indicador']); ?></legend>
+      <label>Fecha<input type="date" name="fecha" value="<?php echo $vm($prueba, 'fecha'); ?>" max="<?php echo htmlspecialchars($hoy); ?>" required<?php echo $describe . $invalido; ?>></label>
+<?php   if ($prueba === 'reaccion') { ?>
+      <label>Regla (cm)<input type="number" name="distancia" value="<?php echo $vm($prueba, 'distancia'); ?>" min="0.5" max="30" step="0.1" inputmode="decimal" required<?php echo $describe . $invalido; ?>></label>
+<?php   } else { ?>
+      <label><?php echo ($prueba === 'sprint') ? 'Tiempo en 10 m (s)' : 'Tiempo de vuelo (s)'; ?><input type="number" name="tiempo" value="<?php echo $vm($prueba, 'tiempo'); ?>" min="<?php echo ($prueba === 'sprint') ? '1' : '0.1'; ?>" max="<?php echo ($prueba === 'sprint') ? '6' : '1'; ?>" step="0.01" inputmode="decimal" required<?php echo $describe . $invalido; ?>></label>
+      <label>Masa (kg)<input type="number" name="masa" value="<?php echo $vm($prueba, 'masa'); ?>" min="20" max="200" step="0.1" inputmode="decimal" required<?php echo $describe . $invalido; ?>></label>
+<?php   } ?>
+<?php   if ($error !== null) { ?>
+      <p class="error-campo" id="error-medicion-<?php echo $prueba; ?>"><?php echo htmlspecialchars($error); ?></p>
+<?php   } ?>
+    </fieldset>
+    <button class="btn" type="submit">Guardar<span class="visualmente-oculto"> la medición de <?php echo htmlspecialchars(mb_strtolower($d['indicador'], 'UTF-8')); ?></span></button>
+  </form>
+<?php } ?>
+  </div>
+  </section>
+<?php if (!empty($mediciones)) { ?>
+  <section class="tarjeta" id="mis-mediciones">
+  <h3>Mediciones</h3>
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mediciones">
+  <table>
+    <thead><tr><th>Fecha</th><th>Indicador</th><th class="num">Valor</th><th>Datos</th><th><span class="visualmente-oculto">Acción</span></th></tr></thead>
+    <tbody>
+<?php   $pruebas = Medicion::pruebas();
+        foreach (array_reverse($mediciones) as $m) {
+          $d = $pruebas[$m->getPrueba()]; ?>
+      <tr><td class="fecha"><?php echo htmlspecialchars(diaMes($m->getFecha()) . '/' . substr($m->getFecha(), 0, 4)); ?></td><td><?php echo htmlspecialchars($d['indicador']); ?></td><td class="num"><?php echo Medicion::formatear($m->getPrueba(), $m->indicador()) . ' ' . htmlspecialchars($d['corta']); ?></td><td><?php echo datoCrudo($m); ?></td><td><form class="borrar-medicion" action="<?php echo htmlspecialchars($ruta_perfil); ?>#rendimiento" method="post"><input type="hidden" name="accion" value="borrar_medicion"><input type="hidden" name="id_medicion" value="<?php echo (int)$m->getIdMedicion(); ?>"><?php echo campoCsrf(); ?><button class="btn" type="submit" aria-label="Borrar la medición de <?php echo htmlspecialchars(mb_strtolower($d['indicador'], 'UTF-8')); ?> del <?php echo htmlspecialchars(fechaTexto($m->getFecha(), true)); ?>">Borrar</button></form></td></tr>
+<?php   } ?>
+    </tbody>
+  </table>
+  </div>
+  </section>
+<?php } ?>
   <section class="tarjeta">
-  <span class="etiqueta">Materia</span>
-  <p>Instrumentos: Cámara lenta del celular (120–240 fps), Tracker para videoanálisis y Phyphox para los sensores de acelerómetro y cronómetro acústico.</p>
+  <span class="etiqueta">Instrumentos</span>
+  <p>Regla de 30 cm, cronómetro del celular y balanza.</p>
   </section>
 </div>
 
@@ -361,6 +550,31 @@ $estados = array(
       <button class="btn" type="submit">Subir portada</button>
     </form>
   </div>
+  </section>
+<?php # El cambio de contrasena (tercera entrega): pide la actual, y la
+      # nueva pasa por las reglas del alta. Los errores van debajo del
+      # formulario, y cada campo los nombra en aria-describedby. ?>
+<?php
+  $describe_clave = empty($errores_clave) ? '' : ' error-clave';
+  $invalido_clave = empty($errores_clave) ? '' : ' aria-invalid="true"'; ?>
+  <section class="tarjeta" id="contrasena">
+  <h2>Contraseña</h2>
+  <form class="cambiar-clave" action="<?php echo htmlspecialchars($ruta_perfil); ?>" method="post">
+    <input type="hidden" name="accion" value="clave">
+    <?php echo campoCsrf(); ?>
+    <div class="grilla">
+      <label>Contraseña actual<input type="password" name="clave_actual" required autocomplete="current-password"<?php echo empty($errores_clave) ? '' : ' aria-describedby="error-clave"'; ?><?php echo $invalido_clave; ?>></label>
+      <div class="campo">
+        <label>Contraseña nueva<input type="password" name="clave_nueva" required minlength="10" autocomplete="new-password" aria-describedby="ayuda-clave-nueva<?php echo $describe_clave; ?>"<?php echo $invalido_clave; ?>></label>
+        <p class="ayuda-campo" id="ayuda-clave-nueva">Mínimo 10 caracteres, con una mayúscula, una minúscula y un número; sin el nombre, el apellido ni el correo.</p>
+      </div>
+      <label>Repetir la nueva<input type="password" name="clave_repetir" required minlength="10" autocomplete="new-password"<?php echo empty($errores_clave) ? '' : ' aria-describedby="error-clave"'; ?><?php echo $invalido_clave; ?>></label>
+    </div>
+<?php if (!empty($errores_clave)) { ?>
+    <p class="error-campo" id="error-clave"><?php echo htmlspecialchars(implode(' ', $errores_clave)); ?></p>
+<?php } ?>
+    <div class="fila" style="justify-content:flex-end"><button class="btn btn-primario" type="submit">Cambiar la contraseña</button></div>
+  </form>
   </section>
 </div>
 </main>

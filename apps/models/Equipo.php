@@ -77,7 +77,7 @@ class Equipo
         # El dorsal no se puede repetir dentro del mismo equipo, igual
         # que la restriccion uq_integ_dorsal de la tabla.
         if ($integrante->getDorsal() !== null && $this->dorsalOcupado($integrante->getDorsal())) {
-            $errores[] = 'El dorsal ' . $integrante->getDorsal() . ' ya esta ocupado en este equipo.';
+            $errores[] = 'El dorsal ' . $integrante->getDorsal() . ' ya está ocupado en este equipo.';
         }
 
         if (empty($errores)) {
@@ -108,10 +108,10 @@ class Equipo
             $errores[] = 'La ciudad no puede pasar de 40 caracteres.';
         }
         if ($this->capitan !== null && !($this->capitan instanceof Usuario)) {
-            $errores[] = 'El capitan no es un usuario valido.';
+            $errores[] = 'El capitán no es un usuario válido.';
         }
         if ($this->activo !== 0 && $this->activo !== 1) {
-            $errores[] = 'El estado de alta solo admite si o no.';
+            $errores[] = 'Un equipo está activo o de baja.';
         }
         return $errores;
     }

@@ -53,7 +53,7 @@ class TipoTorneo
             $errores[] = 'El tipo de torneo necesita un nombre.';
         }
         if ($this->compite_equipo !== 0 && $this->compite_equipo !== 1) {
-            $errores[] = 'La opcion de competir por equipos solo admite si o no.';
+            $errores[] = 'Competir por equipos es sí o no.';
         }
         return $errores;
     }

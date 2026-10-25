@@ -120,6 +120,6 @@ if (is_array($lista)) {
   <a class="btn" href="crear.php">Crear torneo</a>
 </div>
 </aside>
-<?php piePagina(true); ?>
+<?php piePagina(true, $ruta_publica); ?>
 </body>
 </html>

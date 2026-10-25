@@ -13,7 +13,8 @@
 # participante retiene al torneo con ON DELETE RESTRICT.
 #
 # Una liga (fase 2 del motor de torneos) nace con la inscripcion abierta
-# y un cupo de 4 a 32 equipos (validarLiga). La fecha de inicio es
+# y un cupo de 4 a 32 participantes (validarLiga): equipos, o jugadores
+# en una liga individual (desde la fase 3). La fecha de inicio es
 # opcional: puede quedar a definir. Cerrar la inscripcion la pone en
 # curso, y pide al menos 4 inscriptos, los mismos que necesita el
 # fixture (ver Fixture.php): con menos, la liga quedaria en curso sin
@@ -127,6 +128,46 @@ class Torneo
         return $this->modulo->getNombre() === 'Liga';
     }
 
+    # Los otros dos formatos (fase 3): la llave y el suizo.
+    public function esEliminacion()
+    {
+        return $this->modulo->getNombre() === 'Eliminación directa';
+    }
+
+    public function esSuizo()
+    {
+        return $this->modulo->getNombre() === 'Suizo';
+    }
+
+    # Como se llama cada ronda en pantalla: en una liga, "fecha"; en la
+    # llave y el suizo, "ronda".
+    public function palabraRonda()
+    {
+        return $this->esLiga() ? 'fecha' : 'ronda';
+    }
+
+    # Las reglas que cruzan el torneo con su configuracion: en una
+    # eliminacion directa ningun partido termina empatado (alguien tiene
+    # que pasar), y solo una liga se juega de ida y vuelta.
+    public function validarConfiguracion(ConfiguracionTorneo $configuracion)
+    {
+        $errores = array();
+        if ($this->esEliminacion() && $configuracion->admiteEmpate()) {
+            $errores[] = 'En una eliminación directa ningún partido termina empatado.';
+        }
+        if (!$this->esLiga() && $configuracion->esIdaYVuelta()) {
+            $errores[] = 'Solo una liga se juega de ida y vuelta.';
+        }
+        # Cuantos clasifican a playoffs (RF-14): marca a los primeros de
+        # la tabla de una liga. Los playoffs se juegan aparte.
+        if (!$this->esLiga() && $configuracion->getClasificanPlayoffs() > 0) {
+            $errores[] = 'Solo en una liga clasifican a playoffs.';
+        } elseif ($configuracion->getClasificanPlayoffs() > (int)$this->max_participantes) {
+            $errores[] = 'A los playoffs no clasifican más que el cupo.';
+        }
+        return $errores;
+    }
+
     # De muestra: lo organiza una de las cuentas de muestra de la
     # migracion 005. Las paginas lo marcan en pantalla.
     public function esDeMuestra()
@@ -143,10 +184,21 @@ class Torneo
     # y desde cualquier punto se puede cancelar.
 
     # Baja logica del torneo, la alternativa al borrado que la base no
-    # permite cuando ya hay inscriptos.
+    # permite cuando ya hay inscriptos (RF-17): el torneo y todo lo que
+    # se jugo quedan en la base, pero deja de verse en el sitio. Un
+    # torneo terminado ya es historia, y uno cancelado ya lo esta.
     public function cancelar()
     {
-        $this->estado = 'cancelado';
+        $errores = array();
+        if ($this->estado === 'finalizado') {
+            $errores[] = 'Una competencia terminada queda como historia: no se cancela.';
+        } elseif ($this->estado === 'cancelado') {
+            $errores[] = 'Esa competencia ya está cancelada.';
+        }
+        if (empty($errores)) {
+            $this->estado = 'cancelado';
+        }
+        return $errores;
     }
 
     # De 'borrador' a 'inscripcion': publica el torneo para que se
@@ -157,10 +209,10 @@ class Torneo
         $errores = array();
 
         if ($this->estado !== 'borrador') {
-            $errores[] = 'Solo se puede publicar un torneo que este en borrador.';
+            $errores[] = 'Solo se puede publicar un torneo que esté en borrador.';
         }
         if ($this->configuracion === null) {
-            $errores[] = 'El torneo necesita su configuracion antes de publicarse.';
+            $errores[] = 'El torneo necesita su configuración antes de publicarse.';
         }
 
         if (empty($errores)) {
@@ -176,7 +228,7 @@ class Torneo
         $errores = array();
 
         if ($this->estado !== 'inscripcion') {
-            $errores[] = 'Solo se puede comenzar un torneo que este en inscripcion.';
+            $errores[] = 'Solo se puede comenzar un torneo que esté en inscripción.';
         }
         if ($this->getCantidadParticipantes() < 2) {
             $errores[] = 'El torneo necesita al menos 2 participantes para comenzar.';
@@ -198,7 +250,7 @@ class Torneo
         $cantidad = ($cantidad === null) ? $this->getCantidadParticipantes() : (int)$cantidad;
 
         if ($this->estado !== 'inscripcion') {
-            $errores[] = 'La inscripción de esta liga ya está cerrada.';
+            $errores[] = 'La inscripción de esta competencia ya está cerrada.';
         } elseif ($cantidad < 4) {
             $errores[] = 'Con menos de 4 equipos la inscripción sigue abierta.';
         }
@@ -215,7 +267,7 @@ class Torneo
         $errores = array();
 
         if ($this->estado !== 'en_curso') {
-            $errores[] = 'Solo se puede finalizar un torneo que este en curso.';
+            $errores[] = 'Solo se puede finalizar un torneo que esté en curso.';
         }
 
         if (empty($errores)) {
@@ -249,19 +301,19 @@ class Torneo
                 $errores[] = 'El torneo ya tiene sus ' . $this->max_participantes
                            . ' participantes.';
             } else {
-                $errores[] = 'El torneo no esta aceptando inscripciones.';
+                $errores[] = 'El torneo no está aceptando inscripciones.';
             }
         }
 
         if ($this->tipo_torneo->competeEquipo() && !$participante->esEquipo()) {
-            $errores[] = 'Este torneo es por equipos: la inscripcion tiene que ser de un equipo.';
+            $errores[] = 'Este torneo es por equipos: la inscripción tiene que ser de un equipo.';
         }
         if (!$this->tipo_torneo->competeEquipo() && !$participante->esIndividual()) {
-            $errores[] = 'Este torneo es individual: la inscripcion tiene que ser de una persona.';
+            $errores[] = 'Este torneo es individual: la inscripción tiene que ser de una persona.';
         }
 
         if ($this->yaEstaInscripto($participante)) {
-            $errores[] = $participante->getNombreVisible() . ' ya esta inscripto en este torneo.';
+            $errores[] = $participante->getNombreVisible() . ' ya está inscripto en este torneo.';
         }
 
         if (empty($errores)) {
@@ -294,7 +346,7 @@ class Torneo
         # restriccion uq_ronda_num de la tabla.
         foreach ($this->rondas as $existente) {
             if ($existente->getNumero() === $ronda->getNumero()) {
-                $errores[] = 'Ya existe la ronda numero ' . $ronda->getNumero() . '.';
+                $errores[] = 'Ya existe la ronda número ' . $ronda->getNumero() . '.';
             }
         }
 
@@ -313,7 +365,7 @@ class Torneo
         }
 
         if ($this->max_participantes < 2 || $this->max_participantes > 128) {
-            $errores[] = 'El maximo de participantes tiene que estar entre 2 y 128.';
+            $errores[] = 'El máximo de participantes tiene que estar entre 2 y 128.';
         }
 
         # La fecha de inicio es opcional, pero si viene tiene que ser una
@@ -341,18 +393,22 @@ class Torneo
     }
 
     # Las reglas propias de una liga, ademas de las de validar(): el
-    # cupo va de 4 a 32 equipos (el formulario de crear.php dice lo
-    # mismo), y la liga es por equipos.
+    # cupo va de 4 a 32 (el formulario de crear.php dice lo mismo).
+    # Desde la fase 3 una liga puede ser por equipos o individual: en
+    # una individual, cada jugador se anota con su cuenta (CU-09).
     public function validarLiga()
     {
         $errores = $this->validar();
         if ($this->max_participantes < 4 || $this->max_participantes > 32) {
-            $errores[] = 'El cupo de una liga va de 4 a 32 equipos.';
-        }
-        if (!$this->tipo_torneo->competeEquipo()) {
-            $errores[] = 'Una liga es por equipos.';
+            $errores[] = 'El cupo de una liga va de 4 a 32 participantes.';
         }
         return $errores;
+    }
+
+    # Si compiten equipos (o personas, en uno individual).
+    public function esPorEquipos()
+    {
+        return $this->tipo_torneo->competeEquipo();
     }
 
     # Una fecha AAAA-MM-DD que existe en el calendario (no 2026-02-30).

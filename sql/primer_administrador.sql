@@ -17,8 +17,8 @@
 --
 -- Como se corre:
 --   1. Crear la cuenta desde el sitio, como cualquier otra.
---   2. En phpMyAdmin, elegir la base (sgdm en XAMPP, la del hosting con
---      su prefijo) -> pestana SQL.
+--   2. En phpMyAdmin, elegir la base (sgdm en XAMPP) -> pestana SQL. En
+--      la VM o en Docker, en la consola de la base, con la base elegida.
 --   3. Pegar TODO este archivo y reemplazar CORREO_DE_LA_CUENTA por el
 --      correo con que se creo la cuenta, entre las comillas.
 --   4. Go.
@@ -36,19 +36,19 @@
 --     correrla y repetir este. No queda nada a medias: el rol y su fila
 --     de auditoria van juntos (ver la transaccion, abajo).
 --
--- Se corre con la cuenta de administracion de la base: root en XAMPP, y
--- en el hosting la que usa el phpMyAdmin de cPanel. No desde el sitio:
+-- Se corre con la cuenta de administracion de la base: root en XAMPP,
+-- en la VM o en Docker. No desde el sitio:
 -- ninguna pagina da el rol administrador.
 -- =====================================================================
 
 -- La hora de Montevideo (UTC-3), la misma que usa la aplicacion (ver
 -- apps/config/database.php): la fila de la auditoria lleva la hora de
--- aca y no la del servidor, que en el hosting es UTC. Vale solo para
+-- aca y no la del servidor, que puede estar en UTC. Vale solo para
 -- esta conexion.
 SET time_zone = '-03:00';
 
 -- El correo, en utf8mb4 y con un cotejo fijo, venga como venga la
--- conexion (XAMPP y el phpMyAdmin del hosting pueden venir distintos).
+-- conexion (XAMPP, la VM y Docker pueden venir distintos).
 SET @correo = CONVERT('CORREO_DE_LA_CUENTA' USING utf8mb4) COLLATE utf8mb4_unicode_ci;
 
 -- La columna correo se compara convertida al mismo cotejo que la

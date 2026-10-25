@@ -153,6 +153,6 @@ if (is_array($lista)) {
   <span class="etiqueta">Heródoto, Historias VIII</span>
 </div>
 </aside>
-<?php piePagina(true); ?>
+<?php piePagina(true, $ruta_publica); ?>
 </body>
 </html>

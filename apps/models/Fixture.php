@@ -85,7 +85,7 @@ class Fixture
         }
         foreach ($this->participantes as $participante) {
             if (!($participante instanceof Participante)) {
-                $errores[] = 'Hay un participante que no es valido.';
+                $errores[] = 'Hay un participante que no es válido.';
                 break;
             }
         }

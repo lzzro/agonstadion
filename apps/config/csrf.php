@@ -24,14 +24,14 @@
 # sesion y el alta de cuenta.
 # =====================================================================
 
+require_once __DIR__ . '/sesion.php';
+
 # Devuelve el token de la sesion, y lo crea si todavia no hay uno.
 # Abre la sesion si hace falta: por eso, en una pagina, se llama antes
 # de que salga una sola linea de HTML.
 function tokenCsrf()
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    abrirSesion();
     if (!isset($_SESSION['token_csrf']) || !is_string($_SESSION['token_csrf'])) {
         $_SESSION['token_csrf'] = bin2hex(random_bytes(32));
     }
@@ -49,9 +49,7 @@ function campoCsrf()
 # Sin token, con uno equivocado, o sin sesion: false.
 function csrfValido()
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    abrirSesion();
     if (!isset($_SESSION['token_csrf']) || !is_string($_SESSION['token_csrf'])
         || !isset($_POST['token_csrf']) || !is_string($_POST['token_csrf'])) {
         return false;
@@ -71,8 +69,8 @@ function renovarCsrf()
 # hora y la sesion vencio en el medio.
 function mensajeCsrf()
 {
-    return 'El formulario no corresponde a esta sesion. '
-         . 'Conviene volver a abrir la pagina y repetirlo.';
+    return 'El formulario no corresponde a esta sesión. '
+         . 'Conviene volver a abrir la página y repetirlo.';
 }
 
 # Responde que el pedido no se acepta: codigo 403 y el aviso.

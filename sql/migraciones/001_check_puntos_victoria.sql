@@ -3,7 +3,7 @@
 -- Migracion 001: rango de los puntos por victoria (1 a 10)
 -- ---------------------------------------------------------------------
 -- Para las bases creadas con el schema.sql anterior a esta restriccion
--- (la del XAMPP local y la del hosting). Una base nueva no la necesita:
+-- (como la del XAMPP local). Una base nueva no la necesita:
 -- sql/schema.sql ya trae ck_config_victoria dentro del CREATE TABLE.
 --
 -- Por que: minimo 1, el mismo min="1" del formulario de crear.php y de
@@ -12,12 +12,11 @@
 --
 -- Como se corre, a mano, una vez en cada base:
 --   1. En phpMyAdmin, elegir la base en la lista de la izquierda
---      (sgdm en XAMPP, lucasmar_sgdm en el hosting). Este archivo no
---      lleva USE a proposito: el nombre de la base no es el mismo en
---      los dos lugares.
+--      (sgdm en XAMPP). Este archivo no lleva USE a
+--      proposito: en otra instalacion la base puede llamarse distinto.
 --   2. Pestaña SQL (o Import), pegar o subir este archivo, y Go.
---   3. Con la cuenta con la que se administra la base (root en XAMPP,
---      la cuenta de cPanel en el hosting). sgdm_app no alcanza: solo
+--   3. Con la cuenta con la que se administra la base (root en XAMPP
+--      o en la VM). sgdm_app no alcanza: solo
 --      tiene permisos sobre los datos, no sobre la estructura.
 --
 -- Que esperar:

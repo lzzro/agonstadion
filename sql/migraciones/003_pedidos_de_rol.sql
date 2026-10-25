@@ -3,7 +3,7 @@
 -- Migracion 003: pedidos de rol
 -- ---------------------------------------------------------------------
 -- Para las bases creadas con el schema.sql anterior a los pedidos de rol
--- (la del XAMPP local y la del hosting). Una base nueva no la necesita:
+-- (como la del XAMPP local). Una base nueva no la necesita:
 -- sql/schema.sql ya trae todo esto.
 --
 -- Que agrega:
@@ -19,18 +19,17 @@
 --     DELETE), SOLO en XAMPP: ver el ultimo bloque.
 --
 -- Como se corre, a mano, una vez en cada base (igual que la 001 y la 002):
---   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm en
---      XAMPP, lucasmar_sgdm en el hosting). Sin USE, a proposito.
+--   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm
+--      en XAMPP). Sin USE, a proposito.
 --   2. Pestana SQL (o Import), pegar o subir este archivo, y Go.
---   3. Con la cuenta con la que se administra la base (root en XAMPP, la
---      cuenta de cPanel en el hosting).
+--   3. Con la cuenta con la que se administra la base (root en XAMPP
+--      o en la VM).
 --
 -- Que esperar:
 --   - En XAMPP corre entero.
---   - En el hosting, el ultimo bloque (GRANT) da un error de permisos, y
---     es lo esperable: ahi los permisos de sgdm_app los da cPanel sobre
---     la base entera (paso 1 de docs/deploy-hosting-compartido.md), y ya
---     alcanzan a la tabla nueva. Todo lo anterior al GRANT ya quedo hecho.
+--   - Con una cuenta sin permisos de administracion, el ultimo bloque
+--     (GRANT) da un error de permisos. Todo lo anterior al GRANT ya quedo
+--     hecho: el permiso se da despues, con la cuenta de administracion.
 --   - Si se corre dos veces, el CREATE TABLE avisa "Table 'pedido_rol'
 --     already exists" y no cambia nada.
 --
@@ -79,7 +78,7 @@ ALTER TABLE auditoria ADD CONSTRAINT ck_audit_accion
 SHOW CREATE TABLE pedido_rol;
 
 -- ---------------------------------------------------------------------
--- Solo en XAMPP (en el hosting da error y no hace falta, ver arriba).
+-- Con la cuenta de administracion de la base (ver arriba).
 -- sgdm_app no tiene DELETE sobre esta tabla: un pedido no se borra, se
 -- resuelve.
 -- ---------------------------------------------------------------------

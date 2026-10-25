@@ -9,6 +9,11 @@
 # El visitante puede quedar en null: es el caso del "libre" (bye),
 # cuando la cantidad de participantes es impar. En la tabla la clave
 # foranea del visitante admite NULL justamente por eso.
+#
+# Desde la fase 3, el organizador lo programa (dia, hora y lugar), lo
+# marca en vivo mientras se juega y le carga el resultado, que lo deja
+# jugado. Un resultado se puede corregir mientras la fecha no se
+# cierra: asignarResultado() reemplaza al anterior.
 # =====================================================================
 
 require_once __DIR__ . '/Participante.php';
@@ -110,7 +115,18 @@ class Enfrentamiento
             if (!$es_local && !$es_visitante) {
                 $errores[] = 'El ganador tiene que ser uno de los dos participantes '
                            . 'del enfrentamiento.';
+            } elseif (!$resultado->esWalkover() && !$resultado->esEmpate()) {
+                # Sin walkover, gana el del marcador mas alto.
+                $gana_local = ($resultado->getPuntajeLocal() > $resultado->getPuntajeVisitante());
+                if ($gana_local !== $es_local) {
+                    $errores[] = 'El ganador es el del marcador más alto.';
+                }
             }
+        }
+
+        $estados = array('programado', 'en_vivo', 'jugado');
+        if (!in_array($this->estado, $estados)) {
+            $errores[] = 'Un enfrentamiento suspendido o anulado no lleva resultado.';
         }
 
         if (empty($errores)) {
@@ -120,12 +136,70 @@ class Enfrentamiento
         return $errores;
     }
 
+    # El dia, la hora y el lugar. La fecha y hora llegan como
+    # AAAA-MM-DD HH:MM (lo que manda el campo del formulario) o null, si
+    # todavia no se sabe; el lugar, hasta 80 caracteres, o vacio. Un
+    # partido jugado no se reprograma.
+    public function programar($fecha_hora, $lugar)
+    {
+        $errores = array();
+        if ($this->esLibre()) {
+            $errores[] = 'Un equipo libre no tiene partido que programar.';
+        }
+        if ($this->estaJugado()) {
+            $errores[] = 'Un partido jugado no se reprograma.';
+        }
+        if ($fecha_hora !== null && !self::fechaHoraValida($fecha_hora)) {
+            $errores[] = 'El día y la hora no tienen un formato válido.';
+        }
+        $lugar = ($lugar === null) ? '' : trim($lugar);
+        if (mb_strlen($lugar) > 80) {
+            $errores[] = 'El lugar no puede pasar de 80 caracteres.';
+        }
+        if (empty($errores)) {
+            $this->fecha_hora = ($fecha_hora === null) ? null
+                              : str_replace('T', ' ', substr($fecha_hora, 0, 16)) . ':00';
+            $this->lugar      = ($lugar === '') ? null : $lugar;
+        }
+        return $errores;
+    }
+
+    # AAAA-MM-DD HH:MM, una fecha que existe (no el 31 de junio) y una
+    # hora del dia.
+    public static function fechaHoraValida($texto)
+    {
+        if (!is_string($texto) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(:00)?$/', $texto, $p)) {
+            return false;
+        }
+        return checkdate((int)$p[2], (int)$p[3], (int)$p[1])
+            && (int)$p[1] >= 2000 && (int)$p[1] <= 2100
+            && (int)$p[4] <= 23 && (int)$p[5] <= 59;
+    }
+
+    # Marca el partido en vivo mientras se juega, o lo vuelve a
+    # programado. Solo entre esos dos estados: un jugado ya tiene su
+    # resultado.
+    public function cambiarEnVivo($en_vivo)
+    {
+        if ($this->esLibre()) {
+            return array('Un equipo libre no juega en esa fecha.');
+        }
+        if ($this->estaJugado()) {
+            return array('Un partido jugado ya no está en vivo.');
+        }
+        if ($this->estado !== 'programado' && $this->estado !== 'en_vivo') {
+            return array('Ese partido no se juega.');
+        }
+        $this->estado = $en_vivo ? 'en_vivo' : 'programado';
+        return array();
+    }
+
     public function validar()
     {
         $errores = array();
 
         if ($this->numero < 1) {
-            $errores[] = 'El numero de enfrentamiento arranca en 1.';
+            $errores[] = 'El número de enfrentamiento arranca en 1.';
         }
 
         # Misma regla que ck_enfr_distintos.
@@ -133,15 +207,15 @@ class Enfrentamiento
             $errores[] = 'Un participante no puede enfrentarse a si mismo.';
         }
         if ($this->visitante !== null && !($this->visitante instanceof Participante)) {
-            $errores[] = 'El visitante no es un participante valido.';
+            $errores[] = 'El visitante no es un participante válido.';
         }
 
         # Los dos tienen que estar en competencia, no dados de baja.
         if (!$this->local->estaEnCompetencia()) {
-            $errores[] = 'El participante local no esta en competencia.';
+            $errores[] = 'El participante local no está en competencia.';
         }
         if (!$this->esLibre() && !$this->visitante->estaEnCompetencia()) {
-            $errores[] = 'El participante visitante no esta en competencia.';
+            $errores[] = 'El participante visitante no está en competencia.';
         }
 
         $estados = array('programado', 'en_vivo', 'jugado', 'suspendido', 'anulado');

@@ -12,8 +12,8 @@
 # esto, despues de subir un CSS nuevo, quien ya visito el sitio seguia
 # viendo el viejo hasta vaciar la memoria del navegador.
 #
-# El archivo se busca en el disco, en la carpeta publica. En el hosting
-# esa carpeta es public_html y queda al lado de stadion_app:
+# El archivo se busca en el disco, en la carpeta publica. En la copia de
+# publicacion esa carpeta es public_html y queda al lado de stadion_app:
 # scripts/armar-deploy.sh cambia la ruta de $carpeta en la copia.
 # =====================================================================
 

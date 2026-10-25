@@ -11,12 +11,12 @@ DirectoryIndex index.php
 
 # Sin listado de carpetas. Pedir una carpeta que no tiene index.php
 # (controllers/, css/, img/, js/) mostraba la lista de sus archivos,
-# porque el hosting trae el listado prendido, igual que el virtual host
-# de XAMPP. Esta linea vale para esta carpeta y todas las de adentro:
+# porque Apache trae el listado prendido, como el virtual host de
+# XAMPP. Esta linea vale para esta carpeta y todas las de adentro:
 # ahora esas direcciones responden 403. subidas/ la repite en su propio
 # .htaccess.
-# Si el hosting no admitiera "Options" en un .htaccess, todo el sitio
-# daria error 500: ver "Si algo falla" en docs/deploy-hosting-compartido.md.
+# Si el virtual host no admitiera "Options" en un .htaccess, todo el
+# sitio daria error 500: ver AllowOverride en docs/configuracion-apache.md.
 Options -Indexes
 
 # Quien tenga guardada una direccion vieja (torneos.html, login.html...)
@@ -24,3 +24,36 @@ Options -Indexes
 # admin.php, que lleva a la administracion real, y panel.html es
 # panel.php, que lleva al panel real del organizador.
 RedirectMatch 301 "^(.*/)(index|torneos|torneo|calendario|llave|crear|login|registro|perfil|rendimiento|admin|panel)\.html$" "$1$2.php"
+
+# ---------------------------------------------------------------------
+# Cabeceras de seguridad (Ciberseguridad, tercera entrega; ver el
+# informe OWASP). Le dicen al navegador que:
+#   nosniff         no adivine el tipo de un archivo (una imagen subida
+#                   no se ejecuta como script)
+#   frame-ancestors / X-Frame-Options   ninguna pagina se muestre dentro
+#                   de otro sitio (clickjacking)
+#   Referrer-Policy a otro sitio no le llegue la direccion completa
+#   Permissions-Policy  el sitio no pide camara, microfono ni ubicacion
+#   Content-Security-Policy  solo corran los scripts del propio sitio
+#                   (tema.js), y estilos y fuentes del sitio y de Google
+#                   Fonts; los formularios solo se mandan al propio sitio
+#   HSTS            con HTTPS, el navegador no vuelve a entrar por HTTP
+#                   (solo cuando el pedido llego cifrado)
+# Con IfModule: si el servidor no tiene mod_headers, el sitio anda
+# igual, sin las cabeceras.
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+    Header always set Strict-Transport-Security "max-age=31536000" env=HTTPS
+</IfModule>
+
+# ---------------------------------------------------------------------
+# HTTPS (Ciberseguridad, tercera entrega): en la VM, el paso de http a
+# https no va aca sino en el sitio del puerto 80 (una linea Redirect),
+# despues de instalar el certificado propio con la opcion 10 de
+# scripts/seguridad-servidor.sh. Ver docs/servidor.md.
+# ---------------------------------------------------------------------

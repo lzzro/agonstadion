@@ -109,7 +109,7 @@ class Ronda
         # Misma regla que la restriccion uq_enfr_numero de la tabla.
         foreach ($this->enfrentamientos as $existente) {
             if ($existente->getNumero() === $enfrentamiento->getNumero()) {
-                $errores[] = 'Ya existe el enfrentamiento numero '
+                $errores[] = 'Ya existe el enfrentamiento número '
                            . $enfrentamiento->getNumero() . ' en esta ronda.';
             }
         }
@@ -125,7 +125,7 @@ class Ronda
         $errores = array();
 
         if ($this->numero < 1) {
-            $errores[] = 'El numero de ronda arranca en 1.';
+            $errores[] = 'El número de ronda arranca en 1.';
         }
         if (!empty($this->nombre) && mb_strlen($this->nombre) > 40) {
             $errores[] = 'El nombre de la ronda no puede pasar de 40 caracteres.';

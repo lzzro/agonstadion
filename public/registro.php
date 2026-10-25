@@ -46,13 +46,13 @@ tokenCsrf();
       <label>Correo<input type="email" name="correo" placeholder="nombre@correo.com" required maxlength="120" autocomplete="email" spellcheck="false" autocapitalize="off"></label>
       <div class="campo">
         <label>Contraseña<input type="password" name="password" required minlength="10" autocomplete="new-password" aria-describedby="ayuda-clave"></label>
-        <p class="ayuda-campo" id="ayuda-clave">Mínimo 10 caracteres.</p>
+        <p class="ayuda-campo" id="ayuda-clave">Mínimo 10 caracteres, con una mayúscula, una minúscula y un número; sin el nombre, el apellido ni el correo.</p>
       </div>
       <div class="campo">
         <label>Alias en juego · opcional<input type="text" name="alias" placeholder="ana_p" maxlength="20" pattern="[A-Za-z0-9_]+" title="Letras, números y guion bajo" aria-describedby="ayuda-alias" spellcheck="false" autocapitalize="off"></label>
         <p class="ayuda-campo" id="ayuda-alias">Letras, números y guion bajo; hasta 20 caracteres.</p>
       </div>
-      <label class="opcion" style="border:none;padding:0"><input type="checkbox" name="terminos" required> <span>Conforme con los términos</span></label>
+      <label class="opcion" style="border:none;padding:0"><input type="checkbox" name="terminos" required> <span>Conforme con los <a href="terminos.php" target="_blank" rel="noopener">términos<span class="visualmente-oculto"> (se abren en otra pestaña)</span></a></span></label>
       <button class="btn btn-primario" type="submit">Crear una cuenta</button>
       <span class="etiqueta" style="text-transform:none;letter-spacing:.04em;text-align:center">¿Cuenta ya abierta? <a href="login.php" style="color:var(--olivo);text-decoration:underline;text-underline-offset:3px">Iniciar sesión</a></span>
     </form>

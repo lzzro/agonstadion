@@ -143,6 +143,6 @@ $es_esta_semana = ($lunes === lunesDe($hoy));
   <p><?php echo plural(count($disciplinas), 'disciplina', 'disciplinas'); ?> · <?php echo plural(count($torneos_semana), 'torneo', 'torneos'); ?></p>
 </div>
 </aside>
-<?php piePagina(true); ?>
+<?php piePagina(true, $ruta_publica); ?>
 </body>
 </html>

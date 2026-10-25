@@ -42,7 +42,7 @@ class AuditoriaRepositorio
                 VALUES (?, ?, ?, ?, ?, ?)';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
-            return array('El registro de auditoria no se completa.');
+            return array('El registro de auditoría no se completa.');
         }
 
         # Si no hay usuario, el id viaja en NULL.
@@ -59,7 +59,7 @@ class AuditoriaRepositorio
 
         if (!$sentencia->execute()) {
             $sentencia->close();
-            return array('El registro de auditoria no queda guardado.');
+            return array('El registro de auditoría no queda guardado.');
         }
 
         $auditoria->setIdAuditoria($this->conexion->insert_id);
@@ -72,19 +72,35 @@ class AuditoriaRepositorio
     # null si la consulta no se puede hacer.
     public function listarRecientes($cantidad)
     {
+        return $this->listar('', 1, $cantidad);
+    }
+
+    # El registro de a paginas (la administracion, RF-24): las filas de
+    # una accion ('' son todas), de la mas nueva a la mas vieja, desde la
+    # pagina $pagina (la 1 es la mas nueva). null si la consulta no se
+    # puede hacer.
+    public function listar($accion, $pagina, $por_pagina)
+    {
+        $donde = ($accion === '') ? '' : 'WHERE a.accion = ?';
         $sql = 'SELECT a.id_auditoria, a.tabla_afectada, a.id_registro, a.accion,
                        a.detalle, a.direccion_ip, a.fecha_hora,
                        u.id_usuario, u.nombre, u.apellido
                 FROM auditoria a
                     LEFT JOIN usuario u ON u.id_usuario = a.id_usuario
+                ' . $donde . '
                 ORDER BY a.fecha_hora DESC, a.id_auditoria DESC
-                LIMIT ?';
+                LIMIT ? OFFSET ?';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
             return null;
         }
-        $limite = (int)$cantidad;
-        $sentencia->bind_param('i', $limite);
+        $limite = (int)$por_pagina;
+        $desde  = (max(1, (int)$pagina) - 1) * $limite;
+        if ($accion === '') {
+            $sentencia->bind_param('ii', $limite, $desde);
+        } else {
+            $sentencia->bind_param('sii', $accion, $limite, $desde);
+        }
         $sentencia->execute();
         $resultado = $sentencia->get_result();
 
@@ -98,6 +114,50 @@ class AuditoriaRepositorio
         }
         $sentencia->close();
         return $filas;
+    }
+
+    # Cuantos inicios de sesion fallidos con ese correo hubo en los
+    # ultimos $minutos (el bloqueo de la politica de contrasenas: 5 en 15
+    # minutos). Cuentan las filas login_error cuyo detalle es el correo
+    # intentado, exista o no la cuenta: asi el bloqueo no revela que
+    # correos tienen cuenta. Los intentos rechazados por el propio
+    # bloqueo quedan con otro detalle ("Bloqueo: ...") y no cuentan, para
+    # que la pausa dure 15 minutos desde el quinto fallo. La hora es la
+    # de la base, la misma que guarda fecha_hora. null si la consulta no
+    # se puede hacer.
+    public function intentosFallidos($correo, $minutos)
+    {
+        $sql = 'SELECT COUNT(*) AS cuantos FROM auditoria
+                WHERE accion = \'login_error\' AND detalle = ?
+                  AND fecha_hora >= NOW() - INTERVAL ? MINUTE';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return null;
+        }
+        $minutos = (int)$minutos;
+        $sentencia->bind_param('si', $correo, $minutos);
+        $sentencia->execute();
+        $fila = $sentencia->get_result()->fetch_assoc();
+        $sentencia->close();
+        return (int)$fila['cuantos'];
+    }
+
+    # Cuantas filas tiene el registro de una accion ('' son todas). null
+    # si la consulta no se puede hacer.
+    public function contar($accion)
+    {
+        $sql = 'SELECT COUNT(*) AS cuantas FROM auditoria' . (($accion === '') ? '' : ' WHERE accion = ?');
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return null;
+        }
+        if ($accion !== '') {
+            $sentencia->bind_param('s', $accion);
+        }
+        $sentencia->execute();
+        $fila = $sentencia->get_result()->fetch_assoc();
+        $sentencia->close();
+        return (int)$fila['cuantas'];
     }
 
     #endregion

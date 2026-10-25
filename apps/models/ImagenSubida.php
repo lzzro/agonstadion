@@ -16,7 +16,7 @@
 #   - Solo JPG, PNG y WEBP. No GIF (no hace falta) ni SVG, que es texto
 #     y puede llevar scripts adentro.
 #   - Hasta 2 MB: sobra para una foto de perfil o una portada, y no deja
-#     llenar el disco del hosting con archivos enormes.
+#     llenar el disco del servidor con archivos enormes.
 #   - Hasta 4000 pixeles de lado: una camara de telefono saca menos que
 #     eso, y una imagen mas grande es sospechosa o un error.
 #   - El nombre lo pone el sistema: 32 caracteres al azar mas la
@@ -74,7 +74,7 @@ class ImagenSubida
     public function validar()
     {
         $errores = array();
-        $aviso_tipo   = 'Solo se aceptan imagenes JPG, PNG o WEBP.';
+        $aviso_tipo   = 'Solo se aceptan imágenes JPG, PNG o WEBP.';
         $aviso_tamano = 'La imagen supera los 2 MB.';
 
         if ($this->archivo === null || !isset($this->archivo['error'])
@@ -121,7 +121,7 @@ class ImagenSubida
         }
 
         if ($medidas[0] > self::LADO_MAXIMO || $medidas[1] > self::LADO_MAXIMO) {
-            $errores[] = 'La imagen supera los ' . self::LADO_MAXIMO . ' pixeles de lado.';
+            $errores[] = 'La imagen supera los ' . self::LADO_MAXIMO . ' píxeles de lado.';
             return $errores;
         }
 

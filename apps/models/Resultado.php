@@ -10,6 +10,11 @@
 # El ganador se guarda aparte del puntaje porque no siempre se deduce
 # del marcador (walkover, desempate por fuera del puntaje). En un
 # empate queda en null.
+#
+# Un walkover (fase 3) es el partido que gana el que se presenta, sin
+# jugarlo: lleva ganador y su marcador queda 0 a 0, asi no cambia los
+# tantos de ninguno en la tabla. En la tabla suma como victoria y
+# derrota, por el ganador, no por el marcador.
 # =====================================================================
 
 require_once __DIR__ . '/Participante.php';
@@ -76,13 +81,13 @@ class Resultado
             $errores[] = 'Los puntajes no pueden ser negativos.';
         }
         if ($this->walkover !== 0 && $this->walkover !== 1) {
-            $errores[] = 'La opcion de walkover solo admite si o no.';
+            $errores[] = 'El walkover es sí o no.';
         }
         if ($this->ganador !== null && !($this->ganador instanceof Participante)) {
-            $errores[] = 'El ganador no es un participante valido.';
+            $errores[] = 'El ganador no es un participante válido.';
         }
         if ($this->usuario_carga !== null && !($this->usuario_carga instanceof Usuario)) {
-            $errores[] = 'Quien carga el resultado no es un usuario valido.';
+            $errores[] = 'Quien carga el resultado no es un usuario válido.';
         }
         if (!empty($this->observaciones) && mb_strlen($this->observaciones) > 200) {
             $errores[] = 'Las observaciones no pueden pasar de 200 caracteres.';
@@ -95,6 +100,12 @@ class Resultado
         }
         if ($this->esEmpate() && $this->ganador !== null && !$this->esWalkover()) {
             $errores[] = 'Un empate no puede tener ganador.';
+        }
+        if ($this->esWalkover() && $this->ganador === null) {
+            $errores[] = 'Un walkover lleva ganador: el que se presenta.';
+        }
+        if ($this->esWalkover() && ($this->puntaje_local !== 0 || $this->puntaje_visitante !== 0)) {
+            $errores[] = 'Un walkover no lleva marcador.';
         }
 
         return $errores;

@@ -9,14 +9,22 @@
 #                    no se pudo leer
 #   $equipos_de      id de liga => participantes anotados
 #   $pendientes_de   id de liga => pedidos de lugar pendientes
+#   $campeon_de      id de torneo terminado => su campeon (Participante),
+#                    o null si no se pudo leer
 #   $mensaje, $errores           resultado de la ultima accion
 #   $errores_equipo, $valor_equipo   el campo "equipo" de cada liga
-#   $ruta_publica, $ruta_perfil, $ruta_crear, $ruta_panel   direcciones
+#   $ruta_publica, $ruta_perfil, $ruta_crear, $ruta_panel,
+#   $ruta_partidos, $ruta_reportes   direcciones
 #
 # Una sola pagina que se recorre: arriba la lista de ligas, y debajo una
 # tarjeta por liga (id="liga-N") con lo que se puede hacer en su estado:
 #   inscripcion  anotar equipos, resolver pedidos, cerrar la inscripcion
-#   en curso     armar el fixture, o rehacerlo si no tiene resultados
+#   en curso     armar el fixture, o rehacerlo si no tiene resultados;
+#                con fixture, el enlace a "Fechas y resultados"
+#                (partidosController.php, fase 3)
+#   finalizado   el campeon, y las fechas jugadas
+# Una liga sin terminar se puede cancelar (RF-17), con su casilla de
+# confirmacion: deja de verse, y lo jugado queda en la base.
 # Lo que el estado todavia no permite va como texto apagado, con la nota
 # que dice por que (DESIGN.md, "Accion no disponible").
 #
@@ -29,6 +37,7 @@ if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
 if (!isset($errores_equipo)) { $errores_equipo = array(); }
 if (!isset($valor_equipo)) { $valor_equipo = array(); }
+if (!isset($campeon_de)) { $campeon_de = array(); }
 
 require_once __DIR__ . '/cabecera.php';
 require_once __DIR__ . '/pie.php';
@@ -66,8 +75,8 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
 <section>
   <p class="epigrafe" lang="grc">ἀγωνοθέτης</p>
   <h1>Panel del organizador</h1>
-  <p class="intro"><?php echo htmlspecialchars($organizador->getNombreCompletoVisible()); ?> · <?php echo plural($cantidad_ligas, 'liga a cargo', 'ligas a cargo'); ?></p>
-  <div class="fila"><a class="btn btn-primario" href="<?php echo htmlspecialchars($ruta_crear); ?>">Nueva liga</a></div>
+  <p class="intro"><?php echo htmlspecialchars($organizador->getNombreCompletoVisible()); ?> · <?php echo plural($cantidad_ligas, 'torneo a cargo', 'torneos a cargo'); ?></p>
+  <div class="fila"><a class="btn btn-primario" href="<?php echo htmlspecialchars($ruta_crear); ?>">Nuevo torneo</a><a class="btn" href="<?php echo htmlspecialchars($ruta_reportes); ?>">Reportes</a></div>
 </section>
 
 <?php if (!empty($errores)) { ?>
@@ -84,16 +93,16 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
 <?php } ?>
 
 <section class="tarjeta">
-  <h2>Mis ligas</h2>
+  <h2>Mis torneos</h2>
 <?php if ($ligas === null) { ?>
-  <p>La lista de ligas no se puede leer por ahora.</p>
+  <p>La lista de torneos no se puede leer por ahora.</p>
 <?php } elseif (empty($ligas)) { ?>
-  <p>Ninguna liga a cargo de esta cuenta. Toda liga empieza con un nombre y un cupo.</p>
-  <p><a href="<?php echo htmlspecialchars($ruta_crear); ?>">Nueva liga <span aria-hidden="true">→</span></a></p>
+  <p>Ningún torneo a cargo de esta cuenta. Todo torneo empieza con un nombre y un cupo.</p>
+  <p><a href="<?php echo htmlspecialchars($ruta_crear); ?>">Nuevo torneo <span aria-hidden="true">→</span></a></p>
 <?php } else { ?>
-  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mis ligas">
+  <div class="tabla-scroll" tabindex="0" role="region" aria-label="Mis torneos">
   <table>
-    <thead><tr><th>Liga</th><th>Estado</th><th>Equipos</th><th>Pedidos</th><th><span class="visualmente-oculto">Acción</span></th></tr></thead>
+    <thead><tr><th>Torneo</th><th>Estado</th><th>Inscriptos</th><th>Pedidos</th><th><span class="visualmente-oculto">Acción</span></th></tr></thead>
     <tbody>
 <?php   foreach ($ligas as $fila) {
           $t = $fila['torneo']; ?>
@@ -113,16 +122,19 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
           $config   = $t->getConfiguracion();
           $equipos  = isset($equipos_de[$id]) ? $equipos_de[$id] : null;
           $pendientes = isset($pendientes_de[$id]) ? $pendientes_de[$id] : array();
-          $lleno    = ($fila['inscriptos'] >= $t->getMaxParticipantes()); ?>
+          $lleno    = ($fila['inscriptos'] >= $t->getMaxParticipantes());
+          $de_equipos = $t->esPorEquipos();
+          $quienes  = nombreParticipantes($t);
+          $w = palabrasDe($t); ?>
 <section class="tarjeta" id="liga-<?php echo $id; ?>">
   <div class="fila" style="justify-content:space-between"><h2><?php echo $nom; ?></h2><?php echo chipLigaHtml($t, $fila['en_vivo']); ?></div>
-  <p><?php echo htmlspecialchars($t->getDisciplina()->getNombre()); ?> · <?php echo vueltasTexto($config); ?> · <?php echo $fila['inscriptos']; ?> de <?php echo $t->getMaxParticipantes(); ?> equipos · <?php echo empty($t->getFechaInicio()) ? 'inicio a definir' : 'desde el ' . htmlspecialchars(fechaTexto($t->getFechaInicio(), true)); ?></p>
+  <p><?php echo htmlspecialchars($t->getDisciplina()->getNombre()); ?> · <?php echo htmlspecialchars(formatoTexto($t)); ?> · <?php echo $fila['inscriptos']; ?> de <?php echo $t->getMaxParticipantes() . ' ' . $quienes; ?> · <?php echo empty($t->getFechaInicio()) ? 'inicio a definir' : 'desde el ' . htmlspecialchars(fechaTexto($t->getFechaInicio(), true)); ?></p>
 
-  <h3>Equipos anotados</h3>
+  <h3><?php echo $de_equipos ? 'Equipos anotados' : 'Jugadores anotados'; ?></h3>
 <?php     if ($equipos === null) { ?>
-  <p>La lista de equipos no se puede leer por ahora.</p>
+  <p>La lista de <?php echo $quienes; ?> no se puede leer por ahora.</p>
 <?php     } elseif (empty($equipos)) { ?>
-  <p>Sin equipos anotados.</p>
+  <p><?php echo $de_equipos ? 'Sin equipos anotados.' : 'Sin jugadores anotados.'; ?></p>
 <?php     } else { ?>
   <p><?php $nombres = array();
            foreach ($equipos as $p) { $nombres[] = htmlspecialchars($p->getNombreVisible()); }
@@ -130,7 +142,9 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
 <?php     } ?>
 
 <?php     if ($t->tieneInscripcionAbierta()) { ?>
-<?php       if ($lleno) { ?>
+<?php       if (!$de_equipos) { ?>
+  <p><small>Con jugadores, cada uno se anota con su cuenta, desde la página <?php echo ($t->esLiga() ? 'de la liga' : 'del torneo'); ?><?php echo $lleno ? '. El cupo está completo.' : ', hasta completar el cupo.'; ?></small></p>
+<?php       } elseif ($lleno) { ?>
   <p><span class="enlace-apagado" aria-disabled="true">Anotar equipo</span> <small>El cupo está completo.</small></p>
 <?php       } else { ?>
   <form class="anotar-equipo" action="<?php echo htmlspecialchars($ruta_panel); ?>" method="post">
@@ -148,6 +162,7 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
   </form>
 <?php       } ?>
 
+<?php       if ($de_equipos) { ?>
   <h3>Pedidos de lugar</h3>
 <?php       if (empty($pendientes)) { ?>
   <p>Ningún pedido en revisión.</p>
@@ -183,7 +198,9 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
 <?php         } ?>
 <?php       } ?>
 
-  <h3>Inscripción y fixture</h3>
+<?php       } ?>
+
+  <h3>Inscripción y <?php echo $t->esLiga() ? 'fixture' : str_replace(array('la ', 'el '), '', $w['calendario']); ?></h3>
 <?php       if ($fila['inscriptos'] >= 4) { ?>
   <form class="accion-liga" action="<?php echo htmlspecialchars($ruta_panel); ?>" method="post">
     <input type="hidden" name="accion" value="cerrar">
@@ -191,54 +208,83 @@ $cantidad_ligas = is_array($ligas) ? count($ligas) : 0;
     <?php echo campoCsrf(); ?>
     <button class="btn" type="submit">Cerrar la inscripción<span class="visualmente-oculto"> de <?php echo $nom; ?></span></button>
   </form>
-  <p><small>Con la inscripción cerrada, los pedidos pendientes quedan sin lugar y el fixture se puede armar.</small></p>
+  <p><small><?php echo $de_equipos ? 'Con la inscripción cerrada, los pedidos pendientes quedan sin lugar y ' . $w['calendario'] . ' se puede armar.'
+                                    : 'Con la inscripción cerrada, ' . $w['calendario'] . ' se puede armar.'; ?></small></p>
 <?php       } else { ?>
-  <p><span class="enlace-apagado" aria-disabled="true">Cerrar la inscripción</span> <small>Con menos de 4 equipos la inscripción sigue abierta.</small></p>
+  <p><span class="enlace-apagado" aria-disabled="true">Cerrar la inscripción</span> <small>Con menos de 4 <?php echo $quienes; ?> la inscripción sigue abierta.</small></p>
 <?php       } ?>
-  <p><span class="enlace-apagado" aria-disabled="true">Armar el fixture</span> <small>El fixture se arma con la inscripción cerrada.</small></p>
+  <p><span class="enlace-apagado" aria-disabled="true">Armar <?php echo $w['calendario']; ?></span> <small><?php echo mayuscula($w['calendario']); ?> se arma con la inscripción cerrada.</small></p>
 
 <?php     } elseif ($t->estaEnCurso()) { ?>
-  <h3>Fixture</h3>
+  <h3><?php echo $w['Calendario']; ?></h3>
 <?php       if ($fila['fechas'] === 0) { ?>
   <form class="accion-liga" action="<?php echo htmlspecialchars($ruta_panel); ?>" method="post">
     <input type="hidden" name="accion" value="fixture">
     <input type="hidden" name="id_torneo" value="<?php echo $id; ?>">
     <?php echo campoCsrf(); ?>
-    <button class="btn btn-primario" type="submit">Armar el fixture<span class="visualmente-oculto"> de <?php echo $nom; ?></span></button>
+    <button class="btn btn-primario" type="submit">Armar <?php echo $w['calendario']; ?><span class="visualmente-oculto"> de <?php echo $nom; ?></span></button>
   </form>
-  <p><small>Todos contra todos, <?php echo vueltasTexto($config); ?>: <?php echo plural($config === null ? 0 : $config->rondasDeLiga($fila['inscriptos']), 'fecha', 'fechas'); ?> con <?php echo plural($fila['inscriptos'], 'equipo', 'equipos'); ?>.</small></p>
+<?php         if ($t->esLiga()) { ?>
+  <p><small>Todos contra todos, <?php echo vueltasTexto($config); ?>: <?php echo plural($config === null ? 0 : $config->rondasDeLiga($fila['inscriptos']), 'fecha', 'fechas'); ?> con <?php echo participantesDe($t, $fila['inscriptos']); ?>.</small></p>
+<?php         } elseif ($t->esEliminacion()) { ?>
+  <p><small>Una llave para <?php echo participantesDe($t, $fila['inscriptos']); ?>: <?php echo plural(Llave::cantidadRondas($fila['inscriptos']), 'ronda', 'rondas'); ?>, con <?php echo plural(Llave::tamano($fila['inscriptos']) - $fila['inscriptos'], 'pase libre', 'pases libres'); ?> en la primera. Cada ronda se arma al cerrar la anterior.</small></p>
+<?php         } else { ?>
+  <p><small>Suizo con <?php echo participantesDe($t, $fila['inscriptos']); ?>. Cada ronda se arma al cerrar la anterior, según la tabla.</small></p>
+<?php         } ?>
 <?php       } else { ?>
-  <p><?php echo plural($fila['fechas'], 'fecha', 'fechas'); ?> armadas<?php echo ($fila['resultados'] > 0) ? ' · ' . plural($fila['resultados'], 'resultado cargado', 'resultados cargados') : ''; ?>. <a href="<?php echo $ruta_publica; ?>/torneo.php?id=<?php echo $id; ?>#calendario">Ver el fixture<span class="visualmente-oculto"> de <?php echo $nom; ?></span> <span aria-hidden="true">→</span></a></p>
+  <p><?php echo ($fila['actual'] === null) ? 'Todas las ' . $w['rondas'] . ' cerradas.'
+                : mayuscula($w['ronda']) . ' ' . $fila['actual'] . ' de ' . ($t->esLiga() || $config === null || $config->getRondasPrevistas() === null ? $fila['fechas'] : $config->getRondasPrevistas()) . ' en juego.'; ?>
+     Resultados, días y lugares, <?php echo $w['ronda'] . ' por ' . $w['ronda']; ?>.</p>
+  <p><a class="btn btn-primario" href="<?php echo htmlspecialchars($ruta_partidos); ?>?id=<?php echo $id; ?>"><?php echo $w['pagina']; ?><span class="visualmente-oculto"> de <?php echo $nom; ?></span></a></p>
+  <p><?php echo plural($fila['fechas'], $w['ronda'], $w['rondas']); ?> armadas<?php echo ($fila['resultados'] > 0) ? ' · ' . plural($fila['resultados'], 'resultado cargado', 'resultados cargados') : ''; ?>. <a href="<?php echo $ruta_publica; ?>/torneo.php?id=<?php echo $id; ?>#calendario">Ver el fixture<span class="visualmente-oculto"> de <?php echo $nom; ?></span> <span aria-hidden="true">→</span></a></p>
 <?php         if ($fila['resultados'] === 0) { ?>
   <form class="accion-liga" action="<?php echo htmlspecialchars($ruta_panel); ?>" method="post">
     <input type="hidden" name="accion" value="rehacer">
     <input type="hidden" name="id_torneo" value="<?php echo $id; ?>">
     <?php echo campoCsrf(); ?>
-    <label class="casilla"><input type="checkbox" name="confirmo" value="1" required>Borrar el fixture de <?php echo $nom; ?> y armar uno nuevo</label>
-    <button class="btn" type="submit">Rehacer el fixture<span class="visualmente-oculto"> de <?php echo $nom; ?></span></button>
+    <label class="casilla"><input type="checkbox" name="confirmo" value="1" required>Borrar <?php echo $w['calendario']; ?> de <?php echo $nom; ?> y armar <?php echo $t->esLiga() ? 'uno nuevo' : 'de nuevo'; ?></label>
+    <button class="btn" type="submit">Rehacer <?php echo $w['calendario']; ?><span class="visualmente-oculto"> de <?php echo $nom; ?></span></button>
   </form>
 <?php         } else { ?>
-  <p><span class="enlace-apagado" aria-disabled="true">Rehacer el fixture</span> <small>Con resultados cargados, el fixture no se rehace.</small></p>
+  <p><span class="enlace-apagado" aria-disabled="true">Rehacer <?php echo $w['calendario']; ?></span> <small>Con resultados cargados, <?php echo $w['calendario']; ?> no se rehace.</small></p>
 <?php         } ?>
 <?php       } ?>
+<?php     } elseif ($t->getEstado() === 'finalizado') {
+            $campeon = isset($campeon_de[$id]) ? $campeon_de[$id] : null; ?>
+  <h3><?php echo $t->esLiga() ? 'Liga terminada' : 'Torneo terminado'; ?></h3>
+<?php       if ($campeon !== null) { ?>
+  <div class="fila"><?php echo chipVencedor(); ?><strong><?php echo htmlspecialchars($campeon->getNombreVisible()); ?></strong></div>
+<?php       } ?>
+  <p><?php echo plural($fila['fechas'], $w['ronda'] . ' jugada', $w['rondas'] . ' jugadas'); ?><?php if (!empty($t->getFechaFin())) { echo ' · cierre el ' . htmlspecialchars(fechaTexto($t->getFechaFin(), true)); } ?>: queda como historia. <a href="<?php echo htmlspecialchars($ruta_partidos); ?>?id=<?php echo $id; ?>">Ver las fechas<span class="visualmente-oculto"> de <?php echo $nom; ?></span> <span aria-hidden="true">→</span></a></p>
 <?php     } else { ?>
-  <p>Liga <?php echo ($t->getEstado() === 'finalizado') ? 'finalizada' : 'cerrada'; ?>: queda como historia.</p>
+  <p><?php echo $w['El']; ?> queda como historia.</p>
 <?php     } ?>
   <p><a href="<?php echo $ruta_publica; ?>/torneo.php?id=<?php echo $id; ?>">Ver la página de <?php echo $nom; ?> <span aria-hidden="true">→</span></a></p>
+<?php     if ($t->tieneInscripcionAbierta() || $t->estaEnCurso()) { ?>
+  <form class="accion-liga cancelar-liga" action="<?php echo htmlspecialchars($ruta_panel); ?>" method="post">
+    <input type="hidden" name="accion" value="cancelar">
+    <input type="hidden" name="id_torneo" value="<?php echo $id; ?>">
+    <?php echo campoCsrf(); ?>
+    <label class="casilla"><input type="checkbox" name="confirmo_cancelar" value="1" required>Cancelar <?php echo $nom; ?>: deja de verse en el sitio, y lo jugado queda guardado</label>
+    <button class="btn" type="submit">Cancelar <?php echo $w['el']; ?><span class="visualmente-oculto"> <?php echo $nom; ?></span></button>
+  </form>
+<?php     } ?>
 </section>
 <?php   }
       } ?>
 </main>
 <aside>
 <div class="tarjeta">
-  <span class="etiqueta">Cómo avanza una liga</span>
+  <span class="etiqueta">Cómo avanza un torneo</span>
   <ol class="pasos-liga">
-    <li>Inscripción abierta: equipos anotados a mano o por pedido de su capitán, hasta el cupo.</li>
-    <li>Inscripción cerrada, con 4 equipos o más.</li>
-    <li>Fixture: todos contra todos, fecha por fecha.</li>
+    <li>Inscripción abierta, hasta el cupo: equipos anotados a mano o por pedido de su capitán; con jugadores, cada uno con su cuenta.</li>
+    <li>Inscripción cerrada, con 4 o más.</li>
+    <li>El calendario: en la liga, todos contra todos; en la eliminación directa, la llave; en el suizo, la primera ronda.</li>
+    <li>Resultados, ronda por ronda (en la liga, fecha por fecha), y cada una cerrada para pasar a la siguiente.</li>
+    <li>Con la última cerrada, el torneo termina: el primero de la tabla, o el ganador de la final, es el campeón.</li>
   </ol>
 </div>
 </aside>
-<?php piePagina(true); ?>
+<?php piePagina(true, $ruta_publica); ?>
 </body>
 </html>

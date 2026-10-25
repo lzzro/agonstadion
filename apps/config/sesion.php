@@ -26,15 +26,40 @@
 define('LIMITE_INACTIVIDAD', 1800);
 
 # ---------------------------------------------------------------------
+# Abre la sesion (si no esta abierta) con la cookie protegida
+# (Ciberseguridad, tercera entrega):
+#   httponly  el JavaScript de la pagina no la puede leer
+#   samesite  Lax: otro sitio no la manda en un formulario armado
+#   secure    con HTTPS, solo viaja cifrada (sin HTTPS, en XAMPP, no)
+# y en modo estricto: un identificador que no creo el servidor no se
+# acepta (otra defensa contra la fijacion de sesion, ademas de
+# session_regenerate_id al entrar).
+# ---------------------------------------------------------------------
+function abrirSesion()
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    ini_set('session.use_strict_mode', '1');
+    session_set_cookie_params(array(
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => $https,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ));
+    session_start();
+}
+
+# ---------------------------------------------------------------------
 # Devuelve true si hay una sesion iniciada y todavia vigente.
 # De paso corre la marca de actividad hacia adelante, asi la ventana
 # se renueva sola mientras haya movimiento.
 # ---------------------------------------------------------------------
 function sesionVigente()
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    abrirSesion();
 
     # Sin id de usuario no hay sesion iniciada que cuidar.
     if (!isset($_SESSION['id_usuario'])) {
@@ -72,17 +97,21 @@ function sesionVigente()
 # ---------------------------------------------------------------------
 function cerrarSesion()
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    abrirSesion();
 
     session_unset();
     session_destroy();
 
     if (!headers_sent()) {
         $cookie = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 3600, $cookie['path'],
-                  $cookie['domain'], $cookie['secure'], $cookie['httponly']);
+        setcookie(session_name(), '', array(
+            'expires'  => time() - 3600,
+            'path'     => $cookie['path'],
+            'domain'   => $cookie['domain'],
+            'secure'   => $cookie['secure'],
+            'httponly' => $cookie['httponly'],
+            'samesite' => $cookie['samesite']
+        ));
         session_id(session_create_id());
     }
 }
@@ -92,6 +121,6 @@ function cerrarSesion()
 # ---------------------------------------------------------------------
 function mensajeSesionVencida()
 {
-    return 'La sesion se cierra sola despues de media hora sin uso. '
-         . 'El acceso vuelve a abrirse desde la pagina de ingreso.';
+    return 'La sesión se cierra sola después de media hora sin uso. '
+         . 'El acceso vuelve a abrirse desde la página de ingreso.';
 }

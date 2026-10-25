@@ -99,6 +99,23 @@ class PosicionTabla
         $this->contra = $this->contra + $rival;
     }
 
+    # Suma un partido segun quien lo gano, no segun el marcador: es lo
+    # que hace falta para un walkover, que se gana 0 a 0 (ver
+    # Resultado). $desenlace es 'G' (lo gano este), 'E' (empate) o 'P'
+    # (lo perdio). Los tantos suman igual que en sumarPartido().
+    public function sumarResultado($puntaje_propio, $puntaje_rival, $desenlace)
+    {
+        if ($desenlace === 'G') {
+            $this->ganados = $this->ganados + 1;
+        } elseif ($desenlace === 'E') {
+            $this->empatados = $this->empatados + 1;
+        } else {
+            $this->perdidos = $this->perdidos + 1;
+        }
+        $this->favor  = $this->favor + (int)$puntaje_propio;
+        $this->contra = $this->contra + (int)$puntaje_rival;
+    }
+
     # El orden de la tabla (y por lo tanto el puesto de cada uno) lo
     # resuelve ConfiguracionTorneo->ordenarPosiciones(), porque depende
     # de cuanto vale una victoria en ese torneo.

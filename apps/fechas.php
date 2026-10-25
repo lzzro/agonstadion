@@ -9,8 +9,8 @@
 # mano: asi no puede quedar un "jueves 18" en un ano en que el 18 es
 # viernes.
 #
-# La hora de "hoy" es la de Montevideo, no la del servidor (que en un
-# hosting suele estar en otra zona).
+# La hora de "hoy" es la de Montevideo, no la del servidor (que puede
+# estar en otra zona, por ejemplo UTC).
 # =====================================================================
 
 date_default_timezone_set('America/Montevideo');

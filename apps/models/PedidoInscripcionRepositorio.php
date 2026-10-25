@@ -78,7 +78,7 @@ class PedidoInscripcionRepositorio
         }
         if ($this->equipoInscripto($id_torneo, $id_equipo)) {
             $this->conexion->rollback();
-            return array('Ese equipo ya juega esta liga.');
+            return array('Ese equipo ya juega esta competencia.');
         }
 
         $sql = 'INSERT INTO pedido_inscripcion (id_torneo, id_equipo, id_usuario) VALUES (?, ?, ?)';
@@ -93,7 +93,7 @@ class PedidoInscripcionRepositorio
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
             $this->conexion->rollback();
-            return array($duplicado ? 'Ese equipo ya tiene un pedido en revisión en esta liga.'
+            return array($duplicado ? 'Ese equipo ya tiene un pedido en revisión en esta competencia.'
                                     : 'El pedido no se puede registrar por ahora.');
         }
         $pedido->setIdPedidoInscripcion($this->conexion->insert_id);
@@ -153,7 +153,7 @@ class PedidoInscripcionRepositorio
         $cantidad = $torneos->bloquearYContar($id_torneo, $id_org);
         if ($cantidad === null) {
             $this->conexion->rollback();
-            return array('Esa liga no está a cargo de esta cuenta.');
+            return array('Esa competencia no está a cargo de esta cuenta.');
         }
 
         if ($aceptar) {
@@ -203,7 +203,7 @@ class PedidoInscripcionRepositorio
                 $duplicado = ($sentencia->errno === 1062);
                 $sentencia->close();
                 $this->conexion->rollback();
-                return array($duplicado ? 'Ese equipo ya juega esta liga.'
+                return array($duplicado ? 'Ese equipo ya juega esta competencia.'
                                         : 'El pedido no se puede resolver por ahora.');
             }
             $sentencia->close();

@@ -54,13 +54,13 @@ function conectarBD()
     # Sin configuracion local no hay clave, y conviene decirlo con
     # claridad en vez de dejar que falle como si el servidor no
     # estuviera.
-    # En el hosting compartido el nombre de la base y el del usuario
-    # tambien cambian, asi que se comprueban los tres y no solo la
-    # clave: media configuracion cargada falla igual, pero con un
+    # Segun la instalacion, el nombre de la base y el del usuario
+    # tambien pueden cambiar, asi que se comprueban los tres y no solo
+    # la clave: media configuracion cargada falla igual, pero con un
     # mensaje que no ayuda.
     foreach (array('usuario', 'clave', 'base') as $dato) {
         if (!isset($configuracion_bd[$dato]) || $configuracion_bd[$dato] === '') {
-            $error_bd = 'Falta la configuracion local de la base de datos.';
+            $error_bd = 'Falta la configuración local de la base de datos.';
             return null;
         }
     }
@@ -75,7 +75,7 @@ function conectarBD()
     );
 
     if ($conexion->connect_errno !== 0) {
-        $error_bd = 'No hay conexion con la base de datos.';
+        $error_bd = 'No hay conexión con la base de datos.';
         return null;
     }
 
@@ -85,10 +85,10 @@ function conectarBD()
     # La hora de la base, la de Montevideo (UTC-3, sin horario de verano
     # desde 2015), igual que la de las paginas (apps/fechas.php). Sin
     # esto, NOW() y los DEFAULT CURRENT_TIMESTAMP guardan la hora del
-    # servidor, que en un hosting suele ser otra: un pedido hecho a las
-    # 17:14 figuraba a las 20:14. Se da como diferencia (-03:00) y no por
+    # servidor, que puede ser otra (UTC): un pedido hecho a las 17:14
+    # figuraba a las 20:14. Se da como diferencia (-03:00) y no por
     # nombre, porque el nombre necesita las tablas de zonas horarias de
-    # MariaDB, que un hosting no siempre tiene cargadas.
+    # MariaDB, que no siempre estan cargadas.
     # Lo guardado antes de este cambio queda con la hora del servidor (no
     # se convierte): por eso las resoluciones de pedidos usan
     # GREATEST(NOW(), fecha_pedido). La 005 y primer_administrador.sql,

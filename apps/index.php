@@ -23,7 +23,7 @@
 # direccion cambia segun donde este instalado el sitio:
 #
 #   en la maquina local   /apps/controllers/loginController.php
-#   en el hosting         /controllers/login.php
+#   en la copia de publicacion  /controllers/login.php
 #
 # Por eso no van escritas a mano sino a traves de $ruta_publica, que
 # quien llama puede dejar preparada. Si nadie la define queda el valor

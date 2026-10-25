@@ -9,6 +9,7 @@
 #   - los torneos publicos, para torneos.php, torneo.php y el inicio
 #   - las ligas de un organizador, para su panel
 #   - crear una liga y cerrar su inscripcion
+#   - cancelar una liga (RF-17, fase 3): no se borra, deja de verse
 #
 # Una persona compite en un torneo de dos maneras, segun el tipo:
 #   - individual: hay un participante con su id_usuario
@@ -64,7 +65,8 @@ class TorneoRepositorio
                 o.de_muestra AS org_muestra, o.foto_perfil AS org_foto,
                 c.id_torneo AS id_config, c.puntos_victoria, c.puntos_empate,
                 c.puntos_derrota, c.admite_empate, c.clasifican_playoffs,
-                c.ida_y_vuelta, c.criterio_desempate, c.rondas_previstas, c.reglas';
+                c.ida_y_vuelta, c.criterio_desempate, c.rondas_previstas, c.reglas,
+                c.mejor_de';
     }
 
     public static function uniones()
@@ -102,7 +104,7 @@ class TorneoRepositorio
                 $fila['id_config'], $fila['puntos_victoria'], $fila['puntos_empate'],
                 $fila['puntos_derrota'], $fila['admite_empate'], $fila['clasifican_playoffs'],
                 $fila['ida_y_vuelta'], $fila['rondas_previstas'], $fila['reglas'],
-                $fila['criterio_desempate']));
+                $fila['criterio_desempate'], $fila['mejor_de']));
         }
         return $torneo;
     }
@@ -222,6 +224,22 @@ class TorneoRepositorio
                              'ORDER BY t.fecha_creacion DESC, t.id_torneo DESC');
     }
 
+    # Los torneos de los reportes (RF-28): los de un organizador, o con
+    # null los de todos (la administracion). Tambien los cancelados, que
+    # conservan su historial. Primero los en curso, despues los que
+    # tienen la inscripcion abierta, los terminados y los cancelados.
+    public function listarParaReportes($id_organizador)
+    {
+        $orden = "ORDER BY CASE t.estado WHEN 'en_curso' THEN 0 WHEN 'inscripcion' THEN 1
+                                         WHEN 'finalizado' THEN 2 ELSE 3 END,
+                           t.fecha_creacion DESC, t.id_torneo DESC";
+        if ($id_organizador === null) {
+            return $this->listar("WHERE t.estado <> 'borrador'", '', array(), $orden);
+        }
+        return $this->listar("WHERE t.id_usuario_organizador = ? AND t.estado <> 'borrador'",
+                             'i', array((int)$id_organizador), $orden);
+    }
+
     # Cuantos torneos publicos organiza una cuenta, para la tarjeta del
     # organizador de torneo.php.
     public function cantidadDeOrganizador($id_usuario)
@@ -266,10 +284,14 @@ class TorneoRepositorio
     # asi que una no queda sin la otra. El organizador es el que trae el
     # objeto (el controlador pone siempre la cuenta de la sesion).
     # Devuelve un arreglo de errores, vacio si quedo creada; el id queda
-    # en el objeto.
+    # en el objeto. Desde la fase 3 sirve para los tres formatos (liga,
+    # eliminacion directa y suizo): el modulo lo trae el torneo, y las
+    # reglas que los cruzan son de Torneo::validarConfiguracion. En el
+    # suizo, rondas_previstas guarda las rondas que se van a jugar.
     public function crearLiga(Torneo $torneo, ConfiguracionTorneo $configuracion)
     {
-        $errores = array_merge($torneo->validarLiga(), $configuracion->validar());
+        $errores = array_merge($torneo->validarLiga(), $configuracion->validar(),
+                               $torneo->validarConfiguracion($configuracion));
         if (!empty($errores)) {
             return $errores;
         }
@@ -280,8 +302,8 @@ class TorneoRepositorio
         $this->conexion->begin_transaction();
 
         $sql = "INSERT INTO torneo (nombre, id_disciplina, id_tipo_torneo, id_modulo,
-                                    id_usuario_organizador, fecha_inicio, max_participantes, estado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'inscripcion')";
+                                    id_usuario_organizador, fecha_inicio, max_participantes, sede, estado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'inscripcion')";
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
             $this->conexion->rollback();
@@ -294,8 +316,9 @@ class TorneoRepositorio
         $organizador = (int)$torneo->getOrganizador()->getIdUsuario();
         $inicio      = empty($torneo->getFechaInicio()) ? null : $torneo->getFechaInicio();
         $cupo        = (int)$torneo->getMaxParticipantes();
-        $sentencia->bind_param('siiiisi', $nombre, $disciplina, $tipo, $modulo,
-                               $organizador, $inicio, $cupo);
+        $sede        = ($torneo->getSede() === null || $torneo->getSede() === '') ? null : $torneo->getSede();
+        $sentencia->bind_param('siiiisis', $nombre, $disciplina, $tipo, $modulo,
+                               $organizador, $inicio, $cupo, $sede);
         if (!$sentencia->execute()) {
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
@@ -311,8 +334,9 @@ class TorneoRepositorio
 
         $sql = 'INSERT INTO configuracion_torneo (id_torneo, puntos_victoria, puntos_empate,
                                                   puntos_derrota, admite_empate, clasifican_playoffs,
-                                                  ida_y_vuelta, criterio_desempate)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+                                                  ida_y_vuelta, criterio_desempate, mejor_de,
+                                                  rondas_previstas)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
             $this->conexion->rollback();
@@ -326,8 +350,10 @@ class TorneoRepositorio
         $playoffs  = $configuracion->getClasificanPlayoffs();
         $iv        = $configuracion->getIdaYVuelta();
         $criterio  = $configuracion->getCriterioDesempate();
-        $sentencia->bind_param('iiiiiiis', $id, $victoria, $empate, $derrota,
-                               $admite, $playoffs, $iv, $criterio);
+        $mejor_de  = $configuracion->getMejorDe();   # null: partido unico
+        $rondas    = $configuracion->getRondasPrevistas();   # null salvo en el suizo
+        $sentencia->bind_param('iiiiiiisii', $id, $victoria, $empate, $derrota,
+                               $admite, $playoffs, $iv, $criterio, $mejor_de, $rondas);
         if (!$sentencia->execute()) {
             $sentencia->close();
             $this->conexion->rollback();
@@ -357,7 +383,7 @@ class TorneoRepositorio
         $cantidad = $this->bloquearYContar($id_torneo, $id_org);
         if ($cantidad === null) {
             $this->conexion->rollback();
-            $resultado['errores'][] = 'Esa liga no está a cargo de esta cuenta.';
+            $resultado['errores'][] = 'Esa competencia no está a cargo de esta cuenta.';
             return $resultado;
         }
 
@@ -383,7 +409,7 @@ class TorneoRepositorio
         $sentencia->close();
         if (!$bien || $filas !== 1) {
             $this->conexion->rollback();
-            $resultado['errores'][] = 'La inscripción de esta liga ya está cerrada.';
+            $resultado['errores'][] = 'La inscripción de esta competencia ya está cerrada.';
             return $resultado;
         }
 
@@ -412,6 +438,63 @@ class TorneoRepositorio
 
         $this->conexion->commit();
         $torneo->cerrarInscripcion($cantidad);
+        return $resultado;
+    }
+
+    # --- Cancelar una liga (RF-17) ------------------------------------
+    # Un torneo con inscriptos no se borra (participante lo retiene con
+    # ON DELETE RESTRICT): se cancela. Queda en la base con todo lo que se
+    # jugo, y deja de verse en el sitio y en el panel. Los pedidos de
+    # lugar que quedaban pendientes se rechazan. Las reglas (no se cancela
+    # una terminada ni una ya cancelada) son de Torneo::cancelar. Todo en
+    # una transaccion, con la fila del torneo bloqueada.
+    # Devuelve array('errores' => ..., 'rechazados' => cantidad).
+    public function cancelar(Torneo $torneo, Usuario $organizador)
+    {
+        $resultado = array('errores' => array(), 'rechazados' => 0);
+        $id_torneo = (int)$torneo->getIdTorneo();
+        $id_org    = (int)$organizador->getIdUsuario();
+
+        $this->conexion->begin_transaction();
+        if ($this->bloquearYContar($id_torneo, $id_org) === null) {
+            $this->conexion->rollback();
+            $resultado['errores'][] = 'Esa competencia no está a cargo de esta cuenta.';
+            return $resultado;
+        }
+        $actual  = $this->buscarPorId($id_torneo);
+        $errores = ($actual === null) ? array('Esa liga no existe.') : $actual->cancelar();
+        if (!empty($errores)) {
+            $this->conexion->rollback();
+            $resultado['errores'] = $errores;
+            return $resultado;
+        }
+
+        $sql = "UPDATE torneo SET estado = 'cancelado'
+                 WHERE id_torneo = ? AND estado NOT IN ('finalizado', 'cancelado')";
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false || !$sentencia->bind_param('i', $id_torneo) || !$sentencia->execute()
+            || $sentencia->affected_rows !== 1) {
+            $this->conexion->rollback();
+            $resultado['errores'][] = 'La liga no se puede cancelar por ahora.';
+            return $resultado;
+        }
+        $sentencia->close();
+
+        # Igual que al cerrar la inscripcion: ya no hay lugar que dar.
+        $sql = "UPDATE pedido_inscripcion
+                   SET estado = 'rechazado', fecha_resolucion = GREATEST(NOW(), fecha_pedido), id_usuario_resuelve = ?
+                 WHERE id_torneo = ? AND estado = 'pendiente'";
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false || !$sentencia->bind_param('ii', $id_org, $id_torneo) || !$sentencia->execute()) {
+            $this->conexion->rollback();
+            $resultado['errores'][] = 'La liga no se puede cancelar por ahora.';
+            return $resultado;
+        }
+        $resultado['rechazados'] = $sentencia->affected_rows;
+        $sentencia->close();
+
+        $this->conexion->commit();
+        $torneo->cancelar();
         return $resultado;
     }
 

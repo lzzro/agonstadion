@@ -54,17 +54,12 @@
 -- Export -> Quick -> SQL -> Go. Hay cuentas reales adentro.
 --
 -- Como se corre, a mano, una vez en cada base (igual que las otras):
---   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm en
---      XAMPP, la del hosting con su prefijo). Sin USE, a proposito: el
---      nombre de la base no es el mismo en los dos lugares.
+--   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm
+--      en XAMPP). Sin USE, a proposito: en otra instalacion la base
+--      puede llamarse distinto.
 --   2. Pestana SQL (o Import), pegar o subir este archivo, y Go.
---      EN EL HOSTING, el archivo es otro: la copia que genera
---      scripts/armar-deploy.sh en
---      deploy/hosting-compartido/sql/migraciones/005_ligas.sql, que es
---      esta misma sin el bloque "[solo servidor propio]" (el GRANT, que
---      ahi da error de permisos y cPanel no necesita).
---   3. Con la cuenta con la que se administra la base (root en XAMPP, la
---      cuenta de cPanel en el hosting). sgdm_app no alcanza: no puede
+--   3. Con la cuenta con la que se administra la base (root en XAMPP
+--      o en la VM). sgdm_app no alcanza: no puede
 --      cambiar la estructura.
 --
 -- Que esperar:
@@ -118,7 +113,7 @@
 -- comprueba tests/php/muestra.php.
 --
 -- Necesita MariaDB 10.2 o superior. Probada en MariaDB 10.11 (la de la
--- VM) y 11.4 (la del hosting), sobre una base migrada desde el esquema
+-- VM) y 11.4, sobre una base migrada desde el esquema
 -- anterior, sobre una base nueva y corriendola dos veces.
 -- =====================================================================
 
@@ -128,7 +123,7 @@ SET NAMES utf8mb4;
 
 -- La hora de Montevideo (UTC-3), la misma que usa la aplicacion (ver
 -- apps/config/database.php): la fila de la auditoria que deja la carga
--- lleva la hora de aca y no la del servidor, que en el hosting es UTC.
+-- lleva la hora de aca y no la del servidor, que puede estar en UTC.
 -- Vale solo para esta conexion.
 SET time_zone = '-03:00';
 
@@ -308,9 +303,7 @@ SELECT 'Fútbol 5' FROM DUAL
 -- ---------------------------------------------------------------------
 -- 4. El permiso de sgdm_app sobre la tabla nueva: lo mismo que sobre
 --    pedido_rol, INSERT y UPDATE sin DELETE (un pedido se resuelve, no
---    se borra). Solo en un servidor propio: en el hosting los permisos
---    los da cPanel sobre la base entera, y la copia del hosting no trae
---    este bloque.
+--    se borra). Pide la cuenta de administracion de la base.
 -- ---------------------------------------------------------------------
 -- [solo servidor propio] desde aca
 GRANT INSERT, UPDATE ON pedido_inscripcion TO 'sgdm_app'@'localhost';

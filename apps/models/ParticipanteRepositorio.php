@@ -5,7 +5,10 @@
 # ---------------------------------------------------------------------
 # Acceso a la base para los participantes de una liga:
 #   - la lista de una liga, con su equipo (y el capitan, si tiene);
-#   - agregar un equipo a mano desde el panel del organizador.
+#   - agregar un equipo a mano desde el panel del organizador;
+#   - desde la fase 3, la inscripcion de un jugador en una liga
+#     individual (CU-09): se anota solo, con su cuenta, sin pedido, si
+#     la liga tiene la inscripcion abierta y lugar (RF-15 y RF-16).
 #
 # Agregar a mano, por nombre. Si ya hay un equipo con ese nombre:
 #   - con capitan: no se agrega; ese equipo entra con su propio pedido
@@ -109,7 +112,7 @@ class ParticipanteRepositorio
         $cantidad = $torneos->bloquearYContar($id_torneo, $id_org);
         if ($cantidad === null) {
             $this->conexion->rollback();
-            $salida['errores'][] = 'Esa liga no está a cargo de esta cuenta.';
+            $salida['errores'][] = 'Esa competencia no está a cargo de esta cuenta.';
             return $salida;
         }
         $actual = $torneos->buscarPorId($id_torneo);
@@ -186,7 +189,79 @@ class ParticipanteRepositorio
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
             $this->conexion->rollback();
-            $salida['errores'][] = $duplicado ? 'Ese equipo ya juega esta liga.' : 'El equipo no se puede anotar por ahora.';
+            $salida['errores'][] = $duplicado ? 'Ese equipo ya juega esta competencia.' : 'El equipo no se puede anotar por ahora.';
+            return $salida;
+        }
+        $salida['id_participante'] = (int)$this->conexion->insert_id;
+        $sentencia->close();
+
+        $this->conexion->commit();
+        return $salida;
+    }
+
+    # Un jugador se anota en una liga individual (CU-09). Las reglas son
+    # las de Torneo::agregarParticipante (abierta, con lugar, del tipo
+    # que corresponde) mas una: una liga de muestra no recibe a nadie.
+    # Se miran con la fila del torneo bloqueada (SELECT ... FOR UPDATE),
+    # como un pedido de lugar, y que la misma cuenta no entre dos veces
+    # lo cuida la base (uq_part_usuario).
+    # Devuelve array('errores' => ..., 'id_participante' => la
+    # inscripcion nueva).
+    public function inscribirJugador(Torneo $torneo, Usuario $jugador)
+    {
+        $salida = array('errores' => array(), 'id_participante' => null);
+        if ($torneo->esPorEquipos()) {
+            $salida['errores'][] = 'En esta competencia compiten equipos: el lugar lo pide el capitán.';
+            return $salida;
+        }
+        if ($torneo->esDeMuestra()) {
+            $salida['errores'][] = 'Una liga de muestra no recibe inscripciones.';
+            return $salida;
+        }
+
+        $torneos   = new TorneoRepositorio($this->conexion);
+        $id_torneo = (int)$torneo->getIdTorneo();
+        $id_jugador = (int)$jugador->getIdUsuario();
+
+        $this->conexion->begin_transaction();
+
+        $sql = 'SELECT estado, max_participantes FROM torneo WHERE id_torneo = ? FOR UPDATE';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            $this->conexion->rollback();
+            $salida['errores'][] = 'La inscripción no se puede registrar por ahora.';
+            return $salida;
+        }
+        $sentencia->bind_param('i', $id_torneo);
+        $sentencia->execute();
+        $fila = $sentencia->get_result()->fetch_assoc();
+        $sentencia->close();
+
+        if ($fila === null || $fila['estado'] !== 'inscripcion') {
+            $this->conexion->rollback();
+            $salida['errores'][] = 'La inscripción de esa liga está cerrada.';
+            return $salida;
+        }
+        if ($torneos->contarParticipantes($id_torneo) >= (int)$fila['max_participantes']) {
+            $this->conexion->rollback();
+            $salida['errores'][] = 'La liga ya tiene su cupo completo.';
+            return $salida;
+        }
+
+        $sql = "INSERT INTO participante (id_torneo, id_usuario, estado) VALUES (?, ?, 'inscripto')";
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            $this->conexion->rollback();
+            $salida['errores'][] = 'La inscripción no se puede registrar por ahora.';
+            return $salida;
+        }
+        $sentencia->bind_param('ii', $id_torneo, $id_jugador);
+        if (!$sentencia->execute()) {
+            $duplicado = ($sentencia->errno === 1062);
+            $sentencia->close();
+            $this->conexion->rollback();
+            $salida['errores'][] = $duplicado ? 'Esa cuenta ya juega esta competencia.'
+                                              : 'La inscripción no se puede registrar por ahora.';
             return $salida;
         }
         $salida['id_participante'] = (int)$this->conexion->insert_id;

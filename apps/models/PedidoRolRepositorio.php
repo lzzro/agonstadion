@@ -50,7 +50,7 @@ class PedidoRolRepositorio
         if (!$sentencia->execute()) {
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
-            return array($duplicado ? 'Ya hay un pedido en revision.'
+            return array($duplicado ? 'Ya hay un pedido en revisión.'
                                     : 'El pedido no se puede registrar por ahora.');
         }
         $filas = $sentencia->affected_rows;
@@ -118,7 +118,7 @@ class PedidoRolRepositorio
 
         if (!$bien || $filas !== 1) {
             $this->conexion->rollback();
-            return array('Ese pedido ya no esta pendiente.');
+            return array('Ese pedido ya no está pendiente.');
         }
 
         if ($aprobar) {

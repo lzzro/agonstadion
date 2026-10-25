@@ -15,7 +15,7 @@
 #      foto, o sus iniciales, en un circulo que lleva al perfil.
 #   3. Deja preparadas las direcciones del perfil, la administracion,
 #      el panel, crear liga y pedir lugar, que no son las mismas en la
-#      maquina local y en el hosting (ver config/rutas_paginas.php).
+#      maquina local y en la copia de publicacion (ver config/rutas_paginas.php).
 #   4. Carga recurso() (config/recursos.php), que da la direccion del
 #      CSS y del JS con su version, y piePagina() (pie.php).
 #
@@ -47,7 +47,7 @@ require_once __DIR__ . '/../pie.php';
 header('Cache-Control: no-store');
 
 # La carpeta de la aplicacion (apps/ en la maquina local, stadion_app/
-# en el hosting), para que las paginas que leen de la base carguen sus
+# en la copia de publicacion y en Docker), para que las paginas que leen de la base carguen sus
 # modelos sin escribir la ruta a mano: es la carpeta de arriba de esta.
 $carpeta_app = dirname(__DIR__);
 

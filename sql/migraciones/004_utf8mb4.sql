@@ -2,11 +2,10 @@
 -- SGDM - Stadion (Agon) - Lucas Martiarena
 -- Migracion 004: la base entera a utf8mb4 (utf8mb4_unicode_ci)
 -- ---------------------------------------------------------------------
--- Para las bases que quedaron en latin1. Paso en el hosting: para
--- importar schema.sql ahi se borro a mano el CREATE DATABASE (el
--- hosting no deja crear bases por SQL), y con el se fue la codificacion.
--- Las tablas no declaraban la suya, asi que tomaron la de la base, que
--- cPanel crea con la del servidor: latin1 (latin1_swedish_ci).
+-- Para las bases que quedaron en latin1. Pasa al importar schema.sql
+-- sin el CREATE DATABASE en una base creada aparte con la codificacion
+-- de fabrica del servidor: latin1 (latin1_swedish_ci). Las tablas no
+-- declaraban la suya, asi que tomaron la de la base.
 --
 -- latin1 guarda las tildes y la enie, pero no un emoji ni ningun
 -- caracter fuera del alfabeto de Europa occidental: con esos, guardar
@@ -28,12 +27,12 @@
 -- Export -> Quick -> SQL -> Go. Hay cuentas reales adentro.
 --
 -- Como se corre, a mano, una vez en cada base (igual que las otras):
---   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm en
---      XAMPP, la del hosting con su prefijo). Sin USE, a proposito: el
---      nombre de la base no es el mismo en los dos lugares.
+--   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm
+--      en XAMPP). Sin USE, a proposito: en otra instalacion la base
+--      puede llamarse distinto.
 --   2. Pestana SQL (o Import), pegar o subir este archivo, y Go.
---   3. Con la cuenta con la que se administra la base (root en XAMPP, la
---      cuenta de cPanel en el hosting). sgdm_app no alcanza: solo tiene
+--   3. Con la cuenta con la que se administra la base (root en XAMPP
+--      o en la VM). sgdm_app no alcanza: solo tiene
 --      permisos sobre los datos, no sobre la estructura.
 --
 -- Que hace, en orden:
@@ -134,7 +133,7 @@
 -- Corregido el problema, se vuelve a correr el archivo entero.
 --
 -- Necesita MariaDB 10.2 o superior, igual que schema.sql. Probada en
--- MariaDB 10.11 (la de la VM) y 11.4 (la del hosting), por la consola y
+-- MariaDB 10.11 (la de la VM) y 11.4, por la consola y
 -- a traves de phpMyAdmin 5.2.1 (pestanas SQL e Import).
 -- =====================================================================
 

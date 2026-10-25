@@ -9,11 +9,14 @@
 # base y las vistas de la fase 2; imprime exactamente el marcado que
 # las otras paginas llevan escrito.
 #
-#   $enlaces   true en las paginas publicas: Ayuda, Terminos y Contacto,
-#              como texto apagado (todavia no tienen destino).
+#   $enlaces       true en las paginas publicas: Ayuda, Terminos y
+#                  Contacto (desde la tercera entrega, con su pagina).
+#   $ruta_publica  la direccion de public/ vista desde la pagina que
+#                  llama: los enlaces van a ayuda.php, terminos.php y
+#                  contacto.php de ahi.
 # =====================================================================
 
-function piePagina($enlaces)
+function piePagina($enlaces, $ruta_publica = '.')
 {
 ?>
 <footer>
@@ -25,7 +28,7 @@ function piePagina($enlaces)
   <rect x="0" y="0" width="200" height="200" fill="currentColor" mask="url(#lente-mask)"/>
 </svg><span>Stadion es un producto de Agón · Montevideo, 2026</span></div>
 <?php if ($enlaces) { ?>
-  <div class="fila"><span class="enlace-apagado" aria-disabled="true">Ayuda</span><span class="enlace-apagado" aria-disabled="true">Términos</span><span class="enlace-apagado" aria-disabled="true">Contacto</span></div>
+  <div class="fila"><a href="<?php echo $ruta_publica; ?>/ayuda.php">Ayuda</a><a href="<?php echo $ruta_publica; ?>/terminos.php">Términos</a><a href="<?php echo $ruta_publica; ?>/contacto.php">Contacto</a></div>
 <?php } ?>
 </footer>
 </div>

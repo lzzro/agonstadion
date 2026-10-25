@@ -136,18 +136,54 @@ class Usuario
 
     # Toma la clave en claro, la valida y guarda solo el hash.
     # Devuelve un arreglo de errores; vacio significa que se asigno.
+    #
+    # La politica de contrasenas de Ciberseguridad (primera entrega),
+    # desde la tercera entrega controlada por el sistema: 10 caracteres
+    # o mas, con una mayuscula, una minuscula y un numero, y sin el
+    # nombre, el apellido ni la parte del correo antes de la @ (cuando
+    # tienen 3 letras o mas). Vale para toda clave nueva: el alta y el
+    # cambio desde el perfil. Las cuentas que ya existian siguen
+    # entrando con su clave de antes.
     public function asignarClave($clave_en_claro)
     {
         $errores = array();
         if (empty($clave_en_claro)) {
-            $errores[] = 'La contrasena no puede quedar vacia.';
+            $errores[] = 'La contraseña no puede quedar vacía.';
         } elseif (mb_strlen($clave_en_claro) < 10) {
-            $errores[] = 'La contrasena necesita al menos 10 caracteres.';
+            $errores[] = 'La contraseña necesita al menos 10 caracteres.';
+        } else {
+            if (!preg_match('/\p{Lu}/u', $clave_en_claro)
+                || !preg_match('/\p{Ll}/u', $clave_en_claro)
+                || !preg_match('/[0-9]/', $clave_en_claro)) {
+                $errores[] = 'La contraseña lleva al menos una mayúscula, una minúscula y un número.';
+            }
+            if ($this->contieneDatosPropios($clave_en_claro)) {
+                $errores[] = 'La contraseña no puede contener el nombre, el apellido ni el correo de la cuenta.';
+            }
         }
         if (empty($errores)) {
             $this->hash_password = password_hash($clave_en_claro, PASSWORD_DEFAULT);
         }
         return $errores;
+    }
+
+    # true si la clave contiene, sin mirar mayusculas, el nombre, el
+    # apellido o la parte del correo antes de la @ de esta cuenta. Los de
+    # menos de 3 letras no cuentan: casi cualquier clave los tendria.
+    private function contieneDatosPropios($clave_en_claro)
+    {
+        $clave = mb_strtolower($clave_en_claro, 'UTF-8');
+        $propios = array($this->nombre, $this->apellido);
+        if (!empty($this->correo) && mb_strpos($this->correo, '@') !== false) {
+            $propios[] = mb_substr($this->correo, 0, mb_strpos($this->correo, '@'));
+        }
+        foreach ($propios as $dato) {
+            $dato = mb_strtolower(trim((string)$dato), 'UTF-8');
+            if (mb_strlen($dato) >= 3 && mb_strpos($clave, $dato) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     # Comprueba la clave del login contra el hash guardado.
@@ -187,7 +223,7 @@ class Usuario
         } elseif (mb_strlen($this->correo) > 120) {
             $errores[] = 'El correo no puede pasar de 120 caracteres.';
         } elseif (!filter_var($this->correo, FILTER_VALIDATE_EMAIL)) {
-            $errores[] = 'El correo no tiene un formato valido.';
+            $errores[] = 'El correo no tiene un formato válido.';
         }
 
         if (empty($this->nombre) || mb_strlen($this->nombre) < 2 || mb_strlen($this->nombre) > 40) {
@@ -204,20 +240,20 @@ class Usuario
             if (mb_strlen($this->alias) > 20) {
                 $errores[] = 'El alias no puede pasar de 20 caracteres.';
             } elseif (!preg_match('/^[A-Za-z0-9_]+$/', $this->alias)) {
-                $errores[] = 'El alias solo admite letras, numeros y guion bajo.';
+                $errores[] = 'El alias solo admite letras, números y guion bajo.';
             }
         }
 
         if (!empty($this->presentacion) && mb_strlen($this->presentacion) > 300) {
-            $errores[] = 'La presentacion no puede pasar de 300 caracteres.';
+            $errores[] = 'La presentación no puede pasar de 300 caracteres.';
         }
 
         if (empty($this->hash_password)) {
-            $errores[] = 'El usuario no tiene contrasena asignada.';
+            $errores[] = 'La cuenta no tiene contraseña asignada.';
         }
 
         if ($this->activo !== 0 && $this->activo !== 1) {
-            $errores[] = 'El estado de alta solo admite si o no.';
+            $errores[] = 'Una cuenta está activa o de baja.';
         }
 
         return $errores;

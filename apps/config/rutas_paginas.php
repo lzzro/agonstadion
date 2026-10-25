@@ -9,7 +9,8 @@
 # En la maquina local los controladores se alcanzan por el Alias
 # /apps/controllers de Apache (ver docs/configuracion-apache.md).
 #
-# En el hosting este archivo se reemplaza por otro con las direcciones
+# En la copia de publicacion (deploy/sitio, la de Docker) este archivo
+# se reemplaza por otro con las direcciones
 # de los puentes de controllers/: lo escribe scripts/armar-deploy.sh.
 # =====================================================================
 
@@ -19,3 +20,4 @@ $ruta_admin       = '../apps/controllers/adminController.php';
 $ruta_crear       = '../apps/controllers/crearController.php';
 $ruta_panel       = '../apps/controllers/panelController.php';
 $ruta_inscripcion = '../apps/controllers/inscripcionController.php';
+$ruta_partidos    = '../apps/controllers/partidosController.php';

@@ -86,16 +86,12 @@ class Auditoria
             $errores[] = 'El nombre de la tabla afectada no puede pasar de 40 caracteres.';
         }
 
-        # Misma lista que la restriccion ck_audit_accion.
-        $acciones = array('alta', 'baja', 'modificacion', 'login_ok', 'login_error', 'logout',
-                          'pedido_rol', 'aprobacion', 'rechazo',
-                          'inscripcion', 'solicitud', 'cierre', 'fixture');
-        if (!in_array($this->accion, $acciones)) {
-            $errores[] = 'La accion registrada no es una de las previstas.';
+        if (!in_array($this->accion, self::acciones(), true)) {
+            $errores[] = 'La acción registrada no es una de las previstas.';
         }
 
         if ($this->usuario !== null && !($this->usuario instanceof Usuario)) {
-            $errores[] = 'El responsable del registro no es un usuario valido.';
+            $errores[] = 'El responsable del registro no es un usuario válido.';
         }
 
         if (!empty($this->detalle) && mb_strlen($this->detalle) > 255) {
@@ -104,10 +100,20 @@ class Auditoria
 
         # 45 caracteres es el largo maximo de una IPv6.
         if (!empty($this->direccion_ip) && mb_strlen($this->direccion_ip) > 45) {
-            $errores[] = 'La direccion IP no tiene un largo valido.';
+            $errores[] = 'La dirección IP no tiene un largo válido.';
         }
 
         return $errores;
+    }
+
+    # Las acciones previstas: la misma lista que la restriccion
+    # ck_audit_accion. La usa tambien el filtro de la administracion.
+    public static function acciones()
+    {
+        return array('alta', 'baja', 'modificacion', 'login_ok', 'login_error', 'logout',
+                     'pedido_rol', 'aprobacion', 'rechazo',
+                     'inscripcion', 'solicitud', 'cierre', 'fixture',
+                     'resultado', 'programacion', 'final', 'cancelacion', 'medicion');
     }
 
     #endregion

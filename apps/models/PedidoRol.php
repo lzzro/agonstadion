@@ -71,12 +71,12 @@ class PedidoRol
     {
         $motivos = array();
         if (!($administrador instanceof Usuario) || !$administrador->tieneRol('administrador')) {
-            $motivos[] = 'Los pedidos de rol los resuelve la administracion.';
+            $motivos[] = 'Los pedidos de rol los resuelve la administración.';
         } elseif ((int)$administrador->getIdUsuario() === (int)$this->usuario->getIdUsuario()) {
-            $motivos[] = 'Un pedido propio lo resuelve otra cuenta de la administracion.';
+            $motivos[] = 'Un pedido propio lo resuelve otra cuenta de la administración.';
         }
         if (!$this->estaPendiente()) {
-            $motivos[] = 'Ese pedido ya no esta pendiente.';
+            $motivos[] = 'Ese pedido ya no está pendiente.';
         }
         return $motivos;
     }
@@ -89,7 +89,7 @@ class PedidoRol
         }
         if ($this->resuelve !== null
             && (int)$this->resuelve->getIdUsuario() === (int)$this->usuario->getIdUsuario()) {
-            $errores[] = 'Un pedido propio lo resuelve otra cuenta de la administracion.';
+            $errores[] = 'Un pedido propio lo resuelve otra cuenta de la administración.';
         }
         return $errores;
     }

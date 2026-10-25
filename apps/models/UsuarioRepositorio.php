@@ -90,13 +90,13 @@ class UsuarioRepositorio
     public function asignarRolPorNombre(Usuario $usuario, $nombre_rol)
     {
         if ($usuario->getIdUsuario() === null) {
-            return array('Falta saber a que cuenta asignarle el rol.');
+            return array('Falta saber a qué cuenta asignarle el rol.');
         }
 
         $sql = 'SELECT id_rol, nombre, descripcion FROM rol WHERE nombre = ?';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
-            return array('La asignacion del rol no se completa.');
+            return array('La asignación del rol no se completa.');
         }
         $sentencia->bind_param('s', $nombre_rol);
         $sentencia->execute();
@@ -110,7 +110,7 @@ class UsuarioRepositorio
         $sql = 'INSERT INTO usuario_rol (id_usuario, id_rol) VALUES (?, ?)';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
-            return array('La asignacion del rol no se completa.');
+            return array('La asignación del rol no se completa.');
         }
         $id_usuario = $usuario->getIdUsuario();
         $id_rol     = (int)$fila['id_rol'];
@@ -293,7 +293,7 @@ class UsuarioRepositorio
             return $errores;
         }
         if ($usuario->getIdUsuario() === null) {
-            return array('Falta saber que cuenta se actualiza.');
+            return array('Falta saber qué cuenta se actualiza.');
         }
 
         $sql = 'UPDATE usuario
@@ -301,7 +301,7 @@ class UsuarioRepositorio
                 WHERE id_usuario = ?';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false) {
-            return array('La modificacion no se completa.');
+            return array('La modificación no se completa.');
         }
 
         $nombre       = $usuario->getNombre();
@@ -317,12 +317,37 @@ class UsuarioRepositorio
         if (!$sentencia->execute()) {
             if ($sentencia->errno === 1062) {
                 $sentencia->close();
-                return array('Ese alias ya esta en uso.');
+                return array('Ese alias ya está en uso.');
             }
             $sentencia->close();
             return array('El perfil no se guarda.');
         }
 
+        $sentencia->close();
+        return array();
+    }
+
+    # --- Contrasena (tercera entrega) --------------------------------
+    # Guarda el hash nuevo de la cuenta. La clave ya paso por
+    # Usuario::asignarClave(), que la valido y la convirtio en hash: aca
+    # no llega nunca en claro. Solo una cuenta activa.
+    public function actualizarClave(Usuario $usuario)
+    {
+        if ($usuario->getIdUsuario() === null || empty($usuario->getHashPassword())) {
+            return array('Falta saber qué cuenta se actualiza.');
+        }
+        $sql = 'UPDATE usuario SET hash_password = ? WHERE id_usuario = ? AND activo = 1';
+        $sentencia = $this->conexion->prepare($sql);
+        if ($sentencia === false) {
+            return array('La contraseña no se cambia.');
+        }
+        $hash = $usuario->getHashPassword();
+        $id   = $usuario->getIdUsuario();
+        $sentencia->bind_param('si', $hash, $id);
+        if (!$sentencia->execute() || $sentencia->affected_rows !== 1) {
+            $sentencia->close();
+            return array('La contraseña no se cambia.');
+        }
         $sentencia->close();
         return array();
     }
@@ -360,6 +385,109 @@ class UsuarioRepositorio
     {
         $usuario->darDeBaja();
         return $this->actualizarPerfil($usuario);
+    }
+
+    # --- Administracion (RF-11 y RF-24) -------------------------------
+    # La baja logica de una cuenta, o su vuelta, desde la administracion.
+    # Las reglas: la cuenta existe, no es la propia (una administradora
+    # no se da de baja a si misma: lo hace otra) y no es de muestra (esas
+    # no inician sesion nunca). Con la fila de la cuenta bloqueada. Una
+    # cuenta de baja no inicia sesion (RF-07) y, si tenia una abierta, se
+    # cierra en el pedido siguiente (cada controlador mira estaActivo()).
+    # Su historial queda: torneos, partidos, mediciones y auditoria.
+    # Devuelve array('errores' => [...], 'cuenta' => Usuario o null).
+    public function cambiarActivo(Usuario $administrador, $id_cuenta, $activar)
+    {
+        $this->conexion->begin_transaction();
+        $cuenta = $this->bloquearCuenta($id_cuenta);
+        $error = null;
+        if ($cuenta === null) {
+            $error = 'Esa cuenta no existe.';
+        } elseif ((int)$cuenta->getIdUsuario() === (int)$administrador->getIdUsuario()) {
+            $error = 'La cuenta propia no cambia de estado desde acá: lo hace otra cuenta de la administración.';
+        } elseif ($cuenta->esDeMuestra()) {
+            $error = 'Una cuenta de muestra no cambia de estado.';
+        } elseif ($cuenta->estaActivo() === (bool)$activar) {
+            $error = $activar ? 'Esa cuenta ya está activa.' : 'Esa cuenta ya está de baja.';
+        } else {
+            $sentencia = $this->conexion->prepare('UPDATE usuario SET activo = ? WHERE id_usuario = ?');
+            $activo = $activar ? 1 : 0;
+            $id = (int)$id_cuenta;
+            if ($sentencia === false || !$sentencia->bind_param('ii', $activo, $id) || !$sentencia->execute()) {
+                $error = 'El estado de la cuenta no se puede cambiar por ahora.';
+            }
+            if ($sentencia !== false) {
+                $sentencia->close();
+            }
+        }
+        if ($error !== null) {
+            $this->conexion->rollback();
+            return array('errores' => array($error), 'cuenta' => $cuenta);
+        }
+        $this->conexion->commit();
+        return array('errores' => array(), 'cuenta' => $cuenta);
+    }
+
+    # Da o quita el rol administrador (las cuentas administrativas,
+    # RF-24). Darlo: a una cuenta activa, que no sea de muestra. Quitarlo:
+    # nunca a la propia; asi siempre queda al menos una administradora,
+    # la que lo quita. Devuelve array('errores' => [...], 'cuenta' =>
+    # Usuario o null).
+    public function cambiarAdministrador(Usuario $administrador, $id_cuenta, $dar)
+    {
+        $this->conexion->begin_transaction();
+        $cuenta = $this->bloquearCuenta($id_cuenta);
+        $error = null;
+        if ($cuenta !== null) {
+            $this->cargarRoles($cuenta);
+        }
+        if ($cuenta === null) {
+            $error = 'Esa cuenta no existe.';
+        } elseif ($dar && (!$cuenta->estaActivo() || $cuenta->esDeMuestra())) {
+            $error = 'El rol administrador va solo a una cuenta activa.';
+        } elseif ($dar && $cuenta->tieneRol('administrador')) {
+            $error = 'Esa cuenta ya es de la administración.';
+        } elseif (!$dar && (int)$cuenta->getIdUsuario() === (int)$administrador->getIdUsuario()) {
+            $error = 'El rol propio no se quita desde acá: lo hace otra cuenta de la administración.';
+        } elseif (!$dar && !$cuenta->tieneRol('administrador')) {
+            $error = 'Esa cuenta no es de la administración.';
+        } else {
+            $sql = $dar ? "INSERT INTO usuario_rol (id_usuario, id_rol) SELECT ?, id_rol FROM rol WHERE nombre = 'administrador'"
+                        : "DELETE FROM usuario_rol WHERE id_usuario = ? AND id_rol = (SELECT id_rol FROM rol WHERE nombre = 'administrador')";
+            $sentencia = $this->conexion->prepare($sql);
+            $id = (int)$id_cuenta;
+            if ($sentencia === false || !$sentencia->bind_param('i', $id) || !$sentencia->execute()
+                || $sentencia->affected_rows !== 1) {
+                $error = 'El rol no se puede cambiar por ahora.';
+            }
+            if ($sentencia !== false) {
+                $sentencia->close();
+            }
+        }
+        if ($error !== null) {
+            $this->conexion->rollback();
+            return array('errores' => array($error), 'cuenta' => $cuenta);
+        }
+        $this->conexion->commit();
+        return array('errores' => array(), 'cuenta' => $cuenta);
+    }
+
+    # La cuenta con ese id, con su fila bloqueada (FOR UPDATE), o null.
+    private function bloquearCuenta($id_cuenta)
+    {
+        $sentencia = $this->conexion->prepare('SELECT id_usuario, correo, hash_password, nombre, apellido,
+                                                      alias, presentacion, activo, fecha_alta,
+                                                      foto_perfil, foto_portada, de_muestra
+                                               FROM usuario WHERE id_usuario = ? FOR UPDATE');
+        if ($sentencia === false) {
+            return null;
+        }
+        $id = (int)$id_cuenta;
+        $sentencia->bind_param('i', $id);
+        $sentencia->execute();
+        $fila = $sentencia->get_result()->fetch_assoc();
+        $sentencia->close();
+        return ($fila === null) ? null : $this->construirUsuario($fila);
     }
 
     # --- Auxiliar ---------------------------------------------------

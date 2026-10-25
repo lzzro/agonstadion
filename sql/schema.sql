@@ -5,21 +5,19 @@
 -- Segunda entrega: modelo relacional normalizado (3FN) + DDL + DCL
 --
 -- Motor: MariaDB con InnoDB. Probado ejecutando este mismo archivo en
--- MariaDB 10.11, que es la version de la VM del instituto, y su version
--- para el hosting en MariaDB 11.4, la del hosting. Necesita
+-- MariaDB 10.11, que es la version de la VM del instituto, y en
+-- MariaDB 11.4, una serie mas nueva. Necesita
 -- MariaDB 10.2 o superior, porque antes de esa version las
 -- restricciones CHECK se aceptaban pero no se verificaban.
--- En un servidor propio el script se puede correr varias veces
--- seguidas: empieza borrando las tablas en orden inverso al de creacion
--- (la version del hosting, en cambio, no borra nada; ver abajo).
+-- El script se puede correr varias veces seguidas: empieza borrando las
+-- tablas en orden inverso al de creacion.
 --
 -- CODIFICACION: cada CREATE TABLE lleva escrita la suya (utf8mb4 con
 -- utf8mb4_unicode_ci), ademas del CREATE DATABASE. Asi el resultado no
 -- depende de la base donde se importe. Sin eso, una tabla toma la
--- codificacion por defecto de la base, y en un hosting la base la crea
--- cPanel con la del servidor: latin1. Paso en el hosting, y ahi latin1
--- no guarda un emoji ni ningun caracter fuera del alfabeto de Europa
--- occidental. La base que ya quedo en latin1 se convierte con
+-- codificacion por defecto de la base, y una base creada con la
+-- configuracion de fabrica de MariaDB queda en latin1, que no guarda un
+-- emoji ni ningun caracter fuera del alfabeto de Europa occidental. La base que ya quedo en latin1 se convierte con
 -- sql/migraciones/004_utf8mb4.sql.
 --
 -- DATOS DE MUESTRA: este archivo crea la estructura y los catalogos, y
@@ -29,14 +27,11 @@
 -- despues de este archivo: ahi encuentra la estructura hecha y solo
 -- agrega los datos. Asi los datos de muestra viven en un solo lugar.
 --
--- [solo servidor propio] desde aca
--- HOSTING COMPARTIDO: este archivo no se importa tal cual en un hosting.
--- Ahi no se puede crear la base ni usuarios por SQL, y los bloques
--- marcados "[solo servidor propio]" (CREATE DATABASE, USE, el borrado
--- de las tablas y el DCL) darian error o harian dano. La version para
--- el hosting la genera scripts/armar-deploy.sh, sin esos bloques, en
--- deploy/hosting-compartido/sql/schema-hosting.sql. No se edita a mano.
--- [solo servidor propio] hasta aca
+-- BLOQUES "[solo servidor propio]": lo que pide permisos de
+-- administracion sobre el servidor de la base (CREATE DATABASE, USE, el
+-- borrado de las tablas y el DCL) va entre dos renglones con esa marca.
+-- Las pruebas de las migraciones (tests/sql/) los saltean para correr
+-- con una cuenta sin esos permisos.
 -- =====================================================================
 --
 -- MODELO RELACIONAL (resumen textual)
@@ -52,14 +47,15 @@
 -- integrante_equipo (id_equipo*, id_usuario*, dorsal, activo, fecha_alta)
 -- disciplina (id_disciplina, nombre)
 -- tipo_torneo (id_tipo_torneo, nombre, compite_equipo)
--- modulo_competencia (id_modulo, nombre, descripcion)
+-- modulo_competencia (id_modulo, nombre, descripcion, habilitado)
 -- torneo (id_torneo, nombre, id_disciplina, id_tipo_torneo, id_modulo,
 --         id_usuario_organizador, fecha_inicio, fecha_fin,
 --         max_participantes, sede, estado, fecha_creacion,
 --         nombre_vigente [calculada])
 -- configuracion_torneo (id_torneo*, puntos_victoria, puntos_empate,
 --         puntos_derrota, admite_empate, clasifican_playoffs,
---         ida_y_vuelta, criterio_desempate, rondas_previstas, reglas)
+--         ida_y_vuelta, criterio_desempate, rondas_previstas, reglas,
+--         mejor_de)
 -- participante (id_participante, id_torneo, id_usuario, id_equipo,
 --         estado, fecha_inscripcion)
 -- pedido_inscripcion (id_pedido_inscripcion, id_torneo, id_equipo,
@@ -75,6 +71,8 @@
 --         favor, contra, fecha_actualizacion)
 -- auditoria (id_auditoria, id_usuario, tabla_afectada, id_registro,
 --         accion, detalle, direccion_ip, fecha_hora)
+-- medicion (id_medicion, id_usuario, prueba, distancia_cm, tiempo_s,
+--         masa_kg, fecha, fecha_carga)
 --
 -- (*) atributo que ademas es clave foranea de la clave primaria.
 --
@@ -133,12 +131,9 @@
 SET NAMES utf8mb4;
 
 -- [solo servidor propio] desde aca
--- Desde aca hasta "[solo servidor propio] hasta aca", solo para un
--- servidor propio (XAMPP, la VM). armar-deploy.sh lo saca de la version
--- del hosting: ahi la base ya la creo cPanel, y el borrado de tablas,
--- en una base con cuentas reales, se llevaria los datos por delante.
--- Sin el borrado, importar la version del hosting sobre una base que ya
--- tiene tablas frena en la primera ("already exists") sin tocar nada.
+-- Desde aca hasta "[solo servidor propio] hasta aca": crear la base,
+-- que pide permisos de administracion del servidor (XAMPP, la VM o el
+-- contenedor de Docker).
 CREATE DATABASE IF NOT EXISTS sgdm
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -147,6 +142,7 @@ USE sgdm;
 
 -- Borrado en orden inverso al de creacion, para no violar las claves
 -- foraneas al volver a ejecutar el script.
+DROP TABLE IF EXISTS medicion;
 DROP TABLE IF EXISTS auditoria;
 DROP TABLE IF EXISTS tabla_posiciones;
 DROP TABLE IF EXISTS resultado;
@@ -169,8 +165,7 @@ DROP TABLE IF EXISTS rol;
 
 -- La codificacion por defecto de la base, tambien en utf8mb4. Sin
 -- nombre de base: vale para la que esta elegida (sgdm despues del USE,
--- o la que se eligio en phpMyAdmin en el hosting, donde la crea cPanel
--- en latin1). Las tablas no dependen de esto, porque cada una declara
+-- o la que se eligio en phpMyAdmin). Las tablas no dependen de esto, porque cada una declara
 -- la suya; es para que la base entera quede pareja.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -203,7 +198,7 @@ CREATE TABLE usuario (
   -- Foto de perfil y portada: solo el nombre del archivo, que genera el
   -- sistema (32 caracteres al azar y la extension), nunca el que manda
   -- el usuario. La carpeta no se guarda porque no es la misma en la
-  -- maquina local y en el hosting. Los dos CHECK exigen exactamente esa
+  -- maquina local y en Docker. Los dos CHECK exigen exactamente esa
   -- forma: aunque el codigo fallara, la base no acepta una ruta ni un
   -- "../" en estas columnas. BINARY hace que distinga mayusculas: la
   -- tabla no las distingue, y el nombre generado va siempre en
@@ -354,12 +349,17 @@ CREATE TABLE tipo_torneo (
 -- Modulo de competencia: define COMO se arma el fixture (liga,
 -- eliminacion directa, suizo). Los modulos en si son de la tercera
 -- entrega; la tabla queda creada porque el torneo ya la referencia.
+-- habilitado (RF-24, la administracion): un modulo deshabilitado no se
+-- ofrece en "Nuevo torneo"; los torneos que ya lo usan siguen igual. Se
+-- suma con sql/migraciones/008_modulos.sql.
 CREATE TABLE modulo_competencia (
   id_modulo   INT UNSIGNED NOT NULL AUTO_INCREMENT,
   nombre      VARCHAR(30)  NOT NULL,
   descripcion VARCHAR(150) NULL,
+  habilitado  TINYINT(1)   NOT NULL DEFAULT 1,
   CONSTRAINT pk_modulo     PRIMARY KEY (id_modulo),
-  CONSTRAINT uq_modulo_nom UNIQUE (nombre)
+  CONSTRAINT uq_modulo_nom UNIQUE (nombre),
+  CONSTRAINT ck_modulo_habilitado CHECK (habilitado IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -420,6 +420,13 @@ CREATE TABLE configuracion_torneo (
   puntos_empate       TINYINT UNSIGNED NOT NULL DEFAULT 1,
   puntos_derrota      TINYINT UNSIGNED NOT NULL DEFAULT 0,
   admite_empate       TINYINT(1)   NOT NULL DEFAULT 1,
+  -- Partidos al mejor de N (mapas, sets, partidas): 3, 5 o 7. NULL es un
+  -- partido unico, que puede terminar empatado si la liga lo admite. Una
+  -- serie al mejor de un numero impar siempre tiene ganador, asi que no
+  -- admite empate (ck_config_serie_empate), y su marcador es el de la
+  -- serie: el ganador llega a la mitad mas uno (2 de 3, 3 de 5, 4 de 7).
+  -- Se suma con sql/migraciones/006_resultados.sql.
+  mejor_de            TINYINT UNSIGNED NULL,
   clasifican_playoffs TINYINT UNSIGNED NOT NULL DEFAULT 0,
   ida_y_vuelta        TINYINT(1)   NOT NULL DEFAULT 0,
   -- Desempate entre dos con los mismos puntos: 'diferencia' mira primero
@@ -441,7 +448,9 @@ CREATE TABLE configuracion_torneo (
   -- En una base creada antes de esta restriccion se agrega con
   -- sql/migraciones/001_check_puntos_victoria.sql.
   CONSTRAINT ck_config_victoria CHECK (puntos_victoria BETWEEN 1 AND 10),
-  CONSTRAINT ck_config_desempate CHECK (criterio_desempate IN ('diferencia', 'favor'))
+  CONSTRAINT ck_config_desempate CHECK (criterio_desempate IN ('diferencia', 'favor')),
+  CONSTRAINT ck_config_mejor_de   CHECK (mejor_de IS NULL OR mejor_de IN (3, 5, 7)),
+  CONSTRAINT ck_config_serie_empate CHECK (mejor_de IS NULL OR admite_empate = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -661,10 +670,64 @@ CREATE TABLE auditoria (
   -- inscripcion (un equipo entra a una liga), solicitud (un capitan pide
   -- lugar), cierre (de la inscripcion) y fixture se suman con
   -- sql/migraciones/005_ligas.sql.
+  -- resultado (carga o correccion de un marcador), programacion (dia,
+  -- hora y lugar de un partido), final (un torneo termina, con su
+  -- vencedor), cancelacion (un torneo se cancela en vez de borrarse) y
+  -- medicion (las pruebas fisicas de Rendimiento) se suman con
+  -- sql/migraciones/006_resultados.sql. El cierre de una fecha usa
+  -- cierre, sobre la tabla ronda.
   CONSTRAINT ck_audit_accion  CHECK (accion IN ('alta', 'baja', 'modificacion',
                                                 'login_ok', 'login_error', 'logout',
                                                 'pedido_rol', 'aprobacion', 'rechazo',
-                                                'inscripcion', 'solicitud', 'cierre', 'fixture'))
+                                                'inscripcion', 'solicitud', 'cierre', 'fixture',
+                                                'resultado', 'programacion', 'final',
+                                                'cancelacion', 'medicion'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ---------------------------------------------------------------------
+-- 9b. RENDIMIENTO FISICO (RF-29, el modulo de Fisica)
+-- ---------------------------------------------------------------------
+-- Las mediciones de las pruebas fisicas de una cuenta: la prueba, sus
+-- datos crudos y la fecha. Los indicadores (tiempo de reaccion,
+-- aceleracion de salida, potencia de salto) NO se guardan: son datos
+-- derivados y los calcula la clase Medicion con las formulas de Fisica,
+-- la misma decision que los puntos de la tabla de posiciones.
+--   reaccion  distancia_cm: lo que cae la regla antes de atraparla
+--             (hasta 30 cm, el largo de la regla)
+--   sprint    tiempo_s en 10 m desde parado, y masa_kg
+--   salto     tiempo_s de vuelo, y masa_kg
+-- Cada prueba lleva exactamente sus datos, en rangos posibles para una
+-- persona (ck_med_datos). Cada dato que la prueba pide va con IS NOT
+-- NULL: una CHECK frena solo cuando da falso, y un BETWEEN sobre NULL da
+-- desconocido, asi que sin eso un sprint sin masa entraba.
+-- Se suma con sql/migraciones/007_mediciones.sql.
+-- Una cuenta no se borra (baja logica): el ON DELETE CASCADE es para una
+-- base de prueba.
+
+CREATE TABLE medicion (
+  id_medicion   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_usuario    INT UNSIGNED NOT NULL,
+  prueba        VARCHAR(10)  NOT NULL,
+  distancia_cm  DECIMAL(4,1) NULL,
+  tiempo_s      DECIMAL(4,2) NULL,
+  masa_kg       DECIMAL(4,1) NULL,
+  fecha         DATE         NOT NULL,
+  fecha_carga   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT pk_medicion     PRIMARY KEY (id_medicion),
+  CONSTRAINT fk_med_usuario  FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
+      ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT ck_med_prueba   CHECK (prueba IN ('reaccion', 'sprint', 'salto')),
+  CONSTRAINT ck_med_datos    CHECK (
+       (prueba = 'reaccion' AND distancia_cm IS NOT NULL AND distancia_cm BETWEEN 0.5 AND 30
+                            AND tiempo_s IS NULL AND masa_kg IS NULL)
+    OR (prueba = 'sprint'   AND distancia_cm IS NULL
+                            AND tiempo_s IS NOT NULL AND tiempo_s BETWEEN 1 AND 6
+                            AND masa_kg IS NOT NULL AND masa_kg BETWEEN 20 AND 200)
+    OR (prueba = 'salto'    AND distancia_cm IS NULL
+                            AND tiempo_s IS NOT NULL AND tiempo_s BETWEEN 0.1 AND 1
+                            AND masa_kg IS NOT NULL AND masa_kg BETWEEN 20 AND 200)),
+  KEY ix_med_usuario (id_usuario, prueba, fecha)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -705,9 +768,6 @@ INSERT INTO modulo_competencia (nombre, descripcion) VALUES
 -- =====================================================================
 -- 12. DCL - USUARIOS DE BASE DE DATOS Y PERMISOS
 -- =====================================================================
--- En un hosting compartido esta seccion no corre: los usuarios y sus
--- permisos se dan desde cPanel. La version del hosting no la trae.
---
 -- IMPORTANTE: las contrasenas de abajo son marcadores y tienen que
 -- quedar asi en el repositorio. La real se le pone al usuario aparte,
 -- a mano, despues de correr este script:
@@ -754,6 +814,11 @@ GRANT INSERT, UPDATE, DELETE ON sgdm.ronda                TO 'sgdm_app'@'localho
 GRANT INSERT, UPDATE, DELETE ON sgdm.enfrentamiento       TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.resultado            TO 'sgdm_app'@'localhost';
 GRANT INSERT, UPDATE, DELETE ON sgdm.tabla_posiciones     TO 'sgdm_app'@'localhost';
+-- Mediciones: se guardan y se borran (una cargada por error), no se
+-- modifican.
+GRANT INSERT, DELETE         ON sgdm.medicion             TO 'sgdm_app'@'localhost';
+-- Habilitar o deshabilitar un modulo (RF-24): solo esa columna.
+GRANT UPDATE (habilitado)    ON sgdm.modulo_competencia   TO 'sgdm_app'@'localhost';
 
 -- La auditoria solo admite altas: ni la aplicacion puede modificar o
 -- borrar el historial.

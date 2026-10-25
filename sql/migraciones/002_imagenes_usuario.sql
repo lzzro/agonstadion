@@ -3,7 +3,7 @@
 -- Migracion 002: foto de perfil y portada en usuario
 -- ---------------------------------------------------------------------
 -- Para las bases creadas con el schema.sql anterior a estas columnas
--- (la del XAMPP local y la del hosting). Una base nueva no la necesita:
+-- (como la del XAMPP local). Una base nueva no la necesita:
 -- sql/schema.sql ya las trae dentro del CREATE TABLE usuario.
 --
 -- Que agrega:
@@ -19,11 +19,11 @@
 --
 -- Como se corre, a mano, una vez en cada base (igual que la 001):
 --   1. En phpMyAdmin, elegir la base en la lista de la izquierda
---      (sgdm en XAMPP, lucasmar_sgdm en el hosting). Este archivo no
---      lleva USE a proposito.
+--      (sgdm en XAMPP). Este archivo no lleva USE a
+--      proposito.
 --   2. Pestana SQL (o Import), pegar o subir este archivo, y Go.
---   3. Con la cuenta con la que se administra la base (root en XAMPP,
---      la cuenta de cPanel en el hosting): sgdm_app no puede cambiar la
+--   3. Con la cuenta con la que se administra la base (root en XAMPP
+--      o en la VM): sgdm_app no puede cambiar la
 --      estructura.
 --
 -- No hace falta tocar permisos: sgdm_app tiene UPDATE sobre la tabla

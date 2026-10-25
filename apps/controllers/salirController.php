@@ -28,7 +28,7 @@ require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && sesionVigente() && !csrfValido()) {
-    $titulo  = 'Cierre de sesion';
+    $titulo  = 'Cierre de sesión';
     $errores = array(rechazarCsrf());
     include __DIR__ . '/../index.php';
     exit;

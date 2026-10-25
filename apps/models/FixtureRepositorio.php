@@ -5,6 +5,9 @@
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
 # Guarda el fixture que arma Fixture.php y lee las fechas de una liga.
+# Desde la fase 3 tambien la primera ronda de una eliminacion directa
+# (Llave.php: las demas se arman al cerrar cada una) y la de un suizo
+# (Suizo.php), con insertarRonda(), que usa tambien ResultadoRepositorio.
 #
 # Generar el fixture es todo o nada, en una transaccion y con la fila
 # del torneo bloqueada:
@@ -23,6 +26,8 @@
 # =====================================================================
 
 require_once __DIR__ . '/Fixture.php';
+require_once __DIR__ . '/Llave.php';
+require_once __DIR__ . '/Suizo.php';
 require_once __DIR__ . '/Ronda.php';
 require_once __DIR__ . '/Enfrentamiento.php';
 require_once __DIR__ . '/Resultado.php';
@@ -59,13 +64,13 @@ class FixtureRepositorio
         $cantidad = $torneos->bloquearYContar($id_torneo, $id_org);
         if ($cantidad === null) {
             $this->conexion->rollback();
-            $salida['errores'][] = 'Esa liga no está a cargo de esta cuenta.';
+            $salida['errores'][] = 'Esa competencia no está a cargo de esta cuenta.';
             return $salida;
         }
         $actual = $torneos->buscarPorId($id_torneo);
-        if ($actual === null || !$actual->esLiga()) {
+        if ($actual === null || $actual->getConfiguracion() === null) {
             $this->conexion->rollback();
-            $salida['errores'][] = 'El fixture es de las ligas.';
+            $salida['errores'][] = 'Esa competencia no existe.';
             return $salida;
         }
         if (!$actual->estaEnCurso()) {
@@ -106,56 +111,50 @@ class FixtureRepositorio
             $salida['errores'][] = 'El fixture no se puede armar por ahora.';
             return $salida;
         }
+        # Las rondas que se guardan ahora, segun el formato: la liga
+        # entera, o la primera ronda de la llave o del suizo.
         $configuracion = $actual->getConfiguracion();
-        $iv = ($configuracion === null) ? 0 : $configuracion->getIdaYVuelta();
-        $fixture = new Fixture($participantes, $iv);
-        $errores = $fixture->generar();
+        $cantidad = count($participantes);
+        $rondas   = array();   # cada una: array('nombre' => ..., 'cruces' => ...)
+        if ($actual->esEliminacion()) {
+            $llave   = new Llave($participantes);
+            $errores = $llave->generar();
+            $rondas[] = array('nombre' => Llave::nombreRonda(count($llave->getCruces())), 'cruces' => $llave->getCruces());
+            $previstas = Llave::cantidadRondas($cantidad);
+        } elseif ($actual->esSuizo()) {
+            $errores = ($cantidad < 4) ? array('El suizo necesita al menos 4 participantes.') : array();
+            $pedidas = $configuracion->getRondasPrevistas();
+            if ($pedidas === null) {
+                $pedidas = Suizo::rondasSugeridas($cantidad);
+            }
+            # Nunca mas rondas que las que admite la cantidad sin repetir rival.
+            $previstas = min($pedidas, Suizo::rondasMaximas($cantidad));
+            $rondas[] = array('nombre' => 'Ronda 1', 'cruces' => Suizo::primeraRonda($participantes));
+        } else {
+            $fixture = new Fixture($participantes, $configuracion->getIdaYVuelta());
+            $errores = $fixture->generar();
+            foreach ($fixture->getFechas() as $i => $cruces) {
+                $rondas[] = array('nombre' => 'Fecha ' . ($i + 1), 'cruces' => $cruces);
+            }
+            $previstas = $fixture->getCantidadFechas();
+        }
         if (!empty($errores)) {
             $this->conexion->rollback();
             $salida['errores'] = $errores;
             return $salida;
         }
 
-        $sql_ronda = "INSERT INTO ronda (id_torneo, numero, nombre, estado) VALUES (?, ?, ?, 'pendiente')";
-        $sql_cruce = "INSERT INTO enfrentamiento (id_ronda, numero, id_participante_local,
-                                                  id_participante_visitante, estado)
-                      VALUES (?, ?, ?, ?, 'programado')";
-        $ronda_st = $this->conexion->prepare($sql_ronda);
-        $cruce_st = $this->conexion->prepare($sql_cruce);
-        if ($ronda_st === false || $cruce_st === false) {
-            $this->conexion->rollback();
-            $salida['errores'][] = 'El fixture no se puede armar por ahora.';
-            return $salida;
-        }
-
-        $numero = 0;
-        foreach ($fixture->getFechas() as $cruces) {
-            $numero = $numero + 1;
-            $nombre = 'Fecha ' . $numero;
-            $ronda_st->bind_param('iis', $id_torneo, $numero, $nombre);
-            if (!$ronda_st->execute()) {
+        $partidos = 0;
+        foreach ($rondas as $i => $ronda) {
+            if (!$this->insertarRonda($id_torneo, $i + 1, $ronda['nombre'], $ronda['cruces'])) {
                 $this->conexion->rollback();
                 $salida['errores'][] = 'El fixture no se puede armar por ahora.';
                 return $salida;
             }
-            $id_ronda = (int)$this->conexion->insert_id;
-
-            $orden = 0;
-            foreach ($cruces as $cruce) {
-                $orden     = $orden + 1;
-                $local     = (int)$cruce['local']->getIdParticipante();
-                $visitante = ($cruce['visitante'] === null) ? null
-                           : (int)$cruce['visitante']->getIdParticipante();
-                $cruce_st->bind_param('iiii', $id_ronda, $orden, $local, $visitante);
-                if (!$cruce_st->execute()) {
-                    $this->conexion->rollback();
-                    $salida['errores'][] = 'El fixture no se puede armar por ahora.';
-                    return $salida;
-                }
+            foreach ($ronda['cruces'] as $cruce) {
+                if ($cruce['visitante'] !== null) { $partidos++; }
             }
         }
-        $ronda_st->close();
-        $cruce_st->close();
 
         # 4. La fila de cada equipo en la tabla, en cero, si no la tiene.
         $sql = "INSERT INTO tabla_posiciones (id_participante)
@@ -171,8 +170,8 @@ class FixtureRepositorio
         }
         $sentencia->close();
 
-        # 5. Cuantas fechas tiene la liga.
-        $fechas = $fixture->getCantidadFechas();
+        # 5. Cuantas fechas (o rondas) tiene la competencia.
+        $fechas = $previstas;
         $sql = 'UPDATE configuracion_torneo SET rondas_previstas = ? WHERE id_torneo = ?';
         $sentencia = $this->conexion->prepare($sql);
         if ($sentencia === false || !$sentencia->bind_param('ii', $fechas, $id_torneo) || !$sentencia->execute()) {
@@ -184,8 +183,40 @@ class FixtureRepositorio
 
         $this->conexion->commit();
         $salida['fechas']   = $fechas;
-        $salida['partidos'] = $fixture->getCantidadEnfrentamientos();
+        $salida['partidos'] = $partidos;
         return $salida;
+    }
+
+    # Guarda una ronda con sus cruces, en el orden en que vienen (el
+    # numero de cada cruce es su lugar: en la llave, ese orden decide
+    # quien se cruza despues). Tiene que llamarse con una transaccion
+    # abierta. true si quedo guardada.
+    public function insertarRonda($id_torneo, $numero, $nombre, $cruces)
+    {
+        $id_torneo = (int)$id_torneo;
+        $numero    = (int)$numero;
+        $ronda_st = $this->conexion->prepare("INSERT INTO ronda (id_torneo, numero, nombre, estado) VALUES (?, ?, ?, 'pendiente')");
+        $cruce_st = $this->conexion->prepare("INSERT INTO enfrentamiento (id_ronda, numero, id_participante_local,
+                                                                         id_participante_visitante, estado)
+                                              VALUES (?, ?, ?, ?, 'programado')");
+        if ($ronda_st === false || $cruce_st === false
+            || !$ronda_st->bind_param('iis', $id_torneo, $numero, $nombre) || !$ronda_st->execute()) {
+            return false;
+        }
+        $id_ronda = (int)$this->conexion->insert_id;
+        $ronda_st->close();
+        $orden = 0;
+        foreach ($cruces as $cruce) {
+            $orden     = $orden + 1;
+            $local     = (int)$cruce['local']->getIdParticipante();
+            $visitante = ($cruce['visitante'] === null) ? null : (int)$cruce['visitante']->getIdParticipante();
+            if (!$cruce_st->bind_param('iiii', $id_ronda, $orden, $local, $visitante) || !$cruce_st->execute()) {
+                $cruce_st->close();
+                return false;
+            }
+        }
+        $cruce_st->close();
+        return true;
     }
 
     # Cuantas fechas y cuantos resultados tiene una liga.

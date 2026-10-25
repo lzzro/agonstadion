@@ -25,7 +25,8 @@
 # solo para compararlo; el alta no inicia sesion.
 # =====================================================================
 
-session_start();
+require_once __DIR__ . '/../config/sesion.php';
+abrirSesion();
 
 require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/database.php';
@@ -39,7 +40,7 @@ $mensaje = '';
 $errores = array();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    $errores[] = 'El alta llega desde el formulario de la pagina de acceso.';
+    $errores[] = 'El alta llega desde el formulario de la página de acceso.';
 } elseif (!csrfValido()) {
     $errores[] = rechazarCsrf();
 } else {
@@ -54,14 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $alias    = (isset($_POST['alias']) && is_string($_POST['alias'])) ? trim($_POST['alias']) : '';
 
     if (empty($nombre) || empty($apellido) || empty($correo) || empty($clave)) {
-        $errores[] = 'Nombre, apellido, correo y contrasena son obligatorios.';
+        $errores[] = 'Nombre, apellido, correo y contraseña son obligatorios.';
     }
 
     # Una casilla sin marcar no se envia, asi que alcanza con isset. El
     # required del formulario no sirve de garantia: el POST puede llegar
     # de cualquier lado, no solo del formulario.
     if (!isset($_POST['terminos'])) {
-        $errores[] = 'Falta la conformidad con los terminos.';
+        $errores[] = 'Falta la conformidad con los términos.';
     }
 
     if (empty($errores)) {
@@ -89,9 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     # dio de alta: la cuenta ya quedo abierta y el aviso
                     # lo confundiria.
 
+                    # Sin el número interno de la cuenta: en pantalla no
+                    # va ningún valor de la base.
                     $mensaje = 'La cuenta queda abierta a nombre de '
-                             . $usuario->getNombreCompletoVisible()
-                             . ', con el numero ' . $usuario->getIdUsuario() . '.';
+                             . $usuario->getNombreCompletoVisible() . '.';
                 }
                 $conexion->close();
             }

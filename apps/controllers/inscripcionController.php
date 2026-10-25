@@ -1,12 +1,17 @@
 <?php
 # =====================================================================
-# Controlador: pedir lugar en una liga
+# Controlador: pedir lugar en una liga, o inscribirse en una individual
 # Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
 # ---------------------------------------------------------------------
 # Recibe por POST el formulario "Pedir lugar" de torneo.php: el capitan
 # de un equipo pide que su equipo juegue una liga con la inscripcion
 # abierta. Lo acepta o lo rechaza quien organiza la liga, desde su
 # panel (ver panelController.php).
+#
+# Desde la fase 3, si la liga es individual, el mismo formulario (sin
+# equipo) inscribe a la cuenta de la sesion directamente, sin pedido
+# (CU-09; ParticipanteRepositorio::inscribirJugador). Queda en la
+# auditoria como inscripcion.
 #
 # Solo con sesion vigente (sin ella, a la pagina de acceso). Quien pide
 # es siempre la cuenta de la sesion, y el equipo tiene que ser uno que
@@ -31,6 +36,7 @@ require_once __DIR__ . '/../models/TorneoRepositorio.php';
 require_once __DIR__ . '/../models/EquipoRepositorio.php';
 require_once __DIR__ . '/../models/PedidoInscripcion.php';
 require_once __DIR__ . '/../models/PedidoInscripcionRepositorio.php';
+require_once __DIR__ . '/../models/ParticipanteRepositorio.php';
 require_once __DIR__ . '/../models/Auditoria.php';
 require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 
@@ -86,6 +92,29 @@ if ($torneo === null) {
     exit;
 }
 
+# Una liga individual: la cuenta de la sesion se inscribe sola.
+if (!$torneo->esPorEquipos()) {
+    $codigos = array(
+        'La inscripción de esa liga está cerrada.'      => 'cerrada',
+        'La liga ya tiene su cupo completo.'             => 'cupo',
+        'Esa cuenta ya juega esta competencia.'                 => 'ya-inscripto',
+        'Una liga de muestra no recibe inscripciones.'   => 'muestra-jugador'
+    );
+    $salida = (new ParticipanteRepositorio($conexion))->inscribirJugador($torneo, $capitan);
+    if (empty($salida['errores'])) {
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+        (new AuditoriaRepositorio($conexion))->registrar(new Auditoria(null, $capitan,
+            'participante', 'inscripcion', $salida['id_participante'],
+            mb_substr($capitan->getNombreCompletoVisible() . ' en ' . $torneo->getNombre(), 0, 255), $ip));
+        $codigo = 'inscripto';
+    } else {
+        $codigo = isset($codigos[$salida['errores'][0]]) ? $codigos[$salida['errores'][0]] : 'no-disponible';
+    }
+    $conexion->close();
+    header('Location: ' . $ruta_publica . '/torneo.php?id=' . $id_torneo . '&aviso=' . $codigo);
+    exit;
+}
+
 # El equipo, entre los que capitanea la cuenta de la sesion.
 $equipo  = null;
 $equipos = (new EquipoRepositorio($conexion))->listarDeCapitan($capitan);
@@ -101,8 +130,8 @@ if (is_array($equipos)) {
 $codigos = array(
     'La inscripción de esa liga está cerrada.'                => 'cerrada',
     'La liga ya tiene su cupo completo.'                       => 'cupo',
-    'Ese equipo ya juega esta liga.'                           => 'ya-juega',
-    'Ese equipo ya tiene un pedido en revisión en esta liga.'  => 'en-revision',
+    'Ese equipo ya juega esta competencia.'                           => 'ya-juega',
+    'Ese equipo ya tiene un pedido en revisión en esta competencia.'  => 'en-revision',
     'Una liga de muestra no recibe pedidos.'                   => 'muestra'
 );
 

@@ -391,6 +391,33 @@ label.casilla input { width: 16px; height: 16px; flex: none; accent-color: var(-
 form.anotar-equipo, form.accion-liga, form.pedir-lugar, form.crear-equipo { align-items: flex-start; }
 form.anotar-equipo .campo, form.pedir-lugar .campo { width: 100%; max-width: 420px; }
 form.crear-equipo .grilla { width: 100%; }
+form.sumar-integrante { align-items: flex-start; }
+form.sumar-integrante .grilla { width: 100%; }
+/* Fechas y resultados (fase 3): la lista de fechas son chips que son
+   enlaces (la abierta, en negro, como .chip.activo), y cada partido es
+   un bloque con sus formularios, separado del siguiente por una linea,
+   como los pedidos. El marcador va en dos campos lado a lado, chicos:
+   un numero no necesita el ancho de la tarjeta. */
+/* Es un <nav> (un grupo de enlaces con nombre), pero no el menu del
+   sitio: no lleva la franja, el relleno ni la raya del menu, y sus
+   enlaces son chips, no las versalitas del menu. */
+nav.fechas-liga { grid-area: auto; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; background: none; border-bottom: 0; }
+nav.fechas-liga a.chip { font-size: 12px; letter-spacing: .1em; padding: 7px 12px; border: 1px solid var(--hair); color: var(--ink2); }
+nav.fechas-liga a.chip:hover { border-color: var(--ink3); color: var(--ink); }
+nav.fechas-liga a.chip.activo { background: var(--ink); color: var(--pario); border-color: var(--ink); }
+.partido-carga { display: flex; flex-direction: column; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--hair); }
+.partido-carga h3 .vs { color: var(--ink3); font-family: var(--sans); font-size: 13px; }
+.partido-carga p { margin: 0; }
+form.cargar-resultado, form.programar-partido { align-items: flex-start; }
+form.cargar-resultado fieldset, form.programar-partido fieldset { width: 100%; }
+/* Dia y hora necesita lugar para "14/11/2026, 10:00 a. m." y el icono: en
+   tres columnas el valor se cortaba. Dos columnas como mucho, y una sola si
+   no entran (min() evita que la columna sea mas ancha que el telefono). */
+form.programar-partido .grilla { grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+form.cargar-resultado .campo { max-width: 420px; }
+.marcador-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 140px)); gap: 12px; }
+.marcador-campos .campo label { overflow-wrap: anywhere; }
+.marcador-carga { white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
 div.pedir-lugar { display: flex; flex-direction: column; gap: 8px; }
 div.pedir-lugar p { margin: 0; }
 .pasos-liga { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -632,7 +659,7 @@ form.pedir-rol { align-items: flex-start; }
 .cruce { background: var(--pario); border: 1px solid var(--hair); }
 .cruce > div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 10px; font-size: 13px; line-height: 18px; }
 .cruce > div + div { border-top: 1px solid var(--hair); }
-.cruce .puntos { font-family: var(--serif); font-size: 16px; color: var(--ink2); }
+.cruce .puntos { font-family: var(--serif); font-size: 16px; color: var(--ink2); font-variant-numeric: lining-nums tabular-nums; }
 .cruce .pasa { color: var(--olivo); font-weight: 500; }
 .cruce .pasa .puntos { color: var(--olivo); }
 .cruce .espera { color: var(--ink3); font-style: italic; }
@@ -648,6 +675,16 @@ form.pedir-rol { align-items: flex-start; }
 .grafico .punto { fill: var(--olivo); stroke: var(--pario); stroke-width: 2; }
 .grafico .rotulo { fill: var(--ink3); font-family: var(--sans); font-size: 11px; }
 .grafico .rotulo-dato { fill: var(--ink2); font-family: var(--serif); font-size: 15px; }
+/* El primer y el ultimo valor llevan un borde del color del fondo de la
+   tarjeta, asi se leen aunque pasen sobre la reja. En el telefono el
+   grafico se achica a la mitad: los rotulos de los ejes crecen para
+   seguir leyendose, y los dos valores no se dibujan (estan en las
+   tarjetas de arriba y en la tabla de mediciones). */
+.grafico .rotulo-dato { paint-order: stroke; stroke: var(--pario); stroke-width: 4px; stroke-linejoin: round; }
+@media (max-width: 767px) {
+  .grafico-evolucion .rotulo { font-size: 20px; }
+  .grafico-evolucion .rotulo-dato { display: none; }
+}
 /* Barras de los reportes del panel. Tres formas, no tres colores: olivo
    y olivo claro se confunden a simple vista, asi que lo pendiente va con
    relleno palido y borde, y lo que falta (cupos libres, partido por
@@ -660,6 +697,27 @@ form.pedir-rol { align-items: flex-start; }
 .grafico .tramo { fill: var(--olivo); }
 .grafico .tramo-pendiente { fill: var(--olivoT); stroke: var(--olivo); stroke-width: 1.5; }
 .grafico .tramo-vacio { fill: none; stroke: var(--ink3); stroke-width: 1.5; stroke-dasharray: 4 3; }
+/* Reportes (RF-28): el nombre de cada torneo y su numero, arriba de su
+   barra. El grafico mide a lo sumo lo mismo que su viewBox (480), asi
+   en una pantalla ancha el texto queda en su tamano. */
+.grafico .rotulo-barra { fill: var(--ink2); font-family: var(--sans); font-size: 14px; }
+.grafico-reporte { margin-top: 12px; }
+.lista-apilada.por-estado li { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; }
+/* Los integrantes de un equipo (RF-12): el nombre arriba y, debajo, el
+   dorsal con su boton y la baja, que bajan de renglon si no entran. */
+.equipo-propio { padding-top: 16px; border-top: 1px solid var(--hair); margin-top: 16px; }
+.equipo-propio:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.acciones-integrante { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+.acciones-integrante form { flex-direction: row; align-items: flex-end; gap: 8px; }
+.acciones-integrante input[type="number"] { width: 5.5em; }
+.acciones-integrante .btn { padding: 6px 12px; font-size: 13px; }
+/* La administracion (RF-24 y RF-11): los botones de cada cuenta, el de
+   cada modulo, el filtro del registro y sus paginas. */
+.acciones-cuenta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.acciones-cuenta form, .modulo-estado form { flex-direction: row; align-items: center; gap: 8px; }
+.acciones-cuenta .btn, .modulo-estado .btn { padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.filtro-registro { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 12px; }
+.paginas-registro { justify-content: space-between; align-items: center; margin-top: 12px; }
 .grafico .rotulo-nombre { fill: var(--ink2); font-family: var(--sans); font-size: 12px; }
 
 /* ---------- Módulos del sistema (administración) ----------
@@ -752,7 +810,10 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
   .perfil-cabecera { flex-direction: row; align-items: center; gap: 24px; }
   .kpis { grid-template-columns: repeat(4, 1fr); }
   .portada { height: 150px; }
-  footer { flex-direction: row; justify-content: space-between; align-items: center; padding: 22px 40px; }
+  /* Desde 768 px el pie va en una fila y el interruptor queda encima de su
+     punta derecha: el pie deja ese lugar a la derecha (24 + 66 + 22 px),
+     para que no tape Ayuda, Términos y Contacto. */
+  footer { flex-direction: row; justify-content: space-between; align-items: center; padding: 22px 112px 22px 40px; }
 }
 
 /* ---------- Escritorio: desde 1024 px ---------- */
@@ -799,3 +860,12 @@ footer .marca-agon svg { width: 26px; height: 26px; flex: none; }
   .llave-ronda:last-child .par::after,
   .llave-ronda:last-child .cruce::after { display: none; }
 }
+
+/* Rendimiento fisico (RF-29): los tres formularios de las pruebas, uno
+   por columna desde 768 px, con el boton a su ancho. */
+form.medicion { align-items: flex-start; }
+form.medicion fieldset { width: 100%; }
+form.borrar-medicion { flex-direction: row; }
+form.borrar-medicion .btn { padding: 6px 12px; font-size: 13px; }
+/* Un valor y un dato crudo no se parten: "583 W", "0,45 s". */
+#mis-mediciones td.num, #mis-mediciones td.fecha, #mis-mediciones .dato { white-space: nowrap; }

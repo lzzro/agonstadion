@@ -15,10 +15,19 @@
 # los tantos a favor; 'favor', al reves. Si todo coincide, el orden es
 # alfabetico, para que la tabla salga siempre igual: sin mirar
 # mayusculas ni tildes (ver claveAlfabetica), como ordena la base.
+#
+# Desde la fase 3, el formato de los partidos: un partido unico (mejor_de
+# en null) o una serie al mejor de 3, 5 o 7 (mapas, sets, partidas). Una
+# serie al mejor de un numero impar siempre tiene ganador, asi que no
+# admite empate: lo dice validar(), igual que ck_config_serie_empate de
+# la tabla. erroresMarcador() es la regla de cada marcador que se carga.
 # =====================================================================
 
 class ConfiguracionTorneo
 {
+    # El marcador mas alto de un lado (ver erroresMarcador).
+    const MARCADOR_MAXIMO = 500;
+
     #region ATRIBUTOS
     private $id_torneo;
     private $puntos_victoria;
@@ -30,6 +39,7 @@ class ConfiguracionTorneo
     private $criterio_desempate;   # 'diferencia' o 'favor'
     private $rondas_previstas;
     private $reglas;
+    private $mejor_de;             # null (partido unico), 3, 5 o 7
     #endregion
 
     #region FUNCIONES
@@ -38,7 +48,7 @@ class ConfiguracionTorneo
                                 $puntos_derrota = 0, $admite_empate = 1,
                                 $clasifican_playoffs = 0, $ida_y_vuelta = 0,
                                 $rondas_previstas = null, $reglas = null,
-                                $criterio_desempate = 'diferencia')
+                                $criterio_desempate = 'diferencia', $mejor_de = null)
     {
         $this->id_torneo           = $id_torneo;
         $this->puntos_victoria     = (int)$puntos_victoria;
@@ -51,6 +61,8 @@ class ConfiguracionTorneo
                                      ? null : (int)$rondas_previstas;
         $this->reglas              = $reglas;
         $this->criterio_desempate  = $criterio_desempate;
+        $this->mejor_de            = ($mejor_de === null || $mejor_de === '')
+                                     ? null : (int)$mejor_de;
     }
 
     public function getIdTorneo()          { return $this->id_torneo; }
@@ -71,6 +83,94 @@ class ConfiguracionTorneo
     public function getRondasPrevistas()   { return $this->rondas_previstas; }
     public function getReglas()            { return $this->reglas; }
     public function getCriterioDesempate() { return $this->criterio_desempate; }
+    public function getMejorDe()           { return $this->mejor_de; }
+
+    # Si los partidos son series (al mejor de 3, 5 o 7).
+    public function esSerie()
+    {
+        return $this->mejor_de !== null;
+    }
+
+    # Lo que gana una serie: 2 de 3, 3 de 5, 4 de 7. null en un partido
+    # unico.
+    public function ganaSerieCon()
+    {
+        if (!$this->esSerie()) {
+            return null;
+        }
+        return intdiv($this->mejor_de, 2) + 1;
+    }
+
+    # Los formatos de partido, con su nombre para el formulario de
+    # crear.php. La clave es lo que se guarda en la base ('' es NULL: un
+    # partido unico).
+    public static function formatosPartido()
+    {
+        return array(
+            ''  => 'Partido único',
+            '3' => 'Al mejor de 3',
+            '5' => 'Al mejor de 5',
+            '7' => 'Al mejor de 7'
+        );
+    }
+
+    # Los marcadores posibles de una serie, en palabras: "2-0 o 2-1".
+    public function marcadoresDeSerie()
+    {
+        $gana = $this->ganaSerieCon();
+        if ($gana === null) {
+            return '';
+        }
+        $marcadores = array();
+        for ($pierde = 0; $pierde < $gana; $pierde++) {
+            $marcadores[] = $gana . '-' . $pierde;
+        }
+        $ultimo = array_pop($marcadores);
+        return empty($marcadores) ? $ultimo : implode(', ', $marcadores) . ' o ' . $ultimo;
+    }
+
+    # La serie contada en una frase, para la pestana Reglas.
+    public function textoSerie()
+    {
+        if (!$this->esSerie()) {
+            return '';
+        }
+        return 'Cada enfrentamiento es una serie al mejor de ' . $this->mejor_de . ': gana quien llega a '
+             . $this->ganaSerieCon() . ' (' . $this->marcadoresDeSerie() . ').';
+    }
+
+    # Los errores de un marcador para esta liga, antes de guardarlo. Un
+    # walkover no se mira: su marcador lo pone el sistema (0 a 0, con el
+    # ganador aparte). Si no:
+    #   - cada lado de 0 a 500 (el formulario lleva el mismo rango): la
+    #     tabla acumula los tantos en un SMALLINT (hasta 32767), y 62
+    #     partidos (32 equipos, ida y vuelta) a 500 entran;
+    #   - en una serie, uno llega justo a lo que gana la serie y el otro
+    #     queda por debajo: al mejor de 3, 2-0 o 2-1 (ni 3-0, ni 1-1);
+    #   - en un partido unico de una liga sin empates, un ganador.
+    public function erroresMarcador($local, $visitante, $walkover = false)
+    {
+        $errores = array();
+        if ($walkover) {
+            return $errores;
+        }
+        $local     = (int)$local;
+        $visitante = (int)$visitante;
+        if ($local < 0 || $visitante < 0 || $local > self::MARCADOR_MAXIMO || $visitante > self::MARCADOR_MAXIMO) {
+            $errores[] = 'Cada lado del marcador va de 0 a ' . self::MARCADOR_MAXIMO . '.';
+            return $errores;
+        }
+        if ($this->esSerie()) {
+            $gana = $this->ganaSerieCon();
+            if (max($local, $visitante) !== $gana || min($local, $visitante) >= $gana) {
+                $errores[] = 'Al mejor de ' . $this->mejor_de . ', la serie termina '
+                           . $this->marcadoresDeSerie() . ', para cualquiera de los dos lados.';
+            }
+        } elseif (!$this->admiteEmpate() && $local === $visitante) {
+            $errores[] = 'Esta liga no admite empates: el marcador lleva un ganador.';
+        }
+        return $errores;
+    }
 
     # Los criterios de desempate, con su nombre para el formulario de
     # crear.php. La clave es lo que se guarda en la base.
@@ -268,13 +368,19 @@ class ConfiguracionTorneo
             $errores[] = 'El criterio de desempate no es uno de los previstos.';
         }
         if ($this->admite_empate !== 0 && $this->admite_empate !== 1) {
-            $errores[] = 'La opcion de empate solo admite si o no.';
+            $errores[] = 'El empate es sí o no.';
         }
         if ($this->ida_y_vuelta !== 0 && $this->ida_y_vuelta !== 1) {
-            $errores[] = 'La opcion de ida y vuelta solo admite si o no.';
+            $errores[] = 'La ida y vuelta es sí o no.';
         }
         if ($this->clasifican_playoffs < 0) {
             $errores[] = 'La cantidad que clasifica a playoffs no puede ser negativa.';
+        }
+        # Mismas reglas que ck_config_mejor_de y ck_config_serie_empate.
+        if ($this->mejor_de !== null && !in_array($this->mejor_de, array(3, 5, 7), true)) {
+            $errores[] = 'Los partidos son únicos o al mejor de 3, 5 o 7.';
+        } elseif ($this->esSerie() && $this->admite_empate !== 0) {
+            $errores[] = 'Una serie al mejor de un número impar no admite empate.';
         }
         return $errores;
     }
