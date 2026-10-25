@@ -1,0 +1,72 @@
+# =====================================================================
+# Stadion en Docker - Lucas Martiarena (Agon)
+# ---------------------------------------------------------------------
+# Dos contenedores: el sitio (Apache con PHP 8.3) y
+# la base (MariaDB 10.11, la version de la VM del instituto).
+#
+#   1. Copiar .env.ejemplo como .env y poner dos claves propias.
+#   2. docker compose up -d --build
+#   3. http://localhost:8080
+#
+# El paso a paso, para Docker Desktop en Windows, esta en docs/docker.md.
+#
+# La primera vez que se levanta, la base corre sola schema.sql y las
+# migraciones (docker/db/01-sgdm.sh). Los datos de prueba (mas de 50
+# por cada parte del sistema) se cargan aparte, con un comando (ver
+# docs/docker.md).
+#
+# Las claves NO van en este archivo: llegan del archivo .env, que el
+# .gitignore excluye.
+# =====================================================================
+
+name: stadion
+
+services:
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_ROOT_PASSWORD: ${SGDM_ROOT_CLAVE:?Falta SGDM_ROOT_CLAVE en el archivo .env}
+      SGDM_APP_CLAVE: ${SGDM_APP_CLAVE:?Falta SGDM_APP_CLAVE en el archivo .env}
+      TZ: America/Montevideo
+    volumes:
+      - datos:/var/lib/mysql
+      - ./docker/db:/docker-entrypoint-initdb.d:ro
+      - ./sql:/sgdm/sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    environment:
+      STADION_DB_SERVIDOR: db
+      STADION_DB_CLAVE: ${SGDM_APP_CLAVE:?Falta SGDM_APP_CLAVE en el archivo .env}
+      TZ: America/Montevideo
+    ports:
+      - "8080:80"
+    volumes:
+      - subidas:/var/www/html/subidas
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Las pruebas de PHPUnit, solo cuando se piden:
+  #   docker compose --profile pruebas run --rm pruebas
+  pruebas:
+    image: composer:2
+    profiles: ["pruebas"]
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "composer install --no-interaction --no-progress && vendor/bin/phpunit"
+
+volumes:
+  datos:
+  subidas:

@@ -1,0 +1,11 @@
+# Lo que no hace falta mandarle a Docker para armar la imagen del sitio
+# (el Dockerfile copia solo deploy/, docker/web y scripts/).
+.git
+vendor
+backups
+metricas
+tests
+public/subidas
+deploy/sitio/public_html/subidas/*
+!deploy/sitio/public_html/subidas/.htaccess
+.env

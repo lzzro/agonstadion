@@ -3,14 +3,33 @@
 # Respaldo diario de SGDM - Stadion (Agon)
 # Proyecto de Lucas Martiarena
 # ---------------------------------------------------------------------
-# Deja en backups/ un solo archivo por dia:
+# Deja en backups/ un respaldo por dia:
 #
-#     backups/respaldo_2026-09-30.tar.gz
+#     backups/respaldo_2026-09-30.tar.gz.enc      el respaldo cifrado
+#     backups/respaldo_2026-09-30.tar.gz.enc.sig  su firma digital
+#     backups/respaldo_2026-09-30.sha256          su hash
 #
-# Adentro van tres cosas:
+# Adentro del comprimido van tres cosas:
 #     base-sgdm.sql   volcado completo de la base sgdm
 #     apps/           el codigo PHP
 #     public/         las paginas, el CSS y las imagenes
+#
+# HASHING, CIFRADO Y FIRMA DIGITAL (Ciberseguridad, tercera entrega),
+# con OpenSSL, que AlmaLinux trae instalado:
+#   - Cifrado: AES-256 (openssl enc, con la clave derivada por PBKDF2)
+#     con la frase de scripts/firma/respaldo.clave. Un respaldo lleva
+#     las cuentas de la gente y los hashes de sus contrasenas: si se
+#     copia a otro lado, sin la frase no se lee.
+#   - Firma digital: RSA con SHA-256 (openssl dgst -sign), con la clave
+#     privada de scripts/firma/respaldo-privada.pem. Con la publica,
+#     scripts/verificar-respaldo.sh comprueba que el respaldo lo hizo
+#     este servidor y que nadie le cambio un byte.
+#   - Hash: SHA-256 del archivo cifrado (sha256sum), para ver de un
+#     vistazo si una copia llego entera.
+# Las claves las crea UNA vez scripts/generar-claves-respaldo.sh, y
+# nunca van al repositorio (.gitignore). Sin ellas, el respaldo se hace
+# igual, sin cifrar ni firmar, con su hash y un aviso: un respaldo sin
+# cifrar es mejor que ninguno.
 #
 # La contrasena de sgdm_admin NO esta en este archivo. Va en
 # scripts/respaldo.local.cnf, que el .gitignore excluye. Se le pasa a
@@ -36,6 +55,10 @@ RAIZ="$(cd "$CARPETA_SCRIPT/.." && pwd)"
 CREDENCIALES="$CARPETA_SCRIPT/respaldo.local.cnf"
 DESTINO="$RAIZ/backups"
 BASE="sgdm"
+
+# Las claves del cifrado y de la firma (ver generar-claves-respaldo.sh).
+FRASE="$CARPETA_SCRIPT/firma/respaldo.clave"
+PRIVADA="$CARPETA_SCRIPT/firma/respaldo-privada.pem"
 
 FECHA="$(date +%F)"
 ARCHIVO="$DESTINO/respaldo_${FECHA}.tar.gz"
@@ -156,10 +179,43 @@ if [ $? -ne 0 ]; then
     fallar "no se pudo armar el comprimido." 8
 fi
 
-mv "$PARCIAL" "$ARCHIVO" \
-    || fallar "no se pudo dejar el comprimido en $ARCHIVO." 8
+# ---------------------------------------------------------------------
+# 4. Cifrado y firma digital (si estan las claves), y el hash.
+#    Todo se hace sobre la copia temporal; recien al final se mueve a
+#    backups/. Asi un respaldo sin cifrar no queda ni un momento ahi
+#    cuando hay con que cifrarlo.
+# ---------------------------------------------------------------------
+if [ -f "$FRASE" ] && [ -f "$PRIVADA" ] && command -v openssl >/dev/null 2>&1; then
+    for CLAVE in "$FRASE" "$PRIVADA"; do
+        case "$(stat -c '%a' "$CLAVE" 2>/dev/null)" in
+            600|400) ;;
+            *) fallar "permisos de $CLAVE: deben ser 600 (chmod 600 $CLAVE)." 9 ;;
+        esac
+    done
+    avisar "Cifrando (AES-256)..."
+    openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -in "$PARCIAL" -out "$PARCIAL.enc" -pass "file:$FRASE" 2> "$TEMPORAL/error.txt" \
+        || fallar "no se pudo cifrar: $(cat "$TEMPORAL/error.txt")" 9
+    avisar "Firmando (RSA y SHA-256)..."
+    openssl dgst -sha256 -sign "$PRIVADA" -out "$PARCIAL.enc.sig" "$PARCIAL.enc" 2> "$TEMPORAL/error.txt" \
+        || fallar "no se pudo firmar: $(cat "$TEMPORAL/error.txt")" 9
+    FINAL="$ARCHIVO.enc"
+    mv "$PARCIAL.enc" "$FINAL" && mv "$PARCIAL.enc.sig" "$FINAL.sig" \
+        || fallar "no se pudo dejar el respaldo en $DESTINO." 8
+    chmod 600 "$FINAL" "$FINAL.sig"
+else
+    avisar "AVISO: sin las claves de scripts/firma/ (o sin openssl), el respaldo queda sin cifrar ni firmar."
+    avisar "       Para cifrarlo y firmarlo: scripts/generar-claves-respaldo.sh"
+    FINAL="$ARCHIVO"
+    mv "$PARCIAL" "$FINAL" \
+        || fallar "no se pudo dejar el comprimido en $FINAL." 8
+    chmod 600 "$FINAL"
+fi
 
-chmod 600 "$ARCHIVO"
+# El hash, con el nombre del archivo tal como queda en backups/.
+( cd "$DESTINO" && sha256sum "$(basename "$FINAL")" > "respaldo_${FECHA}.sha256" ) \
+    || fallar "no se pudo calcular el hash." 9
+chmod 600 "$DESTINO/respaldo_${FECHA}.sha256"
 
-avisar "Respaldo terminado: $ARCHIVO ($(du -h "$ARCHIVO" | cut -f1))."
+avisar "Respaldo terminado: $FINAL ($(du -h "$FINAL" | cut -f1))."
 exit 0
