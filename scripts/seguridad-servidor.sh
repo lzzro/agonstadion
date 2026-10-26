@@ -1,28 +1,10 @@
 #!/bin/bash
-# seguridad-servidor.sh
-# Agón - Stadion - Administración de Sistemas Operativos - Tercera entrega
-# Seguridad del servidor (AlmaLinux 8.10), con menú: cortafuegos, fail2ban,
-# antivirus, AIDE, SSH, SELinux y el certificado SSL.
-#
-# Lo ejecuta agonadmin, el usuario con sudo:  bash scripts/seguridad-servidor.sh
-# Igual que en gestion_usuarios.sh (primera entrega), cada comando que cambia el
-# sistema lleva sudo, y cada cambio queda anotado en el registro.
-#
-# Aplica lo que definió la segunda entrega de Ciberseguridad (cortafuegos con
-# solo SSH, HTTP y HTTPS; fail2ban; AIDE; SELinux; SSH sin root y con clave),
-# y suma el antivirus y el certificado SSL, que pide la tercera.
-# Cada opción muestra qué va a hacer y pide confirmación antes de tocar nada.
-# El paso a paso, en docs/servidor.md.
-
+# Seguridad del servidor (menú): cortafuegos, fail2ban, antivirus, AIDE, SSH, SELinux y el certificado SSL.
 
 carpeta_script="$(cd "$(dirname "$0")" && pwd)"
 raiz="$(cd "$carpeta_script/.." && pwd)"
-# El registro de los cambios va en /var/log/stadion, fuera del proyecto:
-# agonadmin no escribe en /var/www/stadion (es de stadion, en 750), y los
-# registros del sistema van en /var/log. Se escribe con sudo.
 carpeta_log="/var/log/stadion"
 log="$carpeta_log/servidor.log"
-
 
 anotar(){
 sudo mkdir -p "$carpeta_log"
@@ -41,8 +23,6 @@ read -r -p "$1 (s/n): " respuesta
 [ "$respuesta" == "s" ]
 }
 
-# EPEL: el repositorio de paquetes extra de AlmaLinux, donde están fail2ban,
-# ClamAV y AIDE no (AIDE viene en los repositorios de siempre).
 instalar_epel(){
 if ! rpm -q epel-release > /dev/null 2>&1; then
     echo "Instalando el repositorio EPEL..."
@@ -50,10 +30,6 @@ if ! rpm -q epel-release > /dev/null 2>&1; then
 fi
 }
 
-
-# 1. El cortafuegos (firewalld): abiertos solo SSH (22), HTTP (80) y HTTPS
-#    (443); todo lo demás se rechaza. La base de datos (3306) no se abre: la
-#    usa solo el sitio, desde la propia máquina.
 cortafuegos(){
 clear
 echo "===== CORTAFUEGOS (firewalld) ====="
@@ -77,9 +53,7 @@ fi
 pausa
 }
 
-
-# 2. Ver las reglas. En AlmaLinux 8, firewalld escribe sus reglas con nftables,
-#    que es lo que reemplaza a iptables: "nft list" las muestra a bajo nivel.
+# 2. Ver las reglas.
 ver_reglas(){
 clear
 echo "===== REGLAS DEL CORTAFUEGOS ====="
@@ -94,9 +68,6 @@ fi
 pausa
 }
 
-
-# 3. fail2ban: bloquea una hora la dirección que falla 5 veces el inicio de
-#    sesión por SSH en 10 minutos (el IPS de la segunda entrega)
 instalar_fail2ban(){
 clear
 echo "===== FAIL2BAN ====="
@@ -105,7 +76,6 @@ echo
 if confirmar "¿Instalar y configurar fail2ban?"; then
     instalar_epel
     sudo dnf install -y fail2ban
-    # jail.local es el archivo propio: jail.conf lo pisan las actualizaciones
     printf '%s\n' \
         "# Stadion - fail2ban (lo escribe scripts/seguridad-servidor.sh)" \
         "[DEFAULT]" \
@@ -124,7 +94,6 @@ fi
 pausa
 }
 
-
 # 4. Las direcciones bloqueadas por fail2ban, y desbloquear una
 bloqueadas(){
 clear
@@ -139,9 +108,7 @@ fi
 pausa
 }
 
-
-# 5. El antivirus: ClamAV, con las firmas al día. Revisa todos los días el
-#    proyecto entero, y sobre todo la carpeta de las fotos que sube la gente.
+# 5. El antivirus: ClamAV, con las firmas al día.
 antivirus(){
 clear
 echo "===== ANTIVIRUS (ClamAV) ====="
@@ -169,7 +136,6 @@ fi
 pausa
 }
 
-
 # 6. Revisar ahora con el antivirus. -i: muestra solo lo infectado.
 revisar_antivirus(){
 clear
@@ -191,10 +157,6 @@ sudo tail -8 /var/log/clamav-stadion.log 2>/dev/null || echo "(todavía no corri
 pausa
 }
 
-
-# 7. AIDE: guarda una huella de los archivos del sistema y la compara todos los
-#    días (el IDS de la segunda entrega). Avisa si algo cambió sin que nadie lo
-#    decidiera.
 revisar_aide(){
 clear
 echo "===== AIDE ====="
@@ -230,11 +192,6 @@ esac
 pausa
 }
 
-
-# 8. SSH: sin entrar directo como root; y sin contraseña, solo con clave
-#    pública, si TODAS las cuentas que entran por SSH ya tienen la suya
-#    cargada (agonadmin, stadion y dbadmin, de la primera entrega). Si a
-#    alguna le falta, la contraseña queda prendida: si no, se quedaría afuera.
 seguridad_ssh(){
 clear
 echo "===== SSH ====="
@@ -262,7 +219,7 @@ if [ "$con_clave" == "si" ]; then
     echo "Todas tienen clave: se puede apagar la contraseña."
 else
     echo "Alguna cuenta no tiene clave: la contraseña queda prendida."
-    echo "(Para cargarlas, ver docs/servidor.md, \"La clave de SSH\".)"
+    echo "(Para cargarlas, ver el manual de administrador, sección 7.)"
 fi
 echo
 if confirmar "¿Aplicar?"; then
@@ -281,8 +238,6 @@ if confirmar "¿Aplicar?"; then
             echo "PasswordAuthentication no" | sudo tee -a "$config" > /dev/null
         fi
     fi
-    # sshd -t revisa el archivo: si tiene un error, se vuelve a la copia y no
-    # se reinicia nada (un sshd que no arranca deja la máquina sin acceso)
     if sudo sshd -t; then
         sudo systemctl reload sshd
         echo "Aplicado. NO cerrar esta sesión hasta probar que entra una nueva."
@@ -295,9 +250,7 @@ fi
 pausa
 }
 
-
-# 9. SELinux: tiene que estar en Enforcing. Y Apache tiene que poder escribir
-#    en la carpeta de las fotos, que es lo único del proyecto donde escribe.
+# 9. SELinux: tiene que estar en Enforcing.
 selinux(){
 clear
 echo "===== SELINUX ====="
@@ -319,16 +272,11 @@ if confirmar "¿Darle ese tipo a public/subidas?"; then
 fi
 if [ "$(getenforce)" != "Enforcing" ]; then
     echo
-    echo "ATENCIÓN: SELinux no está en Enforcing. Ver docs/servidor.md, \"SELinux\"."
+    echo "ATENCIÓN: SELinux no está en Enforcing. Ver el manual de administrador, sección 7."
 fi
 pausa
 }
 
-
-# 10. El certificado SSL de la VM: mod_ssl y un certificado propio (la VM no
-#     tiene un dominio público, así que ninguna autoridad lo firma). Arma
-#     un sitio en el puerto 443 igual al del 80, con las cabeceras de
-#     seguridad.
 certificado(){
 clear
 echo "===== CERTIFICADO SSL ====="
@@ -362,7 +310,6 @@ fi
 pausa
 }
 
-
 # 11. Resumen: el estado de cada medida, en una pantalla
 resumen(){
 clear
@@ -380,7 +327,6 @@ printf "%-28s %s\n" "Certificado SSL" "$(sudo openssl x509 -enddate -noout -in /
 printf "%-28s %s\n" "Actualizaciones de seguridad" "$(sudo dnf -q updateinfo list --security 2>/dev/null | wc -l) pendientes"
 pausa
 }
-
 
 # Menú principal: se repite hasta que se elige 0
 opcion=""

@@ -1,12 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Rol   ->   tabla "rol" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Catalogo de roles: administrador, organizador, jugador, arbitro.
-# Los modelos todavia no acceden a la base de datos: son las clases del
-# dominio. La conexion es el siguiente item de la entrega.
-# =====================================================================
+# Modelo: Rol -> tabla "rol" de sql/schema.sql
 
 class Rol
 {
@@ -28,8 +21,6 @@ class Rol
 
     public function getIdRol()      { return $this->id_rol; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdRol($id_rol)
     {
         $this->id_rol = (int)$id_rol;
@@ -38,7 +29,7 @@ class Rol
     public function getNombre()     { return $this->nombre; }
     public function getDescripcion(){ return $this->descripcion; }
 
-    # Devuelve un arreglo de mensajes. Vacio significa que esta bien.
+    # Devuelve un arreglo de mensajes.
     public function validar()
     {
         $errores = array();

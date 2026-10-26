@@ -1,26 +1,5 @@
 <?php
-# =====================================================================
 # Rendimiento fisico (RF-29) - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   php tests/php/rendimiento.php       (con la base de PRUEBA migrada,
-#                                        hasta la 007)
-#
-# Dos partes:
-#   1. Medicion, sin la base: los tres modelos de Fisica con los valores
-#      de la segunda entrega de Fisica (128 y 212 ms; 3,78 m/s^2 y
-#      257,1 N; 583,4 y 381,4 W), la marca mejor de cada prueba, el
-#      formato con coma decimal y los rangos de validar(), que son los de
-#      la restriccion ck_med_datos.
-#   2. MedicionRepositorio contra la base: guardar (y no una fecha
-#      futura ni un dato fuera de rango), listar de la mas vieja a la mas
-#      nueva, borrar solo una propia, y la comparacion (la mejor marca de
-#      cada cuenta activa, ordenada, sin las cuentas dadas de baja). Y el
-#      grafico de la evolucion (apps/rendimiento.php).
-#
-# Crea sus propias cuentas (prueba-...@ejemplo.invalid) y al final las
-# BORRA, pase lo que pase: sus mediciones se van con ellas (ON DELETE
-# CASCADE). No toca nada mas.
-# =====================================================================
 
 require __DIR__ . '/comun.php';
 require_once $APLICACION . '/models/Medicion.php';
@@ -29,7 +8,7 @@ require_once $APLICACION . '/rendimiento.php';
 
 echo "===== Rendimiento fisico (RF-29) =====\n";
 
-# --- 1. Los modelos ----------------------------------------------------
+# 1. Los modelos
 echo "-- Modelos\n";
 $nadie = new Usuario(1, null, null, 'Hipatia', 'Alejandría');
 function medicion($prueba, $d, $t, $m, $fecha = '2026-10-01')
@@ -87,7 +66,7 @@ chk(!empty(medicion('reaccion', 8, null, null, '2026-02-30')->validar()) && !emp
 $errores = medicion('reaccion', 31, null, null)->validar();
 chk(count($errores) === 1 && $errores[0] === 'La regla mide 30 cm: la distancia va de 0,5 a 30.', 'el aviso, en presente: "' . $errores[0] . '"');
 
-# --- 2. Contra la base -------------------------------------------------
+# 2. Contra la base
 echo "-- Contra la base\n";
 $conexion = conexionDePrueba();
 $conexion->query("SET time_zone = '-03:00'");

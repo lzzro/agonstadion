@@ -1,45 +1,13 @@
 <?php
-# =====================================================================
 # Vista de resultado
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Es la vista que los controladores vuelven a incluir despues de
-# procesar, como en la estructura de clase. Recibe tres variables, que
-# el controlador deja preparadas:
-#   $titulo   encabezado de la pagina
-#   $mensaje  texto de resultado, si salio bien
-#   $errores  arreglo de mensajes, si algo fallo
-#
-# Todo lo que viene del formulario se imprime con htmlspecialchars: sin
-# eso, un nombre con etiquetas HTML se ejecutaria en la pagina.
-#
-# Con errores, el titulo de la pestana empieza con "Aviso ·": la pagina
-# llega entera del servidor, asi que el role="alert" de la lista no se
-# anuncia solo, y el titulo es lo primero que lee el lector de pantalla.
-# El perfil y la administracion hacen lo mismo.
-#
-# Las rutas del CSS, del JS y de los enlaces son relativas a la
-# direccion del controlador, que es la que queda en el navegador. Esa
-# direccion cambia segun donde este instalado el sitio:
-#
-#   en la maquina local   /apps/controllers/loginController.php
-#   en la copia de publicacion  /controllers/login.php
-#
-# Por eso no van escritas a mano sino a traves de $ruta_publica, que
-# quien llama puede dejar preparada. Si nadie la define queda el valor
-# de la instalacion local, que es la de todos los dias.
-# =====================================================================
 
 if (!isset($titulo))  { $titulo  = 'Stadion'; }
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 
-# El perfil es el unico destino que no esta en la carpeta publica sino
-# al lado de los controladores, asi que su direccion se arma aparte.
 if (!isset($ruta_perfil)) { $ruta_perfil = 'perfilController.php'; }
-# La cuenta que acaba de entrar, si el controlador la deja preparada
-# (loginController lo hace). Sin ella, la cabecera usa la sesion.
+# La cuenta que acaba de entrar, si el controlador la deja preparada (loginController lo hace).
 if (!isset($persona_cabecera)) { $persona_cabecera = null; }
 
 require_once __DIR__ . '/cabecera.php';

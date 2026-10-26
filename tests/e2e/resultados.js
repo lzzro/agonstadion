@@ -1,28 +1,4 @@
-// =====================================================================
 // Fase 3 del motor de torneos, de punta a punta - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/resultados.js
-//
-// Con cuentas nuevas en cada corrida (ver comun.js), juega una liga
-// entera por las pantallas y mira el resultado en la pantalla Y en la
-// base:
-//   1. "Nuevo torneo" pregunta como se juega cada partido: partido unico
-//      (con o sin empate) o al mejor de 3, 5 o 7, que no admite empate
-//   2. del panel a "Fechas y resultados": la fecha en juego, con un
-//      bloque por partido
-//   3. cargar un resultado, el marcador de la serie que no vale, la
-//      correccion y el walkover; la tabla al dia y la auditoria
-//   4. dia, hora y lugar; en vivo y fuera de vivo (tambien en la pagina
-//      de la liga)
-//   5. cerrar la fecha: apagado con resultados pendientes, en orden, y
-//      cerrada ya no cambia
-//   6. el resto de la liga y el final: el campeon en esta pagina, en el
-//      panel y en la pagina publica, con el chip de vencedor
-//   7. permisos: sin sesion, sin el rol, con la liga de otro, sin token
-//   8. la administracion nombra las acciones nuevas en sustantivos
-// Deja rastro, como ligas.js: las ligas, equipos y cuentas quedan en la
-// base de prueba, con nombres al azar.
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
@@ -47,7 +23,7 @@ let nav = null;
   const url_panel = await c.direccionDe(O.p, 'panel.php');
   const esports = sql(`SELECT id_disciplina FROM disciplina WHERE nombre = 'Esports'`);
 
-  // --- 1. Como se juega cada partido --------------------------------
+  // 1. Como se juega cada partido
   console.log('--- 1. Nuevo torneo: los partidos ---');
   await O.p.goto(`${BASE}/crear.php`);
   const opciones = await O.p.$$eval('input[name="partido"]', l => l.map(e => e.value + (e.checked ? '*' : '')).join(' '));
@@ -84,7 +60,7 @@ let nav = null;
   await c.postear(O.ctx, url_panel, { token_csrf: tko, accion: 'fixture', id_torneo: String(id) });
   t.chk(sql(`SELECT COUNT(*) FROM ronda WHERE id_torneo = ${id}`) === '3', 'cuatro equipos: tres fechas');
 
-  // --- 2. Del panel a Fechas y resultados ---------------------------
+  // 2. Del panel a Fechas y resultados
   console.log('--- 2. Fechas y resultados ---');
   await O.p.goto(`${BASE}/panel.php`);
   const enlace = await O.p.$(`#liga-${id} a.btn-primario`);
@@ -116,7 +92,7 @@ let nav = null;
                            FROM tabla_posiciones tp JOIN participante p USING (id_participante) WHERE p.id_torneo = ${id}`);
   const fila_de = idp => sql(`SELECT CONCAT(ganados, '-', perdidos, ' ', favor, ':', contra) FROM tabla_posiciones WHERE id_participante = ${idp}`);
 
-  // --- 3. Cargar, corregir y walkover -------------------------------
+  // 3. Cargar, corregir y walkover
   console.log('--- 3. Resultados ---');
   const cargar = async (partido, local, visitante, desenlace = 'marcador') => {
     const bloque = `#partido-${partido}`;
@@ -157,7 +133,7 @@ let nav = null;
         && sql(`SELECT CONCAT(walkover, puntaje_local, puntaje_visitante) FROM resultado WHERE id_enfrentamiento = ${p2[0]}`) === '100',
         'walkover para el visitante: victoria sin tantos');
 
-  // --- 4. Dia y lugar; en vivo --------------------------------------
+  // 4. Dia y lugar; en vivo
   console.log('--- 4. Programar y en vivo ---');
   const p3 = parseInt(sql(`SELECT e.id_enfrentamiento FROM enfrentamiento e JOIN ronda r USING (id_ronda)
                            WHERE r.id_torneo = ${id} AND r.numero = 2 ORDER BY e.numero LIMIT 1`), 10);
@@ -181,9 +157,8 @@ let nav = null;
   await O.p.goto(`${url_partidos}?id=${id}`);
   t.chk(await O.p.$(`#partido-${p1[0]} form.accion-liga input[name="en_vivo"]`) === null, 'un partido jugado no ofrece "en vivo"');
   // Uno de la fecha 1 sin jugar: no hay (los dos tienen resultado).
-  // Se prueba con la fecha 2 cuando quede en juego (abajo).
 
-  // --- 5. Cerrar la fecha -------------------------------------------
+  // 5. Cerrar la fecha
   console.log('--- 5. Cerrar la fecha ---');
   const ronda1 = sql(`SELECT id_ronda FROM ronda WHERE id_torneo = ${id} AND numero = 1`);
   const ronda2 = sql(`SELECT id_ronda FROM ronda WHERE id_torneo = ${id} AND numero = 2`);
@@ -217,7 +192,7 @@ let nav = null;
   await J.p.goto(`${BASE}/torneo.php?id=${id}`);
   t.chk(await J.p.$('main a[href*="partidos"]') === null, 'a otra cuenta, no');
 
-  // --- 6. El resto de la liga y el final ----------------------------
+  // 6. El resto de la liga y el final
   console.log('--- 6. El final ---');
   const pendientes = () => sql(`SELECT e.id_enfrentamiento FROM enfrentamiento e JOIN ronda r USING (id_ronda)
                                 WHERE r.id_torneo = ${id} AND r.estado <> 'cerrada' AND e.estado <> 'jugado'
@@ -247,7 +222,7 @@ let nav = null;
                                              desenlace: 'marcador', local: '0', visitante: '2' });
   t.chk(r.cuerpo.includes('La liga está finalizada'), 'con la liga terminada, nada cambia');
 
-  // --- 7. Permisos --------------------------------------------------
+  // 7. Permisos
   console.log('--- 7. Permisos ---');
   const id_otra = parseInt(sql(`SELECT id_torneo FROM torneo WHERE nombre = ${texto('Liga Única ' + sufijo)}`), 10);
   let res = await O2.ctx.request.get(`${url_partidos}?id=${id}`, { maxRedirects: 0 });
@@ -276,7 +251,7 @@ let nav = null;
   res = await O.ctx.request.get(`${url_partidos}?id[]=1&fecha[]=2`);
   t.chk(res.status() === 404, 'un numero mandado como arreglo no corta la pagina');
 
-  // --- 8. La administracion -----------------------------------------
+  // 8. La administracion
   console.log('--- 8. Administracion ---');
   const A = await c.entrar(nav, admin);
   await A.p.goto(`${BASE}/admin.php`);

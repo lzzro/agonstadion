@@ -1,17 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Auditoria   ->   tabla "auditoria" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Registro de las operaciones sensibles. Composicion: contiene el
-# objeto Usuario que hizo la accion, que puede quedar en null si la
-# accion es anonima (por ejemplo un login fallido con un correo que no
-# existe) o si despues se borra el usuario.
-#
-# En la base, el usuario de la aplicacion solo tiene permiso de INSERT
-# sobre esta tabla: el historial no se modifica ni se borra. Por eso
-# esta clase no tiene ningun metodo que cambie una fila ya registrada.
-# =====================================================================
+# Modelo: Auditoria -> tabla "auditoria" de sql/schema.sql
 
 require_once __DIR__ . '/Usuario.php';
 
@@ -47,8 +35,6 @@ class Auditoria
 
     public function getIdAuditoria()  { return $this->id_auditoria; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdAuditoria($id_auditoria)
     {
         $this->id_auditoria = (int)$id_auditoria;
@@ -106,8 +92,7 @@ class Auditoria
         return $errores;
     }
 
-    # Las acciones previstas: la misma lista que la restriccion
-    # ck_audit_accion. La usa tambien el filtro de la administracion.
+    # Las acciones previstas: la misma lista que la restriccion ck_audit_accion.
     public static function acciones()
     {
         return array('alta', 'baja', 'modificacion', 'login_ok', 'login_error', 'logout',

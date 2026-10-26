@@ -1,33 +1,4 @@
-// =====================================================================
 // Recorrido de todas las paginas - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/recorrido.js
-//
-//   0. el menu: en cada pagina con el menu compartido, y en cada ancho
-//      (390 a 1920 px, con una ventana alta, que es donde sobra lugar), el
-//      alto del <nav> es el mismo que en index.php (2 px de tolerancia), y
-//      la linea de la pagina actual queda pegada al texto de su enlace.
-//      (La administracion tiene su propio menu, y queda afuera.)
-//   1. barrido: cada vista, en 390, 768 y 1024 px, de dia y de noche, sin
-//      sesion y con ella: sin desborde a lo ancho, sin texto del color de
-//      su fondo, sin respuestas con error (400 o mas) ni errores de
-//      JavaScript; con sesion, el circulo en la cabecera
-//   2. marcadores: ningun marcador ("2 – 0") se parte en dos renglones,
-//      ni su tabla se sale de la tarjeta, y todos llevan cifras de altura
-//      pareja y ancho fijo (lining-nums tabular-nums), en cinco anchos y
-//      dos modos
-//   3. enlaces: todo href, src y action interno de cada pagina responde
-//      (menos de 400), sin sesion y con ella, y toda ancla #x existe en su
-//      pagina. Un formulario se manda sin su token: responde 403 con el
-//      aviso del token, que prueba que el controlador existe y corre sin
-//      cambiar nada. Cerrar sesion no se manda (cortaria el recorrido).
-//
-// SOLO TOCA LO QUE ELLA MISMA CREA: una cuenta de @ejemplo.invalid, con
-// contrasena al azar, administradora (sql/primer_administrador.sql) y
-// organizadora, para abrir la administracion, el panel y "Nuevo torneo".
-// Al final se borra (limpiarCuentas en comun.js) y se comprueba que la
-// base (CHECKSUM TABLE) quedo como estaba.
-// =====================================================================
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -53,7 +24,7 @@ let nav;
     await S.ctx.close();
     t.chk(true, 'una cuenta nueva de @ejemplo.invalid, administradora y organizadora');
 
-    // --- 0. El menu ---------------------------------------------------------------------
+    // 0. El menu
     console.log('--- 0. El menu: el mismo alto en todas las paginas ---');
     const CON_MENU = PUBLICAS.concat(['crear.php', 'panel.php', 'perfil.php']);
     const medirMenu = p => p.evaluate(() => {
@@ -89,7 +60,7 @@ let nav;
     t.chk(menuMal.length === 0, `el menu mide lo mismo que en index.php en ${menuVistas} combinaciones de pagina y ancho, con la linea pegada al texto`
           + (menuMal.length ? `:\n      ${menuMal.join('\n      ')}` : ''));
 
-    // --- 1. Barrido ---------------------------------------------------------------------
+    // 1. Barrido
     console.log('--- 1. Barrido: desborde, texto invisible y errores ---');
     for (const con_sesion of [false, true]) {
       const vistas = PUBLICAS.concat(con_sesion
@@ -124,7 +95,7 @@ let nav;
             + (malas.length ? `${malas.length} con problemas:\n      ${malas.join('\n      ')}` : 'todas sin desborde, sin texto invisible y sin errores'));
     }
 
-    // --- 2. Marcadores --------------------------------------------------------------------
+    // 2. Marcadores
     console.log('--- 2. Ningun marcador se parte ---');
     const VISTAS_M = ['index.php', 'calendario.php', 'llave.php', 'torneo.php', 'torneo.php#calendario', 'torneo.php#posiciones',
                       'torneo.php#participantes', 'torneo.php#reglas'];
@@ -163,7 +134,7 @@ let nav;
     t.chk(revisados > 0 && partidos.length === 0, `${revisados} marcadores revisados (${VISTAS_M.length} vistas × 5 anchos × 2 modos): `
           + (partidos.length ? `${partidos.length} con problemas:\n      ${partidos.join('\n      ')}` : 'ninguno se parte, todos con cifras parejas'));
 
-    // --- 3. Enlaces --------------------------------------------------------------------------
+    // 3. Enlaces
     console.log('--- 3. Enlaces, recursos y formularios ---');
     for (const con_sesion of [false, true]) {
       const ctx = await nav.newContext({ storageState: con_sesion ? sesion : undefined });

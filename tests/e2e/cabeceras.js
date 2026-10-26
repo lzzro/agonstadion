@@ -1,30 +1,4 @@
-// =====================================================================
 // Cabeceras de seguridad y cookie de la sesion - Stadion (Agon)
-// (Ciberseguridad, tercera entrega; ver el informe OWASP)
-// ---------------------------------------------------------------------
-//   node tests/e2e/cabeceras.js
-//
-// Mira, sin cambiar nada del sitio:
-//   1. las cabeceras de seguridad en las paginas, el CSS, el JS, una
-//      direccion que no existe y un controlador: nosniff, X-Frame-Options,
-//      Referrer-Policy, Permissions-Policy y la politica de contenido
-//      (CSP); por http, sin HSTS
-//   2. la cookie de la sesion: HttpOnly y SameSite=Lax, sin Secure por
-//      http; un identificador inventado no se acepta (modo estricto) y al
-//      iniciar sesion el identificador cambia (fijacion de sesion)
-//   3. la politica de contenido no frena nada propio: con una cuenta
-//      administradora y organizadora, ninguna vista da un aviso de la
-//      politica, y tema.js corre (el modo noche cambia)
-//   4. lo que la politica si frena: un script escrito dentro de la
-//      pagina (lo que intentaria un XSS) no corre, y ninguna pagina se
-//      deja mostrar dentro de otro sitio (clickjacking)
-//   5. con STADION_HTTPS (la direccion de una copia del sitio servida
-//      con un certificado propio, ver tests/README.md): la cookie con
-//      Secure, y HSTS
-//
-// Crea una sola cuenta, y al final la borra y comprueba que la base
-// (CHECKSUM TABLE) quedo como estaba.
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE } = c;
@@ -68,7 +42,7 @@ let nav;
     const anon = await nav.newContext();
     const pedir = (url, opciones = {}) => anon.request.get(url, { maxRedirects: 0, ...opciones });
 
-    // --- 1. Las cabeceras ------------------------------------------------------------
+    // 1. Las cabeceras
     console.log('--- 1. Las cabeceras ---');
     const A = await c.cuentaNueva(nav, 'Casandra', 'Troya', propias);
     c.darRol(A, 'administrador');
@@ -90,8 +64,7 @@ let nav;
       t.chk(r.status() === estado && faltan.length === 0,
             `${ruta}: ${r.status()} con las cabeceras${faltan.length ? ' (faltan: ' + faltan.join(', ') + ')' : ''}`);
     }
-    // Un controlador sin sesion: desvia al acceso, y el desvio tambien las
-    // lleva (Header always).
+    // Un controlador sin sesion: desvia al acceso, y el desvio tambien las lleva (Header always).
     let r = await pedir(PERFIL);
     let faltan = cabecerasBien(r.headers());
     t.chk(r.status() === 302 && faltan.length === 0,
@@ -99,7 +72,7 @@ let nav;
     r = await pedir(`${BASE}/index.php`);
     t.chk(!('strict-transport-security' in r.headers()), 'por http no hay HSTS (solo vale con https)');
 
-    // --- 2. La cookie de la sesion -----------------------------------------------------
+    // 2. La cookie de la sesion
     console.log('--- 2. La cookie de la sesion ---');
     // Un contexto nuevo, sin cookie: login.php abre la sesion y la manda.
     const limpio = await nav.newContext();
@@ -130,7 +103,7 @@ let nav;
           'un script de la pagina no puede leer la cookie de la sesion');
     await ctx.close();
 
-    // --- 3. La politica no frena nada propio -----------------------------------------------
+    // 3. La politica no frena nada propio
     console.log('--- 3. La politica no frena nada propio ---');
     const avisos = [];
     const errores = [];
@@ -141,8 +114,6 @@ let nav;
                     CREAR, PANEL, ADMIN, REPORTES];
     let abiertas = 0;
     for (const v of vistas) {
-      // Pasar de una vista a otra de la misma pagina (#mis-torneos) no
-      // pide nada al servidor: goto no devuelve respuesta, y vale.
       const resp = await AD.p.goto(v);
       if (resp === null ? v.includes('#') : resp.status() === 200) abiertas++;
     }
@@ -162,7 +133,7 @@ let nav;
     const tema_despues = await ps.evaluate(() => document.documentElement.getAttribute('data-theme'));
     t.chk(tema_antes !== 'noche' && tema_despues === 'noche', `tema.js corre: el interruptor pasa a modo noche (${tema_antes} -> ${tema_despues})`);
 
-    // --- 4. Lo que la politica frena ------------------------------------------------------------
+    // 4. Lo que la politica frena
     console.log('--- 4. Lo que la politica frena ---');
     avisos.length = 0;
     const bloqueado = await ps.evaluate(() => new Promise(listo => {
@@ -185,7 +156,7 @@ let nav;
           'ninguna pagina se muestra dentro de otro sitio (frame-ancestors)');
     await sinSesion.close();
 
-    // --- 5. Con HTTPS ---------------------------------------------------------------------------
+    // 5. Con HTTPS
     if (HTTPS) {
       console.log(`--- 5. Con HTTPS (${HTTPS}) ---`);
       const seguro = await nav.newContext({ ignoreHTTPSErrors: true });

@@ -1,29 +1,4 @@
-// =====================================================================
 // Rendimiento fisico (RF-29) - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/rendimiento.js
-//
-// La pestana Rendimiento del perfil, en la pantalla Y en la base:
-//   1. sin mediciones: una raya en cada indicador, sin grafico, los tres
-//      formularios
-//   2. cargar con clics de verdad las tres pruebas: el aviso con el
-//      indicador calculado (128 ms, 3,78 m/s2, 583 W), la fila en la base
-//      con solo los datos crudos, y la auditoria
-//   3. coma decimal; los errores al lado de su formulario (fuera de
-//      rango, fecha futura, sin masa, una prueba inventada, un campo
-//      mandado como arreglo): el "Aviso ·" del titulo, aria-invalid, lo
-//      escrito queda, y nada se guarda
-//   4. el grafico de la evolucion (dos o mas mediciones), la tabla de
-//      mediciones y la comparacion con otra cuenta
-//   5. borrar con clics: solo una propia; sin token, 403; sin sesion, al
-//      acceso
-//   6. el telefono: sin desborde, el grafico sin los dos valores
-//
-// SOLO TOCA LO QUE ELLA MISMA CREA, igual que sesion.js: cuentas de
-// @ejemplo.invalid con contrasena al azar. Al final se borran sus
-// cuentas y su auditoria (las mediciones se van con las cuentas), y se
-// comprueba que la base (CHECKSUM TABLE) quedo como estaba.
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE, sql } = c;
@@ -43,7 +18,7 @@ let nav;
     const hoy = sql("SELECT DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-03:00'))");
     const form = prueba => `#cargar-medicion form.medicion:has(input[name="prueba"][value="${prueba}"])`;
 
-    // --- 1. Sin mediciones -------------------------------------------------------
+    // 1. Sin mediciones
     console.log('--- 1. Sin mediciones ---');
     await p.goto(`${BASE}/perfil.php#rendimiento`);
     const accion = await p.$eval(form('reaccion'), f => f.action);
@@ -61,7 +36,7 @@ let nav;
     t.chk(await p.$eval(`${form('reaccion')} input[name="fecha"]`, (e, h) => e.value === h && e.max === h && e.required, hoy),
           'la fecha viene en hoy, y no deja pasar de hoy');
 
-    // --- 2. Cargar con clics ---------------------------------------------------
+    // 2. Cargar con clics
     console.log('--- 2. Cargar las tres pruebas ---');
     const guardar = async (prueba, campos) => {
       for (const [n, v] of Object.entries(campos)) await p.fill(`${form(prueba)} input[name="${n}"]`, v);
@@ -87,7 +62,7 @@ let nav;
                FROM medicion WHERE id_usuario = ${H.id}`) === 'reaccion:8.0:-:-,sprint:-:2.30:68.0,salto:-:0.45:60.0',
           'tres filas, cada una con los datos de su prueba');
 
-    // --- 3. Coma decimal y errores ---------------------------------------------
+    // 3. Coma decimal y errores
     console.log('--- 3. Coma decimal y errores ---');
     const tk = await c.token(p);
     let r = await c.postear(O.ctx, url, { token_csrf: tk, accion: 'medicion', prueba: 'reaccion', fecha: '2026-09-08', distancia: '12,0' });
@@ -113,7 +88,7 @@ let nav;
     await error({ prueba: 'reaccion', fecha: hoy, 'distancia[]': '10' }, 'reaccion', 'La regla mide 30 cm: la distancia va de 0,5 a 30.',
                 'la distancia mandada como arreglo (sin error de PHP)');
 
-    // --- 4. Grafico, tabla y comparacion ------------------------------------------
+    // 4. Grafico, tabla y comparacion
     console.log('--- 4. Grafico, tabla y comparacion ---');
     sql(`INSERT INTO medicion (id_usuario, prueba, distancia_cm, fecha) VALUES (${T.id}, 'reaccion', 7.5, '2026-10-01')`);
     await p.goto(`${BASE}/perfil.php#rendimiento`);
@@ -146,7 +121,7 @@ let nav;
           'la fila de esta cuenta, marcada y con " · esta cuenta" para el lector de pantalla');
     t.chk(comparado.length === 3, 'y una tabla por prueba');
 
-    // --- 5. Borrar -----------------------------------------------------------------
+    // 5. Borrar
     console.log('--- 5. Borrar ---');
     const boton = '#mis-mediciones button[aria-label="Borrar la medición de tiempo de reacción del 8 de septiembre de 2026"]';
     t.chk(await p.$(boton) !== null, 'cada "Borrar" dice que medicion borra');
@@ -170,7 +145,7 @@ let nav;
     t.chk(r.estado === 302 && r.destino.endsWith('/login.php') && cuantas() === 3, 'sin sesion: al acceso, sin guardar nada');
     await v.close();
 
-    // --- 6. El telefono ------------------------------------------------------------
+    // 6. El telefono
     console.log('--- 6. El telefono ---');
     sql(`INSERT INTO medicion (id_usuario, prueba, distancia_cm, tiempo_s, masa_kg, fecha)
          VALUES (${H.id}, 'sprint', NULL, 2.45, 68, '2026-09-02'), (${H.id}, 'reaccion', 12, NULL, NULL, '2026-09-08')`);

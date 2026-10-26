@@ -1,41 +1,12 @@
 <?php
-# =====================================================================
 # Vista: reportes de los torneos (RF-28)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La incluye reportesController.php. Recibe:
-#   $persona      la cuenta de la sesion (Usuario, con sus roles)
-#   $de_todos     true si son los reportes de todos los torneos (la
-#                 administracion); false, los de la cuenta
-#   $lista        TorneoRepositorio::listarParaReportes(), o null si no
-#                 se pudo leer
-#   $numeros      id de torneo => los de ReporteRepositorio::partidosDe()
-#   $primero_de   id de torneo => el campeon, o el primero de la tabla
-#                 de uno en juego (Participante), o null
-#   $ruta_publica, $ruta_perfil, $ruta_panel, $ruta_admin   direcciones
-#
-# Arriba los totales; despues dos graficos de barras (inscriptos sobre
-# el cupo, y partidos jugados y por jugar) y el detalle de cada torneo
-# en una tabla, que tiene todos los numeros de los graficos: el que no
-# ve los graficos no pierde nada. Al costado, los torneos por estado.
-#
-# Los graficos son SVG sin JavaScript (DESIGN.md, "Graficos"): cada
-# numero escrito, y las series distintas por forma (lleno lo hecho,
-# palido con borde lo pendiente, contorno punteado lo que falta), con
-# las clases tramo, tramo-pendiente y tramo-vacio.
-#
-# Usa el menu compartido, con Organizadores marcado (aria-current
-# "true"): los reportes cuelgan del panel.
-# =====================================================================
 
 require_once __DIR__ . '/cabecera.php';
 require_once __DIR__ . '/pie.php';
 require_once __DIR__ . '/ligas.php';
 require_once __DIR__ . '/config/recursos.php';
 
-# Un grafico de barras horizontales. Cada fila: array('nombre', 'lleno',
-# 'pendiente', 'vacio', 'texto'): arriba el nombre y el texto, y debajo
-# la barra, de largo proporcional a lleno + pendiente + vacio.
+# Un grafico de barras horizontales.
 function barrasReporte($filas, $titulo)
 {
     $maximo = 1;
@@ -67,7 +38,7 @@ function barrasReporte($filas, $titulo)
     return $svg . '</svg>' . "\n";
 }
 
-# Un numero con una cifra decimal y coma: "3,4". Sin datos, una raya.
+# Un numero con una cifra decimal y coma: "3,4".
 function promedioTexto($total, $cantidad)
 {
     return ($cantidad === 0) ? '—' : number_format($total / $cantidad, 1, ',', '.');

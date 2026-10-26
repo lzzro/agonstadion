@@ -1,62 +1,5 @@
 #!/bin/bash
-# =====================================================================
 # La migracion 005, en bases de prueba propias - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   bash tests/sql/migracion_005.sh [socket...]
-#
-# Prueba sql/migraciones/005_ligas.sql en cada servidor de MariaDB cuyo
-# socket se le pase. Sin argumentos, en los dos de la maquina de prueba:
-# /run/mysqld/mysqld.sock (la 10.11, la de la VM) y
-# /srv/m114/run/mysqld.sock (la 11.4, que arranca en latin1, la
-# codificacion de fabrica).
-#
-# En cada servidor crea sus propias bases, todas con el prefijo t005_ y
-# un sufijo al azar, y las borra al terminar, tambien si algo falla en
-# el medio (trap). Nunca toca sgdm. Entra por el socket con la cuenta
-# del sistema que la corre (root, sin contrasena, en la maquina de
-# prueba), que es la que administra la base: sgdm_app no alcanza para
-# cambiar la estructura.
-#
-# Necesita el historial de git: el esquema de antes de la 005 sale del
-# commit 469a990 (el ultimo antes de la fase 2), sin los bloques
-# "[solo servidor propio]". La 005 se corre tambien sin esos bloques
-# (el permiso de sgdm_app se prueba aparte, en el caso 8).
-#
-# Casos:
-#   1. Base vieja (antes de la 005): la ultima consulta da exactamente
-#      los numeros de la cabecera de la 005.
-#   2. La misma base, la 005 otra vez: frena con ck_005_ya_esta_aplicada
-#      y no cambia nada; la consulta del final, sola, da lo mismo.
-#   3. Base nueva (el schema.sql de la fase 2, el del commit 5d8c612: el
-#      de ahora ya trae la 006, que prueba migracion_006.sh) con la 005: el mismo resultado,
-#      los mismos datos y SHOW CREATE TABLE de las 18 tablas identico al
-#      de la base vieja migrada (sin AUTO_INCREMENT=N); ahi la parte de
-#      estructura de la 005 no cambia nada.
-#   4. Sin la 003: frena en la primera consulta ("pedido_rol doesn't
-#      exist"), sin cambiar nada.
-#   5. Sin la 004 (una tabla en latin1): frena con ck_005_falta_la_004,
-#      sin cambiar nada.
-#   6. Con un nombre de muestra ocupado (Vortex; Atlantida GG sin tilde y
-#      en mayusculas; un correo de muestra), o con dos ligas vigentes con
-#      el mismo nombre (que el UNIQUE nuevo no admitiria): frena con
-#      ck_005_nombres_libres, sin cambiar nada, y la consulta 2c dice
-#      cual esta ocupado. Una vigente y otra finalizada con el mismo
-#      nombre no frenan.
-#   7. Una falla a mitad de la carga (una restriccion de prueba en
-#      tabla_posiciones): no queda ningun dato de muestra, la estructura
-#      si; sin la restriccion, la 005 otra vez carga todo.
-#   8. El original trae el GRANT, dentro del bloque, y fuera del bloque
-#      no trae permisos. Corrido con root
-#      donde existe sgdm_app, el original tambien anda y da el permiso
-#      (que la prueba saca enseguida, y otra vez al terminar).
-#
-# "Sin cambiar nada" es: antes y despues, la misma estructura (SHOW
-# CREATE TABLE de cada tabla, con su AUTO_INCREMENT), las mismas filas
-# en cada tabla y los mismos datos.
-#
-# Escribe una linea por comprobacion (ok o FALLA) y al final TODO BIEN o
-# cuantas fallaron; sale con 0 o con 1, y con 2 si no puede ni empezar.
-# =====================================================================
 
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -68,8 +11,6 @@ else
 fi
 
 COMMIT_VIEJO=469a990
-# El ultimo commit con la 005 como ultima migracion: su schema.sql es la
-# "base nueva" del caso 3 (el de ahora suma la 006).
 COMMIT_FASE2=5d8c612
 MIGRACION=sql/migraciones/005_ligas.sql
 
@@ -81,10 +22,7 @@ PREFIJO=''
 BASE=''
 CODIGO=0
 
-# ---------------------------------------------------------------------
-# Limpieza: los permisos que pudo dejar el GRANT del original y las
-# bases de prueba. Corre al terminar, pase lo que pase.
-# ---------------------------------------------------------------------
+# Limpieza: los permisos que pudo dejar el GRANT del original y las bases de prueba.
 limpiar() {
     local entrada sock base
     for entrada in ${CREADAS[@]+"${CREADAS[@]}"}; do
@@ -101,14 +39,11 @@ limpiar() {
 trap 'limpiar; rm -rf "$TMP"' EXIT
 trap 'exit 2' INT TERM HUP
 
-# ---------------------------------------------------------------------
 # Comprobaciones
-# ---------------------------------------------------------------------
 BUENAS=0
 MALAS=0
 FALLADAS=()
 
-# chk "descripcion" comando...   (ok si el comando sale con 0)
 chk() {
     local descripcion=$1
     shift
@@ -129,9 +64,7 @@ detalle() { sed 's/^/        /' | head -n "${1:-12}"; }
 iguales() { [ "$1" = "$2" ]; }
 no() { ! "$@"; }
 
-# ---------------------------------------------------------------------
 # La base
-# ---------------------------------------------------------------------
 sql() { mysql --socket="$SOCKET" --default-character-set=utf8mb4 -N -B "$@"; }
 
 crear_base() {
@@ -140,8 +73,7 @@ crear_base() {
     sql -e "CREATE DATABASE \`$BASE\`"
 }
 
-# Carga un archivo .sql (o lo que llegue por la entrada) en una base; si
-# falla, muestra el error.
+# Carga un archivo .sql (o lo que llegue por la entrada) en una base; si falla, muestra el error.
 cargar() {
     if mysql --socket="$SOCKET" --default-character-set=utf8mb4 "$1" < "${2:-/dev/stdin}" > "$TMP/carga" 2>&1; then
         return 0
@@ -150,18 +82,13 @@ cargar() {
     return 1
 }
 
-# Una base con el esquema de antes de la 005, y lo que se le agregue por
-# la entrada. Es una comprobacion: si no se arma, el caso no sigue.
+# Una base con el esquema de antes de la 005, y lo que se le agregue por la entrada.
 base_vieja() {  # nombre caso descripcion  < sql de mas
     crear_base "$1" || return 1
     { cat "$TMP/schema_viejo.sql"; cat; } > "$TMP/vieja.sql"
     chk "$2: se arma la base vieja$3" cargar "$BASE" "$TMP/vieja.sql"
 }
 
-# Corre un archivo como lo hace el cliente con un archivo: se detiene en
-# el primer error y, al cerrar la conexion, se deshace la transaccion
-# que haya quedado abierta. Deja la salida y el error en $TMP, y el
-# codigo de salida en CODIGO.
 correr() {
     mysql --socket="$SOCKET" --default-character-set=utf8mb4 -B "$1" < "$2" > "$TMP/salida" 2> "$TMP/error"
     CODIGO=$?
@@ -172,8 +99,7 @@ corrio_bien() { [ "$CODIGO" -eq 0 ]; }
 # Frena con un error que dice el texto dado.
 frena_con() { [ "$CODIGO" -ne 0 ] && grep -qF -- "$1" "$TMP/error"; }
 
-# El renglon ERROR del cliente (antes de ese renglon, el cliente repite
-# la sentencia que fallo).
+# El renglon ERROR del cliente (antes de ese renglon, el cliente repite la sentencia que fallo).
 mostrar_error() {
     if grep -q '^ERROR' "$TMP/error"; then grep '^ERROR' "$TMP/error" | detalle 4
     else grep -v '^-*$' "$TMP/error" | detalle 4; fi
@@ -242,9 +168,7 @@ conteos() {
     done
 }
 
-# Los datos de todas las tablas, fila por fila, por clave primaria. Con
-# "sin_fecha", la auditoria va sin su fecha (la pone el servidor al
-# insertar, y cambia de una base a otra).
+# Los datos de todas las tablas, fila por fila, por clave primaria.
 datos() {
     local ignorar=()
     [ "${2:-}" = sin_fecha ] && ignorar=(--ignore-table="$1.auditoria")
@@ -313,10 +237,6 @@ permisos_de_la_base() {
               FROM mysql.tables_priv WHERE Db = '$1' ORDER BY User, Table_name"
 }
 
-# ---------------------------------------------------------------------
-# Los archivos: el esquema de antes, el de ahora y la 005, cada uno sin
-# los bloques "[solo servidor propio]" (el mismo awk de armar-deploy.sh).
-# ---------------------------------------------------------------------
 sin_bloques() {
     awk -v desde='-- [solo servidor propio] desde aca' \
         -v hasta='-- [solo servidor propio] hasta aca' '
@@ -337,8 +257,6 @@ solo_bloques() {
         dentro { print }' "$@"
 }
 
-# Lo que no puede estar en una migracion fuera de los bloques
-# "[solo servidor propio]" (y fuera de los comentarios).
 trae_permisos() {
     tr -d '\r' < "$1" | grep -v '^[[:space:]]*--' \
         | grep -Eiq '^[[:space:]]*(GRANT|REVOKE|CREATE[[:space:]]+USER|USE)[[:space:]]'
@@ -372,9 +290,7 @@ chk "caso 8: el original trae el GRANT a sgdm_app sobre pedido_inscripcion" trae
 chk "caso 8: en el original, el GRANT esta dentro del bloque [solo servidor propio]" trae_el_grant "$TMP/005_bloque.sql"
 chk "caso 8: fuera del bloque, el original no trae GRANT, REVOKE, usuarios ni USE" no trae_permisos "$TMP/005_sin_bloque.sql"
 
-# ---------------------------------------------------------------------
 # Un servidor
-# ---------------------------------------------------------------------
 probar() {
     SOCKET=$1
     PREFIJO=''
@@ -385,7 +301,7 @@ probar() {
     chk "el servidor responde por el socket" test -n "$version" || return
     PREFIJO="[$(echo "$version" | cut -d. -f1,2)] "
 
-    # --- 1 ------------------------------------------------------------
+    # 1
     echo "--- 1. Base vieja (antes de la 005) ---"
     base_vieja vieja "caso 1" " (schema.sql de $COMMIT_VIEJO, sin los bloques)" < /dev/null || return
     caso1=$BASE
@@ -406,7 +322,7 @@ probar() {
                'utf8mb4_unicode_ci 18'
     chk "caso 1: sin el bloque, ningun permiso nuevo sobre la base" iguales "$(permisos_de_la_base "$BASE")" ''
 
-    # --- 2 ------------------------------------------------------------
+    # 2
     echo "--- 2. La 005 otra vez ---"
     antes "$caso1"
     correr "$caso1" "$TMP/005_sin_bloque.sql"
@@ -417,7 +333,7 @@ probar() {
     chk "caso 2: la consulta del final (paso 6) corre sola" corrio_bien || mostrar_error
     resultado_esperado "caso 2: y sigue dando los numeros de la cabecera"
 
-    # --- 3 ------------------------------------------------------------
+    # 3
     echo "--- 3. Base nueva (schema.sql de la fase 2, $COMMIT_FASE2) ---"
     crear_base nueva
     if chk "caso 3: se carga el schema.sql de la fase 2, sin los bloques" cargar "$BASE" "$TMP/schema_nuevo.sql"; then
@@ -442,7 +358,7 @@ probar() {
             || diff "$TMP/datos_1" "$TMP/datos_3" | detalle 20
     fi
 
-    # --- 4 ------------------------------------------------------------
+    # 4
     echo "--- 4. Sin la 003 ---"
     if base_vieja sin003 "caso 4" ", sin pedido_rol" <<< 'DROP TABLE pedido_rol;'; then
         antes "$BASE"
@@ -454,7 +370,7 @@ probar() {
         chk "caso 4: sin la columna de_muestra ni la tabla pedido_inscripcion" sin_estructura_005 "$BASE"
     fi
 
-    # --- 5 ------------------------------------------------------------
+    # 5
     echo "--- 5. Sin la 004 ---"
     if base_vieja sin004 "caso 5" ", con equipo en latin1" <<< 'ALTER TABLE equipo CONVERT TO CHARACTER SET latin1;'; then
         antes "$BASE"
@@ -465,7 +381,7 @@ probar() {
         chk "caso 5: sin la columna de_muestra ni la tabla pedido_inscripcion" sin_estructura_005 "$BASE"
     fi
 
-    # --- 6 ------------------------------------------------------------
+    # 6
     echo "--- 6. Nombres de muestra ocupados ---"
     if base_vieja ocupados "caso 6" " con un equipo Vortex" \
          <<< "INSERT INTO equipo (nombre, fecha_alta) VALUES ('Vortex', '2026-09-01 10:00:00');"; then
@@ -477,10 +393,6 @@ probar() {
                         INSERT INTO usuario (correo, hash_password, nombre, apellido)
                         VALUES ('clubsur@ejemplo.invalid', '!prueba', 'Prueba', 'Ocupa');"
         ocupado "caso 6 (el correo clubsur@ejemplo.invalid)" $'cuenta\tclubsur@ejemplo.invalid'
-        # Dos ligas vigentes con el mismo nombre (antes de la 005 se podia,
-        # con distinta fecha): el UNIQUE nuevo (uq_torneo_vigente) fallaria
-        # a mitad de la estructura, asi que la 005 frena antes. Con otra
-        # mayuscula tambien: el cotejo no la distingue.
         sql "$BASE" -e "DELETE FROM usuario;
                         INSERT INTO usuario (correo, hash_password, nombre, apellido)
                         VALUES ('ocupa@ejemplo.invalid', '!prueba', 'Prueba', 'Ocupa');
@@ -507,7 +419,7 @@ probar() {
                                          FROM torneo WHERE nombre = 'Liga Repetida'")" 'finalizado=NULL,inscripcion=Liga Repetida'
     fi
 
-    # --- 7 ------------------------------------------------------------
+    # 7
     echo "--- 7. Falla a mitad de la carga ---"
     if base_vieja atomica "caso 7" " con ck_prueba (ganados < 5) en tabla_posiciones" \
          <<< 'ALTER TABLE tabla_posiciones ADD CONSTRAINT ck_prueba CHECK (ganados < 5);'; then
@@ -529,7 +441,7 @@ probar() {
             || diff "$TMP/estructura_1" "$TMP/estructura_7" | detalle 20
     fi
 
-    # --- 8 ------------------------------------------------------------
+    # 8
     echo "--- 8. El original, con el GRANT ---"
     if [ "$(sql -e "SELECT COUNT(*) FROM mysql.user WHERE User = 'sgdm_app' AND Host = 'localhost'")" != 1 ]; then
         echo "  --    ${PREFIJO}caso 8: sgdm_app@localhost no existe en este servidor: no aplica"
@@ -547,8 +459,7 @@ probar() {
     fi
 }
 
-# Frena con ck_005_nombres_libres, sin cambiar nada, y la consulta 2c
-# dice que esta ocupado.
+# Frena con ck_005_nombres_libres, sin cambiar nada, y la consulta 2c dice que esta ocupado.
 ocupado() {  # caso fila_de_2c
     antes "$BASE"
     correr "$BASE" "$TMP/005_sin_bloque.sql"
@@ -562,9 +473,7 @@ for S in "${SOCKETS[@]}"; do
     probar "$S"
 done
 
-# ---------------------------------------------------------------------
 # Al terminar: las bases y los permisos de prueba, fuera.
-# ---------------------------------------------------------------------
 echo
 echo "--- Limpieza ---"
 PREFIJO=''

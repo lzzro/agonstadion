@@ -1,45 +1,5 @@
 <?php
-# =====================================================================
-# Controlador: fechas y resultados de una liga (rondas y resultados, en
-# una eliminacion directa o un suizo)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Fase 3 del motor de torneos (CU-15 Cargar resultado, CU-16 Publicar
-# ronda). Una pagina por liga, para quien la organiza:
-# partidosController.php?id=N muestra la fecha en juego, y con
-# &fecha=M, la fecha M. Desde ahi se cargan y corrigen resultados, se
-# programa cada partido (dia, hora y lugar), se marca uno en vivo y se
-# cierra la fecha. Al cerrar la ultima, la liga termina con su campeon.
-# En la eliminacion directa y el suizo es lo mismo, ronda por ronda: al
-# cerrar una se arma la siguiente (ver ResultadoRepositorio).
-#
-# Es solo para cuentas con el rol organizador, comprobado ACA en cada
-# pedido, con la cuenta de la sesion leida de la base (igual que el
-# panel):
-#   sin sesion vigente   a la pagina de acceso
-#   sin el rol, al abrir la pagina: al perfil, a la tarjeta de los
-#                        roles, con un aviso
-#   sin el rol, con un POST armado a mano: 403, sin hacer nada
-# Y la liga tiene que ser de esa cuenta: con el numero de una ajena,
-# la pagina dice que no esta a su cargo (404) y un POST no hace nada
-# (ResultadoRepositorio lo vuelve a mirar con la fila bloqueada).
-#
-# Recibe cuatro formularios, que se distinguen por el campo "accion":
-#   resultado      el marcador (local, visitante) o un walkover
-#                  (desenlace wo-local o wo-visitante); si ya tenia,
-#                  lo corrige
-#   programar      dia y hora (datetime-local, vacio = a confirmar) y
-#                  lugar
-#   en_vivo        en_vivo = 1 lo marca en vivo, 0 lo saca
-#   cerrar_fecha   cierra la fecha en juego (id_ronda)
-# De cada formulario se leen solo numeros y los textos de la fecha y el
-# lugar. Quien actua es siempre la cuenta de la sesion.
-#
-# Todo formulario trae el token de config/csrf.php. Cada accion hecha
-# queda en la auditoria (resultado, programacion, cierre y final), y
-# despues se vuelve a la pagina con un GET (?aviso=...): recargar no
-# repite la accion.
-# =====================================================================
+# Controlador: fechas y resultados de una liga (rondas y resultados, en una eliminacion directa o un suizo)
 
 require_once __DIR__ . '/../config/sesion.php';
 require_once __DIR__ . '/../config/csrf.php';
@@ -63,10 +23,9 @@ if (!isset($ruta_partidos)) { $ruta_partidos = 'partidosController.php'; }
 $titulo  = 'Fechas y resultados';
 $mensaje = '';
 $errores = array();
-$valores_partido = array();   # id de partido => lo que se escribio, si hubo un error
+$valores_partido = array();
 
-# Los avisos despues de una accion: un codigo en la direccion, nunca un
-# texto.
+# Los avisos despues de una accion: un codigo en la direccion, nunca un texto.
 $avisos = array(
     'resultado'      => 'El resultado queda cargado y la tabla, al día.',
     'correccion'     => 'El resultado queda corregido y la tabla, al día.',
@@ -77,8 +36,7 @@ $avisos = array(
     'liga-terminada' => 'La última fecha queda cerrada: la liga termina con su campeón.'
 );
 
-# Solo un numero de un texto: un campo mandado como arreglo no es un
-# numero.
+# Solo un numero de un texto: un campo mandado como arreglo no es un numero.
 function numeroDe($origen, $campo)
 {
     return (isset($origen[$campo]) && is_string($origen[$campo])) ? (int)$origen[$campo] : 0;
@@ -94,7 +52,7 @@ function marcadorDe($campo)
     return ($texto !== '' && ctype_digit($texto)) ? (int)$texto : null;
 }
 
-# --- 1. Sin sesion vigente, al acceso --------------------------------
+# 1. Sin sesion vigente, al acceso
 if (!sesionVigente()) {
     header('Location: ' . $ruta_publica . '/login.php');
     exit;
@@ -102,7 +60,7 @@ if (!sesionVigente()) {
 
 $id_usuario = (int)$_SESSION['id_usuario'];
 
-# --- 2. Conexion, cuenta y rol ---------------------------------------
+# 2. Conexion, cuenta y rol
 $conexion = conectarBD();
 if ($conexion === null) {
     $errores[] = $error_bd;
@@ -139,12 +97,11 @@ $resultados = new ResultadoRepositorio($conexion);
 $auditorias = new AuditoriaRepositorio($conexion);
 $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
 
-# La liga de la pagina: la del formulario en un POST, la de la
-# direccion en un GET.
+# La liga de la pagina: la del formulario en un POST, la de la direccion en un GET.
 $id_torneo = ($_SERVER['REQUEST_METHOD'] === 'POST') ? numeroDe($_POST, 'id_torneo') : numeroDe($_GET, 'id');
 $fecha_pedida = numeroDe($_GET, 'fecha');
 
-# --- 3. Las acciones ---------------------------------------------------
+# 3. Las acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $accion  = (isset($_POST['accion']) && is_string($_POST['accion'])) ? $_POST['accion'] : '';
@@ -216,8 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($salida !== null) {
         $errores = array_merge($errores, $salida['errores']);
-        # La fecha de la accion, para volver a ella (o a la que quede en
-        # juego, despues de cerrar).
+        # La fecha de la accion, para volver a ella (o a la que quede en juego, despues de cerrar).
         if ($salida['numero'] > 0 && $accion !== 'cerrar_fecha') {
             $fecha_pedida = $salida['numero'];
         }
@@ -234,17 +190,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-# --- 4. El aviso de la accion anterior -------------------------------
+# 4. El aviso de la accion anterior
 if (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos[$_GET['aviso']]) && empty($errores)) {
     $mensaje = $avisos[$_GET['aviso']];
 }
-# El mensaje del cierre, en la llave y el suizo (se ajusta abajo, con
-# el torneo leido).
+# El mensaje del cierre, en la llave y el suizo (se ajusta abajo, con el torneo leido).
 $aviso_pedido = (isset($_GET['aviso']) && is_string($_GET['aviso'])) ? $_GET['aviso'] : '';
 
-# --- 5. Lo que muestra la pagina --------------------------------------
-# La liga tiene que ser de esta cuenta y una liga con fixture; si no, la
-# pagina lo dice y no muestra nada mas.
 $torneo  = ($id_torneo > 0) ? $torneos->buscarPorId($id_torneo) : null;
 $rondas  = array();
 $participantes = array();
@@ -285,8 +237,6 @@ if ($torneo !== null && !$torneo->esLiga() && $mensaje !== '') {
     }
 }
 
-# La fecha en juego y la que se muestra: la pedida si existe; si no, la
-# que esta en juego (o la ultima, con la liga terminada).
 $en_juego = ResultadoRepositorio::fechaEnJuego($rondas);
 $abierta  = null;
 foreach ($rondas as $ronda) {

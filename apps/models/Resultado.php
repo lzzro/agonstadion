@@ -1,21 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Resultado   ->   tabla "resultado" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Relacion 1:1 con enfrentamiento: mientras no se jugo, simplemente no
-# hay objeto Resultado. El id del enfrentamiento no es atributo de esta
-# clase, porque el resultado vive dentro del Enfrentamiento.
-#
-# El ganador se guarda aparte del puntaje porque no siempre se deduce
-# del marcador (walkover, desempate por fuera del puntaje). En un
-# empate queda en null.
-#
-# Un walkover (fase 3) es el partido que gana el que se presenta, sin
-# jugarlo: lleva ganador y su marcador queda 0 a 0, asi no cambia los
-# tantos de ninguno en la tabla. En la tabla suma como victoria y
-# derrota, por el ganador, no por el marcador.
-# =====================================================================
+# Modelo: Resultado -> tabla "resultado" de sql/schema.sql
 
 require_once __DIR__ . '/Participante.php';
 require_once __DIR__ . '/Usuario.php';
@@ -65,8 +49,7 @@ class Resultado
         return $this->puntaje_local === $this->puntaje_visitante;
     }
 
-    # Diferencia del punto de vista del local. Por esto los puntajes son
-    # SMALLINT con signo en la tabla y no UNSIGNED: la resta da negativo.
+    # Diferencia del punto de vista del local.
     public function getDiferencia()
     {
         return $this->puntaje_local - $this->puntaje_visitante;
@@ -93,8 +76,6 @@ class Resultado
             $errores[] = 'Las observaciones no pueden pasar de 200 caracteres.';
         }
 
-        # Coherencia entre marcador y ganador, que la base no puede
-        # controlar con un CHECK porque involucra a otra tabla.
         if (!$this->esEmpate() && $this->ganador === null && !$this->esWalkover()) {
             $errores[] = 'Si el marcador no es empate hay que indicar el ganador.';
         }

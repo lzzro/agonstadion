@@ -1,50 +1,10 @@
-// =====================================================================
 // Las paginas publicas leen todo de la base - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/publicas.js
-//
-// Contra la copia de publicacion (deploy/sitio):
-//   STADION_URL=http://127.0.0.1:8096 \
-//   STADION_MYSQL="mysql --socket=/srv/m114/run/mysqld.sock sgdm" \
-//   node tests/e2e/publicas.js
-//
-// Recorre las paginas publicas como un visitante sin sesion y compara
-// lo que muestran con lo que dice la base EN ESE MOMENTO: otras pruebas
-// agregan ligas y cuentas a la misma base, asi que nada se cuenta fijo
-// ("3 ligas"). Lo que si va escrito es lo que tiene que mostrar la
-// migracion 005 (las tres ligas de muestra): eso no cambia.
-//   1. torneos.php: una tarjeta por torneo publico, en el orden de la
-//      base, con su chip, su linea, su barra, su enlace y la marca "De
-//      muestra" solo en las de muestra; el numero de la introduccion
-//   2. torneo.php: sin numero, la liga destacada (la del partido en
-//      vivo), con su tabla, sus participantes, sus reglas y su resumen;
-//      las cinco pestanas por ancla (:target) y lo que acompana a la
-//      vista abierta (el menu y "Saltar al contenido"); otra liga, sin
-//      copias en el menu; un numero que no existe, 404
-//   3. calendario.php: la semana del partido en vivo, los dias de la
-//      semana de 2026, "Horario a confirmar", las semanas de antes y de
-//      despues, una semana que no es fecha, y "Hoy" apagado en la de hoy
-//   4. llave.php: solo hay ligas, cada una con el enlace a su tabla
-//   5. index.php: los tres numeros, las tarjetas y el recuadro del
-//      costado
-//   6. una liga nueva, de una cuenta de prueba (el nombre guardado en
-//      minuscula), aparece sin la marca "De muestra"; cancelada, deja de
-//      ser publica en todas partes
-//   7. en todas las paginas: "Saltar al contenido" primero, ningun
-//      href="#", el CSS y el JS con su marca de version (la misma en
-//      todas, y la que corresponde al archivo), sin voseo ni "tu/tus",
-//      ningun enlace a panel.html, y las direcciones .html viejas
-//      desviadas con un 301
-//
-// La cuenta de prueba se crea en cada corrida (ver comun.js): correo de
-// @ejemplo.invalid y contrasena al azar, solo en memoria.
-// =====================================================================
 'use strict';
 const crypto = require('crypto');
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
 
-// --- Fechas en castellano, las mismas reglas que apps/fechas.php -------
+// Fechas en castellano, las mismas reglas que apps/fechas.php
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
                'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -54,8 +14,6 @@ const diaSemana = f => DIAS[mediodia(f).getUTCDay()];
 const sumarDias = (f, n) => new Date(mediodia(f).getTime() + n * 86400000).toISOString().slice(0, 10);
 const lunesDe = f => sumarDias(f, -((mediodia(f).getUTCDay() + 6) % 7));
 const mayuscula = s => s.charAt(0).toUpperCase() + s.slice(1);
-// "Semana del 14 al 20 de septiembre", o "del 28 de septiembre al 4 de
-// octubre" si cruza de mes (igual que calendario.php).
 function tituloSemana(lunes) {
   const domingo = sumarDias(lunes, 6);
   return (lunes.slice(5, 7) === domingo.slice(5, 7))
@@ -73,12 +31,10 @@ function diaDeEtiqueta(etiqueta, anio) {
   return { fecha: f, bien: m[1] === mayuscula(diaSemana(f)) };
 }
 
-// Los nombres de persona, como Usuario::paraMostrar(): guardados enteros
-// en minuscula, suben la primera letra.
 const paraMostrar = s => (s === '' || s !== s.toLowerCase()) ? s : s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
-// --- Lo que dice la base ------------------------------------------------
+// Lo que dice la base
 const PUBLICO = "t.estado IN ('inscripcion', 'en_curso', 'finalizado')";
 function filas(consulta) {
   const salida = sql(consulta);
@@ -109,10 +65,6 @@ function publicos() {
                  actual: parseInt(f[12], 10), en_vivo: f[13] === '1', equipos: f[14] === '1',
                  previstas: parseInt(f[15], 10) }));
 }
-// La tabla de posiciones como se ve: el texto visible de cada fila (sin
-// el texto oculto para el lector de pantalla, que va aparte), si lleva
-// la clase y la raya de los que clasifican, los encabezados que se ven,
-// las columnas cuyo encabezado y valores no alinean igual, y las cifras.
 function leerTabla(p) {
   return p.evaluate(() => {
     const visible = e => getComputedStyle(e).display !== 'none';
@@ -142,9 +94,6 @@ function chipEsperado(t) {
   if (t.estado === 'en_curso') return t.en_vivo ? 'estado-en-vivo|En vivo' : 'estado-en-juego|En juego';
   return 'estado-cerrado|Finalizado';
 }
-// Desde la fase 3: equipos o jugadores, y en la llave y el suizo,
-// "Ronda N de M" (las previstas), "llave por armar" o "primera ronda
-// por armar".
 function avanceEsperado(t) {
   const quienes = t.equipos ? 'equipos' : 'jugadores';
   if (t.estado === 'inscripcion') {
@@ -162,10 +111,6 @@ function porcentajeEsperado(t) {
   const total = (t.modulo !== 'Liga' && t.previstas) ? Math.max(t.fechas, t.previstas) : t.fechas;
   return Math.round(100 * (t.actual === 0 ? total : t.actual) / total);
 }
-// La tabla de una liga, calculada de tabla_posiciones y ordenada con el
-// desempate de la liga (ConfiguracionTorneo::ordenarPosiciones).
-// Como en torneo.php: la columna E solo si la liga admite empate, y los
-// tantos a favor y en contra ("13:4") antes de la diferencia.
 function tablaEsperada(id) {
   const [pv, pe, pd, criterio, admite] = filas(`SELECT puntos_victoria, puntos_empate, puntos_derrota, criterio_desempate, admite_empate
                                                 FROM configuracion_torneo WHERE id_torneo = ${id}`)[0];
@@ -189,8 +134,6 @@ function tablaEsperada(id) {
 }
 const idDe = nombre => parseInt(sql(`SELECT id_torneo FROM torneo WHERE nombre = ${texto(nombre)} ORDER BY id_torneo LIMIT 1`), 10);
 
-// --- Lo que se lee de una pagina abierta ----------------------------------
-// Las tarjetas de torneos (torneos.php y el inicio).
 const leerTarjetas = (p, donde) => p.$$eval(`${donde} article.tarjeta`, arts => arts
   .filter(a => a.querySelector('.barra'))
   .map(a => {
@@ -207,9 +150,6 @@ const leerTarjetas = (p, donde) => p.$$eval(`${donde} article.tarjeta`, arts => 
       muestra: a.querySelectorAll('.muestra').length
     };
   }));
-// Las vistas abiertas, la pestana marcada de cada una, la entrada del
-// menu marcada y el "Saltar al contenido" que se ve (lo que se ve:
-// display distinto de none en el elemento y en sus padres).
 async function estadoVistas(p) {
   return p.evaluate(() => {
     const ve = (e) => { for (let x = e; x; x = x.parentElement) { if (getComputedStyle(x).display === 'none') return false; } return true; };
@@ -223,10 +163,6 @@ async function estadoVistas(p) {
   });
 }
 
-// Otras pruebas pueden estar cambiando la misma base mientras esta
-// corre: se lee la base antes y despues de abrir la pagina, y si cambio
-// en el medio, se vuelve a abrir (hasta cinco veces). Asi lo que se
-// compara es la pagina contra la base de ese mismo momento.
 async function estable(leerBase, abrir) {
   let ultimo = null;
   for (let vez = 0; vez < 5; vez++) {
@@ -239,9 +175,6 @@ async function estable(leerBase, abrir) {
   return ultimo;
 }
 
-// Voseo y segunda persona: las formas que no pueden aparecer, y las
-// palabras terminadas en -ás, -és, -ís (la forma del voseo: tenés,
-// podés, elegís) que si son castellano de todos.
 const VOSEO = new RegExp('(?<!\\p{L})(' + ['tu', 'tus', 'tú', 'tuyo', 'tuya', 'tuyos', 'tuyas', 'vos', 'contigo', 'ti', 'sos',
   'tienes', 'puedes', 'quieres', 'sabes', 'eres', 'eliges', 'fijate', 'registrate', 'anotate', 'sumate', 'unite',
   'mirá', 'abrí', 'elegí', 'ingresá', 'entrá', 'iniciá', 'creá', 'completá', 'escribí', 'subí', 'organizá', 'armá',
@@ -267,8 +200,6 @@ let nav = null;
   const S = idDe('Liga Interna Club Sur');
   t.chk(V > 0 && B > 0 && S > 0, `las tres ligas de muestra estan en la base (${V}, ${B}, ${S})`);
 
-  // --- 6a. Una liga nueva, de una cuenta de prueba ----------------------
-  // Se crea antes que nada, asi todo lo que sigue la tiene que contar.
   console.log('--- Una liga nueva, de una cuenta de prueba ---');
   const org = await c.cuentaNueva(nav, 'olivia', 'de la prueba');
   c.darRol(org, 'organizador');
@@ -289,7 +220,7 @@ let nav = null;
   const ctx = await nav.newContext();
   const p = await ctx.newPage();
 
-  // --- 1. torneos.php ---------------------------------------------------
+  // 1. torneos.php
   console.log('--- 1. torneos.php ---');
   const abrirTorneos = async () => {
     await p.goto(`${BASE}/torneos.php`);
@@ -328,7 +259,7 @@ let nav = null;
   t.chk(lista.filter(x => !x.muestra).every(x => tarjeta(x.id).muestra === 0) && lista.filter(x => x.muestra).every(x => tarjeta(x.id).muestra === 1),
         `"De muestra" en las ${lista.filter(x => x.muestra).length} de muestra y en ninguna de las otras ${lista.filter(x => !x.muestra).length}`);
 
-  // --- 2. torneo.php ----------------------------------------------------
+  // 2. torneo.php
   console.log('--- 2. torneo.php ---');
   const destacadas = sql(`SELECT GROUP_CONCAT(DISTINCT r.id_torneo) FROM enfrentamiento en INNER JOIN ronda r ON r.id_ronda = en.id_ronda
                           INNER JOIN torneo t ON t.id_torneo = r.id_torneo WHERE en.estado = 'en_vivo' AND ${PUBLICO}`);
@@ -346,9 +277,7 @@ let nav = null;
   const leida = await leerTabla(p);
   const tabla = leida.filas;
   t.chk(tabla.length === 12, `la tabla tiene 12 filas (${tabla.length})`);
-  // La Liga Valorant se juega al mejor de 3 mapas: sin empates. El orden
-  // y las diferencias son los de la maqueta de siempre; los puntos no,
-  // porque la maqueta tenia empates (ver sql/migraciones/005_ligas.sql).
+  // La Liga Valorant se juega al mejor de 3 mapas: sin empates.
   const esperada8 = ['1 Titanes CS 7 6 1 13:4 +9 18', '2 Nova Esports 7 5 2 12:6 +6 15', '3 Vortex 7 4 3 11:8 +3 12',
                      '4 Delta Gaming 7 4 3 10:9 +1 12', '5 Aurora FC 7 3 4 10:10 0 9', '6 Halcones 7 3 4 10:11 -1 9',
                      '7 Ping Masters 7 3 4 9:11 -2 9', '8 Liceo 3 7 3 4 8:11 -3 9'];
@@ -412,8 +341,7 @@ let nav = null;
                               AND en.id_participante_visitante IS NOT NULL
                               AND en.fecha_hora >= CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-03:00')
                             ORDER BY en.fecha_hora, r.numero, en.numero LIMIT 1`);
-  // "Proximo" es de ahora en adelante (Montevideo): un programado con la
-  // hora ya pasada no cuenta. Si no queda ninguno, la tarjeta no esta.
+  // "Proximo" es de ahora en adelante (Montevideo): un programado con la hora ya pasada no cuenta.
   const tarjeta_proximo = resumen.filter(s => s.startsWith('Próximo enfrentamiento'));
   if (proximo_base === '') {
     t.chk(tarjeta_proximo.length === 0, 'Resumen: sin partidos por jugar de ahora en adelante, no hay "Próximo enfrentamiento"');
@@ -494,8 +422,6 @@ let nav = null;
         'la Liga Interna: 9 de 12, y la primera fecha el domingo 4 de octubre');
   t.chk(await p.$$eval('#participantes tbody tr', trs => trs.length) === parseInt(sql(`SELECT COUNT(*) FROM participante WHERE id_torneo = ${S} AND estado IN ('inscripto', 'confirmado')`), 10),
         'sus participantes son los de la base');
-  // Una liga de muestra no recibe pedidos: la organiza una cuenta que no
-  // inicia sesion, y el pedido quedaria sin resolver.
   t.chk(await p.$('.pedir-lugar a, .pedir-lugar form') === null
         && (await p.textContent('.pedir-lugar')).replace(/\s+/g, ' ').trim() === 'Pedir lugar Una liga de muestra no recibe pedidos.'
         && await p.$('.pedir-lugar .enlace-apagado[aria-disabled="true"]') !== null,
@@ -515,7 +441,7 @@ let nav = null;
   t.chk(await p.$$eval('a.saltar', as => as.length) === 1 && await p.$$eval('nav a.activo', as => as.map(a => a.textContent + '|' + a.getAttribute('aria-current')).join(',')) === 'Torneos|true',
         'y ahi un solo "Saltar al contenido" y el menu en Torneos');
 
-  // --- 3. calendario.php --------------------------------------------------
+  // 3. calendario.php
   console.log('--- 3. calendario.php ---');
   const semana = (desde) => {
     const hasta = sumarDias(desde, 6);
@@ -601,7 +527,7 @@ let nav = null;
   await p.goto(`${BASE}/calendario.php?semana=2026-09-28`);
   t.chk((await p.textContent('main h1')) === 'Semana del 28 de septiembre al 4 de octubre', 'una semana que cruza de mes: "Semana del 28 de septiembre al 4 de octubre"');
 
-  // --- 4. llave.php --------------------------------------------------------
+  // 4. llave.php
   console.log('--- 4. llave.php ---');
   vista = await estable(publicos, async () => {
     await p.goto(`${BASE}/llave.php`);
@@ -623,7 +549,7 @@ let nav = null;
         && await p.$(`main section:first-child a[href="torneo.php?id=${V}#posiciones"]`) !== null,
         `llave.php?id=${V} dice que la Valorant es una liga, y lleva a su tabla`);
 
-  // --- 5. index.php --------------------------------------------------------
+  // 5. index.php
   console.log('--- 5. index.php ---');
   // La base, torneos.php y el inicio, del mismo momento.
   vista = await estable(() => ({ lista: publicos(), formatos: parseInt(sql('SELECT COUNT(*) FROM modulo_competencia'), 10) }), async () => {
@@ -638,9 +564,6 @@ let nav = null;
   const participantes = vista.base.lista.reduce((n, x) => n + x.inscriptos, 0);
   t.chk(datos.join(' / ') === `${activos} Torneos activos / ${participantes} Participantes / ${vista.base.formatos} Formatos`,
         `los tres numeros son los de la base (${datos.join(' / ')})`);
-  // La marca de cada total: "De muestra" si todo sale de ligas de
-  // muestra, "Incluye muestra" si una parte, nada si ninguna. Formatos
-  // es el catalogo: no lleva.
   const marca = (de_muestra, total) => de_muestra <= 0 ? '' : (de_muestra >= total ? 'De muestra' : 'Incluye muestra');
   const activas = vista.base.lista.filter(x => x.estado === 'inscripcion' || x.estado === 'en_curso');
   const esperadas = [marca(activas.filter(x => x.muestra).length, activos),
@@ -674,7 +597,7 @@ let nav = null;
   e = await estadoVistas(p);
   t.chk(e.vistas === 'posiciones' && (await p.textContent('h1')) === 'Liga Valorant · Otoño', 'y al seguirlo, abre la vista Posiciones');
 
-  // --- 6b. La liga nueva, cancelada, deja de ser publica ---------------------
+  // 6b. La liga nueva, cancelada, deja de ser publica
   console.log('--- 6. La liga nueva, cancelada ---');
   sql(`UPDATE torneo SET estado = 'cancelado' WHERE id_torneo = ${N}`);
   vista = await estable(publicos, abrirTorneos);
@@ -694,7 +617,7 @@ let nav = null;
   vista = await estable(publicos, async () => { await p.goto(`${BASE}/index.php`); return p.$$eval('.datos strong', ss => ss.map(x => x.textContent)); });
   t.chk(vista.visto[0] === String(vista.base.filter(x => x.estado === 'inscripcion' || x.estado === 'en_curso').length), 'el inicio ya no la cuenta entre los activos');
 
-  // --- 7. Lo que vale para todas las paginas -----------------------------------
+  // 7. Lo que vale para todas las paginas
   console.log('--- 7. En todas las paginas ---');
   const paginas = ['index.php', 'torneos.php', 'torneo.php', `torneo.php?id=${B}`, `torneo.php?id=${S}`, 'torneo.php?id=999999',
                    'calendario.php', `calendario.php?semana=${hoy}`, 'llave.php', `llave.php?id=${V}`, 'login.php', 'registro.php',

@@ -1,18 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: CatalogoRepositorio   ->   tablas "disciplina", "tipo_torneo"
-#                                   y "modulo_competencia"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Lee los catalogos que usa el formulario de una liga nueva. Los ids no
-# van escritos en el codigo: salen del catalogo por su nombre, igual
-# que el rol en UsuarioRepositorio::asignarRolPorNombre.
-#
-# Solo lectura, salvo una cosa: habilitar o deshabilitar un modulo de
-# competencia (RF-24, desde la administracion; la migracion 008 le da a
-# sgdm_app el UPDATE de esa tabla). El resto de los catalogos lo
-# mantiene sgdm_admin (ver el DCL de schema.sql).
-# =====================================================================
+# Modelo: CatalogoRepositorio -> tablas "disciplina", "tipo_torneo" y "modulo_competencia"
 
 require_once __DIR__ . '/Disciplina.php';
 require_once __DIR__ . '/TipoTorneo.php';
@@ -31,8 +18,7 @@ class CatalogoRepositorio
         $this->conexion = $conexion;
     }
 
-    # Las disciplinas, por nombre, indexadas por id. null si la consulta
-    # no se puede hacer.
+    # Las disciplinas, por nombre, indexadas por id. null si la consulta no se puede hacer.
     public function disciplinas()
     {
         $sentencia = $this->conexion->prepare('SELECT id_disciplina, nombre FROM disciplina ORDER BY nombre');
@@ -79,8 +65,6 @@ class CatalogoRepositorio
              : new ModuloCompetencia($fila['id_modulo'], $fila['nombre'], $fila['descripcion'], $fila['habilitado']);
     }
 
-    # Los modulos de competencia, en el orden del catalogo, indexados por
-    # nombre. null si la consulta no se puede hacer.
     public function modulos()
     {
         $sentencia = $this->conexion->prepare('SELECT id_modulo, nombre, descripcion, habilitado
@@ -99,11 +83,7 @@ class CatalogoRepositorio
         return $lista;
     }
 
-    # Habilita o deshabilita un modulo. Siempre queda al menos uno
-    # habilitado: sin ninguno, "Nuevo torneo" no tendria que ofrecer. La
-    # cuenta y el cambio van en una transaccion, con las filas bloqueadas
-    # (FOR UPDATE): dos administradores a la vez no dejan el catalogo sin
-    # ninguno. Devuelve un arreglo de errores, vacio si quedo hecho.
+    # Habilita o deshabilita un modulo.
     public function cambiarModulo($id_modulo, $habilitar)
     {
         $id = (int)$id_modulo;

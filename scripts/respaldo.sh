@@ -1,54 +1,9 @@
 #!/bin/bash
-# =====================================================================
-# Respaldo diario de SGDM - Stadion (Agon)
-# Proyecto de Lucas Martiarena
-# ---------------------------------------------------------------------
-# Deja en backups/ un respaldo por dia:
-#
-#     backups/respaldo_2026-09-30.tar.gz.enc      el respaldo cifrado
-#     backups/respaldo_2026-09-30.tar.gz.enc.sig  su firma digital
-#     backups/respaldo_2026-09-30.sha256          su hash
-#
-# Adentro del comprimido van tres cosas:
-#     base-sgdm.sql   volcado completo de la base sgdm
-#     apps/           el codigo PHP
-#     public/         las paginas, el CSS y las imagenes
-#
-# HASHING, CIFRADO Y FIRMA DIGITAL (Ciberseguridad, tercera entrega),
-# con OpenSSL, que AlmaLinux trae instalado:
-#   - Cifrado: AES-256 (openssl enc, con la clave derivada por PBKDF2)
-#     con la frase de scripts/firma/respaldo.clave. Un respaldo lleva
-#     las cuentas de la gente y los hashes de sus contrasenas: si se
-#     copia a otro lado, sin la frase no se lee.
-#   - Firma digital: RSA con SHA-256 (openssl dgst -sign), con la clave
-#     privada de scripts/firma/respaldo-privada.pem. Con la publica,
-#     scripts/verificar-respaldo.sh comprueba que el respaldo lo hizo
-#     este servidor y que nadie le cambio un byte.
-#   - Hash: SHA-256 del archivo cifrado (sha256sum), para ver de un
-#     vistazo si una copia llego entera.
-# Las claves las crea UNA vez scripts/generar-claves-respaldo.sh, y
-# nunca van al repositorio (.gitignore). Sin ellas, el respaldo se hace
-# igual, sin cifrar ni firmar, con su hash y un aviso: un respaldo sin
-# cifrar es mejor que ninguno.
-#
-# La contrasena de sgdm_admin NO esta en este archivo. Va en
-# scripts/respaldo.local.cnf, que el .gitignore excluye. Se le pasa a
-# mysqldump con --defaults-extra-file y no como argumento: lo que va en
-# la linea de comandos lo ve cualquiera con un "ps aux".
-#
-# Sin rotacion: los respaldos viejos quedan donde estan. Borrarlos o
-# mandarlos afuera es una decision aparte, todavia no tomada.
-#
-# Se ejecuta sin preguntar nada, porque quien lo llama es cron y no hay
-# nadie del otro lado para contestar.
-# =====================================================================
+# Respaldo diario en backups/: la base, apps/ y public/, cifrado, firmado y con su hash.
 
 set -u
 
-# ---------------------------------------------------------------------
-# Rutas. Se deducen de donde esta el script, asi el mismo archivo sirve
-# en la VM del instituto y en cualquier copia del proyecto.
-# ---------------------------------------------------------------------
+# Rutas.
 CARPETA_SCRIPT="$(cd "$(dirname "$0")" && pwd)"
 RAIZ="$(cd "$CARPETA_SCRIPT/.." && pwd)"
 
@@ -63,10 +18,6 @@ PRIVADA="$CARPETA_SCRIPT/firma/respaldo-privada.pem"
 FECHA="$(date +%F)"
 ARCHIVO="$DESTINO/respaldo_${FECHA}.tar.gz"
 
-# ---------------------------------------------------------------------
-# Cada mensaje sale con la hora adelante, para que el registro que deja
-# cron se pueda leer de arriba abajo.
-# ---------------------------------------------------------------------
 avisar() {
     echo "[$(date '+%F %T')] $1"
 }
@@ -96,10 +47,7 @@ esac
 
 avisar "Respaldo de $BASE iniciado."
 
-# ---------------------------------------------------------------------
-# 1. Comprobaciones previas. Conviene que falle aca, con un mensaje
-#    claro, y no a la mitad dejando un archivo incompleto.
-# ---------------------------------------------------------------------
+# 1. Comprobaciones previas.
 command -v mysqldump >/dev/null 2>&1 \
     || fallar "mysqldump no esta instalado o no esta en el PATH." 3
 
@@ -112,9 +60,7 @@ command -v tar >/dev/null 2>&1 \
 [ -r "$CREDENCIALES" ] \
     || fallar "el archivo de credenciales $CREDENCIALES no se puede leer." 4
 
-# El archivo con la contrasena tiene que ser privado. 600 o 400: solo
-# su duenio. Si lo puede leer el grupo o cualquiera, el respaldo no
-# arranca, para que el problema no pase desapercibido.
+# El archivo con la contrasena tiene que ser privado. 600 o 400: solo su duenio.
 PERMISOS="$(stat -c '%a' "$CREDENCIALES" 2>/dev/null || echo '')"
 case "$PERMISOS" in
     600|400) ;;
@@ -132,12 +78,7 @@ mkdir -p "$DESTINO" \
 [ -w "$DESTINO" ] \
     || fallar "no hay permiso de escritura en $DESTINO." 6
 
-# ---------------------------------------------------------------------
 # 2. Volcado de la base en una carpeta temporal.
-#    Primero el volcado, despues el comprimido: si mysqldump falla, no
-#    llega a armarse ningun .tar.gz y el respaldo del dia anterior
-#    queda intacto.
-# ---------------------------------------------------------------------
 TEMPORAL="$(mktemp -d)" || fallar "no se puede crear la carpeta temporal." 6
 trap 'rm -rf "$TEMPORAL"' EXIT
 
@@ -161,11 +102,7 @@ fi
 
 avisar "Base volcada: $(du -h "$VOLCADO" | cut -f1)."
 
-# ---------------------------------------------------------------------
 # 3. Un solo comprimido con el volcado y los archivos del proyecto.
-#    Se arma con otro nombre y recien al final se lo mueve al definitivo,
-#    asi nunca queda un respaldo_AAAA-MM-DD.tar.gz a medio escribir.
-# ---------------------------------------------------------------------
 PARCIAL="$TEMPORAL/respaldo.tar.gz"
 
 avisar "Comprimiendo la base y los archivos del proyecto..."
@@ -179,12 +116,7 @@ if [ $? -ne 0 ]; then
     fallar "no se pudo armar el comprimido." 8
 fi
 
-# ---------------------------------------------------------------------
 # 4. Cifrado y firma digital (si estan las claves), y el hash.
-#    Todo se hace sobre la copia temporal; recien al final se mueve a
-#    backups/. Asi un respaldo sin cifrar no queda ni un momento ahi
-#    cuando hay con que cifrarlo.
-# ---------------------------------------------------------------------
 if [ -f "$FRASE" ] && [ -f "$PRIVADA" ] && command -v openssl >/dev/null 2>&1; then
     for CLAVE in "$FRASE" "$PRIVADA"; do
         case "$(stat -c '%a' "$CLAVE" 2>/dev/null)" in

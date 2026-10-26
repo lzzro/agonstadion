@@ -1,20 +1,5 @@
 <?php
-# =====================================================================
 # Vista parcial: el pie de pagina y el interruptor de modo noche
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# El mismo pie de las paginas de siempre (la firma de Agon, el unico
-# motivo de la pagina), el cierre de .pagina y el interruptor de modo
-# noche, que tema.js pone al dia. Lo usan las paginas que leen de la
-# base y las vistas de la fase 2; imprime exactamente el marcado que
-# las otras paginas llevan escrito.
-#
-#   $enlaces       true en las paginas publicas: Ayuda, Terminos y
-#                  Contacto (desde la tercera entrega, con su pagina).
-#   $ruta_publica  la direccion de public/ vista desde la pagina que
-#                  llama: los enlaces van a ayuda.php, terminos.php y
-#                  contacto.php de ahi.
-# =====================================================================
 
 function piePagina($enlaces, $ruta_publica = '.')
 {

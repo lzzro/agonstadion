@@ -1,25 +1,5 @@
 <?php
-# =====================================================================
 # Controlador: reportes de los torneos (RF-28)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Tercera entrega. "El organizador puede consultar los reportes de sus
-# torneos, y el administrador general, los de todos los torneos."
-#
-# Solo lee: no recibe formularios ni cambia nada. Quien ve que se
-# comprueba ACA en cada pedido, con la cuenta de la sesion leida de la
-# base (igual que el panel):
-#   sin sesion vigente      a la pagina de acceso
-#   con el rol administrador     los reportes de todos los torneos
-#   con el rol organizador       los de sus torneos
-#   sin ninguno de los dos  al perfil, a la tarjeta de los roles, con
-#                           el aviso de que hace falta el de organizador
-#
-# Por torneo: inscriptos sobre el cupo, partidos jugados sobre los
-# armados, tantos por partido, walkovers y empates, y el campeon (o el
-# primero de la tabla, si se esta jugando). Arriba, los totales; al
-# costado, los torneos por estado. Todo sale de la base en cada pedido.
-# =====================================================================
 
 require_once __DIR__ . '/../config/sesion.php';
 require_once __DIR__ . '/../config/database.php';
@@ -38,7 +18,7 @@ if (!isset($ruta_admin))   { $ruta_admin   = 'adminController.php'; }
 
 $errores = array();
 
-# --- 1. Sin sesion vigente, al acceso --------------------------------
+# 1. Sin sesion vigente, al acceso
 if (!sesionVigente()) {
     header('Location: ' . $ruta_publica . '/login.php');
     exit;
@@ -46,7 +26,7 @@ if (!sesionVigente()) {
 
 $id_usuario = (int)$_SESSION['id_usuario'];
 
-# --- 2. Conexion, cuenta y rol ---------------------------------------
+# 2. Conexion, cuenta y rol
 $conexion = conectarBD();
 if ($conexion === null) {
     $errores[] = $error_bd;
@@ -72,12 +52,12 @@ if (!$de_todos && !$persona->tieneRol('organizador')) {
     exit;
 }
 
-# --- 3. Los torneos y sus numeros ------------------------------------
+# 3. Los torneos y sus numeros
 $torneos = new TorneoRepositorio($conexion);
 $lista = $torneos->listarParaReportes($de_todos ? null : $id_usuario);
 
 $numeros   = array();   # id de torneo => los de ReporteRepositorio
-$primero_de = array();  # id de torneo => campeon o primero (Participante), o null
+$primero_de = array();
 if (is_array($lista)) {
     $ids = array();
     foreach ($lista as $fila) {
@@ -97,9 +77,7 @@ if (is_array($lista)) {
         if (!isset($numeros[$id])) {
             $numeros[$id] = ReporteRepositorio::sinPartidos();
         }
-        # El campeon de uno terminado; el primero de la tabla de una liga
-        # o un suizo que se esta jugando. Una llave en juego no tiene
-        # primero.
+        # El campeon de uno terminado; el primero de la tabla de una liga o un suizo que se esta jugando.
         $primero_de[$id] = null;
         if ($t->getEstado() === 'finalizado'
             || ($t->getEstado() === 'en_curso' && !$t->esEliminacion() && $numeros[$id]['jugados'] > 0)) {

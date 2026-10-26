@@ -1,21 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: PedidoRolRepositorio   ->   tabla "pedido_rol" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acceso a la base para los pedidos de rol. Siempre con sentencias
-# preparadas.
-#
-# No borra nunca: el usuario de la aplicacion no tiene DELETE sobre la
-# tabla (ver el DCL de schema.sql). Un pedido se crea y se resuelve.
-#
-# Resolver un pedido son dos cambios que van juntos: el pedido pasa a
-# aprobado (o rechazado) y, si se aprueba, la cuenta recibe el rol en
-# usuario_rol. Van en una transaccion: o quedan los dos, o ninguno.
-# El UPDATE ademas solo toca el pedido si sigue pendiente y no es de
-# quien lo resuelve; si dos administradores lo aprueban a la vez, el
-# segundo no encuentra nada que cambiar.
-# =====================================================================
+# Modelo: PedidoRolRepositorio -> tabla "pedido_rol" de sql/schema.sql
 
 require_once __DIR__ . '/PedidoRol.php';
 
@@ -33,9 +17,6 @@ class PedidoRolRepositorio
     }
 
     # Crea un pedido pendiente de $usuario por el rol $nombre_rol.
-    # Devuelve un arreglo de errores, vacio si quedo registrado.
-    # Que no haya dos pendientes lo garantiza la base (uq_pedido_pendiente):
-    # si ya hay uno, el INSERT falla con 1062 y se avisa.
     public function crear(Usuario $usuario, $nombre_rol)
     {
         $sql = 'INSERT INTO pedido_rol (id_usuario, id_rol)
@@ -83,9 +64,7 @@ class PedidoRolRepositorio
                               ORDER BY p.fecha_pedido, p.id_pedido_rol", '', array());
     }
 
-    # Aprueba ($aprobar = true) o rechaza el pedido. Devuelve un arreglo de
-    # errores, vacio si quedo resuelto. Primero las reglas del dominio
-    # (PedidoRol), despues la base, que repite las que puede.
+    # Aprueba ($aprobar = true) o rechaza el pedido.
     public function resolver(PedidoRol $pedido, Usuario $administrador, $aprobar)
     {
         $motivos = $pedido->motivosParaNoResolver($administrador);
@@ -99,10 +78,6 @@ class PedidoRolRepositorio
 
         $this->conexion->begin_transaction();
 
-        # GREATEST: la resolucion nunca queda antes del pedido, aunque el
-        # pedido se haya guardado con la hora del servidor (antes de que la
-        # conexion pasara a la de Montevideo, ver config/database.php); si
-        # no, ck_pedido_fechas frenaria una resolucion legitima.
         $sql = "UPDATE pedido_rol
                    SET estado = ?, fecha_resolucion = GREATEST(NOW(), fecha_pedido), id_usuario_resuelve = ?
                  WHERE id_pedido_rol = ? AND estado = 'pendiente' AND id_usuario <> ?";
@@ -131,7 +106,7 @@ class PedidoRolRepositorio
             $id_usuario = (int)$pedido->getUsuario()->getIdUsuario();
             $id_rol     = (int)$pedido->getRol()->getIdRol();
             $sentencia->bind_param('ii', $id_usuario, $id_rol);
-            # 1062: la cuenta ya tenia el rol. No es un error: queda igual.
+            # 1062: la cuenta ya tenia el rol.
             if (!$sentencia->execute() && $sentencia->errno !== 1062) {
                 $sentencia->close();
                 $this->conexion->rollback();
@@ -144,8 +119,6 @@ class PedidoRolRepositorio
         return array();
     }
 
-    # --- Auxiliar ---------------------------------------------------
-    # Una sola consulta para todas las busquedas: cambia el WHERE.
     private function buscar($condicion, $tipos, $valores)
     {
         $sql = 'SELECT p.id_pedido_rol, p.estado, p.fecha_pedido, p.fecha_resolucion,

@@ -1,34 +1,5 @@
 <?php
-# =====================================================================
 # Vista: fechas y resultados de una liga
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La incluye partidosController.php. Recibe:
-#   $organizador   la cuenta de la sesion (Usuario, con el rol)
-#   $torneo        la liga, o null si no es de esta cuenta
-#   $sin_liga      por que no hay nada que mostrar ('' si hay)
-#   $rondas        las fechas, con sus partidos y resultados
-#   $en_juego      la fecha en juego (null con todas cerradas)
-#   $abierta       la fecha que se muestra
-#   $tabla         la tabla ordenada, solo con la competencia terminada
-#   $campeon       su campeon (Participante), o null
-#   $mensaje, $errores, $valores_partido   resultado de la ultima accion
-#   $ruta_publica, $ruta_perfil, $ruta_panel, $ruta_partidos
-#
-# Una fecha por vez: arriba la lista de fechas (enlaces, la abierta
-# marcada) y debajo la fecha abierta, con un bloque por partido
-# (id="partido-N"). Lo que se puede hacer depende de la fecha:
-#   en juego   resultado (o walkover), dia y lugar, en vivo; y al pie,
-#              cerrar la fecha, con todos los resultados cargados
-#   por jugar  dia y lugar; los resultados esperan su turno
-#   cerrada    nada: sus partidos quedan como estan
-# Lo que todavia no se puede va como texto apagado con la nota que dice
-# por que (DESIGN.md, "Accion no disponible").
-#
-# Usa el menu compartido, con Organizadores marcado ("true"): la pagina
-# depende del panel, como "Nueva liga". Todo formulario lleva el token
-# y cada boton que se repite dice de que partido es.
-# =====================================================================
 
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
@@ -224,8 +195,7 @@ function valorFechaHora($fecha_hora)
     <div class="fila" style="justify-content:space-between"><h3><?php echo $local; ?> <span class="vs">vs</span> <?php echo $visit; ?></h3><?php if ($partido->estaEnVivo()) { ?><span class="estado estado-en-vivo">En vivo</span><?php } ?></div>
     <p class="pedido-dato"><?php if ($estado_texto !== '') { echo '<span class="marcador-carga">' . htmlspecialchars($estado_texto) . '</span> · '; } ?><?php echo htmlspecialchars(cuandoYDonde($partido)); ?></p>
 <?php       if ($es_en_juego) {
-              # El formulario del resultado: lo que se escribio, si hubo
-              # un error; si no, lo guardado.
+              # El formulario del resultado: lo que se escribio, si hubo un error; si no, lo guardado.
               $desenlace = isset($valor['desenlace']) ? $valor['desenlace'] : 'marcador';
               if (!isset($valor['desenlace']) && $jugado && $res->esWalkover() && $res->getGanador() !== null) {
                   $desenlace = ($res->getGanador() === $partido->getLocal()) ? 'wo-local' : 'wo-visitante';

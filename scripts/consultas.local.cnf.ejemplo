@@ -1,24 +1,4 @@
-# =====================================================================
-# Credenciales de las consultas a la base - ARCHIVO DE EJEMPLO
-# Proyecto SGDM - Stadion (Agon)
-# ---------------------------------------------------------------------
-# Este archivo SI va al repositorio, porque no tiene nada secreto.
-# Lo usa scripts/monitoreo-bd.sh.
-#
-# Para ponerlo en marcha en una maquina:
-#   1. copiarlo en la misma carpeta con el nombre consultas.local.cnf
-#          cp consultas.local.cnf.ejemplo consultas.local.cnf
-#   2. escribir ahi la contrasena real de sgdm_consulta
-#   3. dejarlo privado, o el script se niega a arrancar:
-#          chmod 600 consultas.local.cnf
-#   4. no agregarlo al repositorio: el .gitignore ya lo excluye
-#
-# La contrasena se le pone al usuario de base de datos con:
-#   ALTER USER 'sgdm_consulta'@'localhost' IDENTIFIED BY 'la-que-se-elija';
-#
-# Se usa sgdm_consulta porque solo puede leer (SELECT): un script que
-# mira la base no necesita poder cambiarla.
-# =====================================================================
+# Copiar como consultas.local.cnf, poner la contrasena real de sgdm_consulta y dejarlo en modo 600.
 
 [client]
 user = sgdm_consulta

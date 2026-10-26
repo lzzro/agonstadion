@@ -6,25 +6,6 @@ require_once $carpeta_app . '/models/FixtureRepositorio.php';
 require_once $carpeta_app . '/models/CatalogoRepositorio.php';
 require_once $carpeta_app . '/ligas.php';
 
-# =====================================================================
-# Inicio - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La portada. Los numeros, las tarjetas de torneos y el recuadro del
-# costado salen de la base, igual que en torneos.php y torneo.php: nada
-# escrito a mano. Los torneos que organiza una cuenta de muestra llevan
-# la marca "De muestra".
-#
-#   Torneos activos   los que tienen la inscripcion abierta o estan en
-#                     curso
-#   Participantes     los inscriptos en los torneos publicos
-#   Formatos          los del catalogo (liga, eliminacion, suizo)
-# Los dos primeros llevan la marca si suman ligas de muestra: "De
-# muestra" si todo sale de ellas, "Incluye muestra" si solo una parte.
-#
-# El recuadro del costado es la fecha en juego de la liga destacada (la
-# misma de "Posiciones" en el menu), con sus primeros partidos.
-# =====================================================================
-
 $lista = null;
 $formatos = null;
 $destacada = null;

@@ -1,29 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: ParticipanteRepositorio   ->   tabla "participante"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acceso a la base para los participantes de una liga:
-#   - la lista de una liga, con su equipo (y el capitan, si tiene);
-#   - agregar un equipo a mano desde el panel del organizador;
-#   - desde la fase 3, la inscripcion de un jugador en una liga
-#     individual (CU-09): se anota solo, con su cuenta, sin pedido, si
-#     la liga tiene la inscripcion abierta y lugar (RF-15 y RF-16).
-#
-# Agregar a mano, por nombre. Si ya hay un equipo con ese nombre:
-#   - con capitan: no se agrega; ese equipo entra con su propio pedido
-#     (lo decide su capitan, no el organizador);
-#   - sin capitan, y solo en ligas de este mismo organizador (o en
-#     ninguna): se reusa, asi un organizador anota el mismo equipo en
-#     varias ligas suyas;
-#   - sin capitan, pero en la liga de otro organizador: no se agrega, el
-#     nombre ya lo usa otro equipo.
-# Si no hay ninguno, se crea el equipo sin capitan y se lo anota. Todo
-# en una transaccion, con la fila del torneo bloqueada (ver
-# TorneoRepositorio::bloquearYContar) para respetar el cupo.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: ParticipanteRepositorio -> tabla "participante"
 
 require_once __DIR__ . '/Participante.php';
 require_once __DIR__ . '/Equipo.php';
@@ -43,11 +19,7 @@ class ParticipanteRepositorio
         $this->conexion = $conexion;
     }
 
-    # Los participantes de un torneo, en el orden en que se inscribieron
-    # (el orden que usa el fixture). Arreglo indexado por id de
-    # participante. Con $con_bajas tambien los dados de baja, que siguen
-    # figurando en los partidos que jugaron. null si la consulta no se
-    # puede hacer.
+    # Los participantes de un torneo, en el orden en que se inscribieron (el orden que usa el fixture).
     public function listarDeTorneo($id_torneo, $con_bajas = false)
     {
         $sql = "SELECT p.id_participante, p.estado, p.fecha_inscripcion,
@@ -88,10 +60,7 @@ class ParticipanteRepositorio
         return $participantes;
     }
 
-    # El organizador anota un equipo a mano (ver la cabecera). Devuelve
-    #   array('errores' => arreglo, vacio si quedo anotado,
-    #         'id_participante' => la inscripcion nueva, para la auditoria,
-    #         'id_equipo_nuevo' => el equipo, si hubo que crearlo; si no, null)
+    # El organizador anota un equipo a mano (ver la cabecera).
     public function agregarEquipo(Torneo $torneo, Usuario $organizador, $nombre)
     {
         $salida = array('errores' => array(), 'id_participante' => null, 'id_equipo_nuevo' => null);
@@ -199,14 +168,7 @@ class ParticipanteRepositorio
         return $salida;
     }
 
-    # Un jugador se anota en una liga individual (CU-09). Las reglas son
-    # las de Torneo::agregarParticipante (abierta, con lugar, del tipo
-    # que corresponde) mas una: una liga de muestra no recibe a nadie.
-    # Se miran con la fila del torneo bloqueada (SELECT ... FOR UPDATE),
-    # como un pedido de lugar, y que la misma cuenta no entre dos veces
-    # lo cuida la base (uq_part_usuario).
-    # Devuelve array('errores' => ..., 'id_participante' => la
-    # inscripcion nueva).
+    # Un jugador se anota en una liga individual (CU-09).
     public function inscribirJugador(Torneo $torneo, Usuario $jugador)
     {
         $salida = array('errores' => array(), 'id_participante' => null);

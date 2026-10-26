@@ -1,24 +1,5 @@
 <?php
-# =====================================================================
 # Los datos de muestra de la migracion 005 - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   php tests/php/muestra.php        (con la base de PRUEBA ya migrada)
-#
-# Comprueba, leyendo la base con los mismos repositorios que usan las
-# paginas:
-#   - la Liga Valorant no tiene ningun empate: se juega al mejor de 3
-#     mapas, asi que cada serie termina 2-0 o 2-1, y la liga no admite
-#     empates (admite_empate = 0);
-#   - su tabla, recalculada desde los partidos (TablaPosiciones), tiene el
-#     orden y las diferencias de mapas de la maqueta de torneo.php, con la
-#     columna E en 0 (los puntos cambian donde la maqueta tenia empates);
-#   - en las dos ligas en curso, la tabla guardada (tabla_posiciones) es
-#     la misma que la recalculada;
-#   - el fixture de cada liga en curso es el que arma Fixture.php con sus
-#     equipos en el orden de inscripcion (fecha por fecha, cruce por
-#     cruce, con la localia);
-#   - las cuentas de muestra no entran con ninguna clave.
-# =====================================================================
 
 require __DIR__ . '/comun.php';
 require_once $APLICACION . '/models/TorneoRepositorio.php';
@@ -59,11 +40,7 @@ foreach (array('Liga Valorant · Otoño', 'Liga Barrial del Cerro', 'Liga Intern
 }
 if (!chk(!in_array(null, $ids, true), 'las tres ligas de muestra estan en la base')) { fin(); }
 
-# La tabla de la Valorant, sin empates. El orden de los 12 y la
-# diferencia de mapas de cada uno son los de la maqueta de torneo.php
-# (que mostraba las 8 primeras); los puntos cambian donde la maqueta
-# tenia empates: Vortex 13 -> 12, Aurora FC 10 -> 9, Ping Masters 8 -> 9,
-# Liceo 3 7 -> 9, y abajo Rambla, Atlantida y Sur 7 -> 9.
+# La tabla de la Valorant, sin empates.
 $esperada = array(
     'Titanes CS 7 6 0 1 13:4 9 18',
     'Nova Esports 7 5 0 2 12:6 6 15',
@@ -118,9 +95,7 @@ foreach (array('Liga Valorant · Otoño', 'Liga Barrial del Cerro') as $nombre) 
         if ($desde_partidos !== $esperada) { echo '        ' . implode("\n        ", $desde_partidos) . "\n"; }
     }
 
-    # El fixture: el que arma Fixture.php con los equipos en el orden en
-    # que se inscribieron. En la base, cada fecha esta en el orden de su
-    # numero de cruce, que es el orden del fixture.
+    # El fixture: el que arma Fixture.php con los equipos en el orden en que se inscribieron.
     $en_juego = $inscritos->listarDeTorneo($id);
     $fixture = new Fixture($en_juego, $config->getIdaYVuelta());
     $fixture->generar();
@@ -182,9 +157,6 @@ foreach (array('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejem
         "$correo: de muestra, y ninguna clave la abre (ni su propio texto)");
 }
 
-# Lo que la tabla de torneo.php saca de la configuracion de cada liga:
-# cuantos clasifican a playoffs (la franja, nunca un numero escrito en la
-# pagina), si hay columna E (admite empate) y como se llaman los tantos.
 $como = array();
 foreach ($ids as $nombre => $id) {
     $liga = $torneos->buscarPorId($id);
@@ -194,10 +166,6 @@ foreach ($ids as $nombre => $id) {
 chk(implode(' / ', $como) === 'Liga Valorant · Otoño: 4 sin E mapas / Liga Barrial del Cerro: 0 con E goles / Liga Interna Club Sur: 0 con E goles',
     'la configuracion de la tabla: Valorant clasifica 4 y sin empates (mapas); Barrial e Interna, sin playoffs y con empates (goles)');
 
-# El desempate alfabetico de la tabla ordena como la base
-# (utf8mb4_unicode_ci): tildes, mayusculas y las letras que ese cotejo
-# trata aparte (æ, ł, ø, þ...). Los nombres van a la base como datos de
-# una sentencia preparada, no pegados al SQL.
 $nombres = array('Vortex', 'atlántida GG', 'Aurora', 'Ómnibus', 'Ñandú', 'Nova', 'Álamo', 'Liceo 3', 'São Paulo',
                  'Sur Gaming', 'Łódź', 'Lz', 'Zeta', 'Åland', 'Boca', 'Straße', 'Strasse A', 'Ærø', 'Azul', 'Øster', 'Oz',
                  'Œuf', 'Oeste', 'Čačak', 'Czech', 'Šiauliai', 'Þór', 'Tómas', 'İzmir', 'Iz', 'ıb', 'Đa', 'Ða', 'Dz');

@@ -1,25 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Torneo   ->   tabla "torneo" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La clase mas compuesta del modelo: contiene una Disciplina, un
-# TipoTorneo, un ModuloCompetencia, el Usuario organizador, su
-# ConfiguracionTorneo (relacion 1:1) y los arreglos de Participante y
-# de Ronda.
-#
-# Un torneo con inscriptos no se borra, se cancela: es la misma
-# decision que las acciones referenciales de la tabla, donde
-# participante retiene al torneo con ON DELETE RESTRICT.
-#
-# Una liga (fase 2 del motor de torneos) nace con la inscripcion abierta
-# y un cupo de 4 a 32 participantes (validarLiga): equipos, o jugadores
-# en una liga individual (desde la fase 3). La fecha de inicio es
-# opcional: puede quedar a definir. Cerrar la inscripcion la pone en
-# curso, y pide al menos 4 inscriptos, los mismos que necesita el
-# fixture (ver Fixture.php): con menos, la liga quedaria en curso sin
-# poder armar su calendario.
-# =====================================================================
+# Modelo: Torneo -> tabla "torneo" de sql/schema.sql
 
 require_once __DIR__ . '/Disciplina.php';
 require_once __DIR__ . '/TipoTorneo.php';
@@ -76,8 +56,6 @@ class Torneo
 
     public function getIdTorneo()         { return $this->id_torneo; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdTorneo($id_torneo)
     {
         $this->id_torneo = (int)$id_torneo;
@@ -139,16 +117,12 @@ class Torneo
         return $this->modulo->getNombre() === 'Suizo';
     }
 
-    # Como se llama cada ronda en pantalla: en una liga, "fecha"; en la
-    # llave y el suizo, "ronda".
+    # Como se llama cada ronda en pantalla: en una liga, "fecha"; en la llave y el suizo, "ronda".
     public function palabraRonda()
     {
         return $this->esLiga() ? 'fecha' : 'ronda';
     }
 
-    # Las reglas que cruzan el torneo con su configuracion: en una
-    # eliminacion directa ningun partido termina empatado (alguien tiene
-    # que pasar), y solo una liga se juega de ida y vuelta.
     public function validarConfiguracion(ConfiguracionTorneo $configuracion)
     {
         $errores = array();
@@ -158,8 +132,7 @@ class Torneo
         if (!$this->esLiga() && $configuracion->esIdaYVuelta()) {
             $errores[] = 'Solo una liga se juega de ida y vuelta.';
         }
-        # Cuantos clasifican a playoffs (RF-14): marca a los primeros de
-        # la tabla de una liga. Los playoffs se juegan aparte.
+        # Cuantos clasifican a playoffs (RF-14): marca a los primeros de la tabla de una liga.
         if (!$this->esLiga() && $configuracion->getClasificanPlayoffs() > 0) {
             $errores[] = 'Solo en una liga clasifican a playoffs.';
         } elseif ($configuracion->getClasificanPlayoffs() > (int)$this->max_participantes) {
@@ -168,25 +141,12 @@ class Torneo
         return $errores;
     }
 
-    # De muestra: lo organiza una de las cuentas de muestra de la
-    # migracion 005. Las paginas lo marcan en pantalla.
+    # De muestra: lo organiza una de las cuentas de muestra de la migracion 005.
     public function esDeMuestra()
     {
         return $this->organizador->esDeMuestra();
     }
 
-    # --- Transiciones de estado ---
-    # Las reglas de que estado puede pasar a cual son del dominio, asi
-    # que viven en el modelo y no en el controlador. Cada una devuelve
-    # un arreglo de errores, vacio si la transicion se pudo hacer.
-    # El recorrido normal es:
-    #   borrador -> inscripcion -> en_curso -> finalizado
-    # y desde cualquier punto se puede cancelar.
-
-    # Baja logica del torneo, la alternativa al borrado que la base no
-    # permite cuando ya hay inscriptos (RF-17): el torneo y todo lo que
-    # se jugo quedan en la base, pero deja de verse en el sitio. Un
-    # torneo terminado ya es historia, y uno cancelado ya lo esta.
     public function cancelar()
     {
         $errores = array();
@@ -201,9 +161,7 @@ class Torneo
         return $errores;
     }
 
-    # De 'borrador' a 'inscripcion': publica el torneo para que se
-    # puedan anotar. Pide la configuracion asignada, porque sin los
-    # puntajes no hay con que armar la tabla de posiciones.
+    # De 'borrador' a 'inscripcion': publica el torneo para que se puedan anotar.
     public function publicar()
     {
         $errores = array();
@@ -221,8 +179,7 @@ class Torneo
         return $errores;
     }
 
-    # De 'inscripcion' a 'en_curso': cierra las altas y arranca la
-    # competencia. Con menos de dos participantes no hay torneo.
+    # De 'inscripcion' a 'en_curso': cierra las altas y arranca la competencia.
     public function comenzar()
     {
         $errores = array();
@@ -241,9 +198,6 @@ class Torneo
     }
 
     # De 'inscripcion' a 'en_curso' en una liga: cierra la inscripcion.
-    # Pide 4 inscriptos, el minimo del fixture. $cantidad es la cuenta de
-    # la base (el repositorio la hace dentro de la transaccion); si no
-    # viene, vale la de los participantes cargados.
     public function cerrarInscripcion($cantidad = null)
     {
         $errores  = array();
@@ -281,17 +235,13 @@ class Torneo
         $this->configuracion = $configuracion;
     }
 
-    # Solo el estado 'inscripcion' admite altas: un torneo en borrador
-    # todavia no se publico.
+    # Solo el estado 'inscripcion' admite altas: un torneo en borrador todavia no se publico.
     public function admiteInscripciones()
     {
         return $this->estado === 'inscripcion'
                && $this->getCantidadParticipantes() < $this->max_participantes;
     }
 
-    # Agrega una inscripcion controlando las tres reglas del modelo:
-    # el participante es valido, el cupo alcanza, y el competidor
-    # coincide con lo que pide el tipo de torneo.
     public function agregarParticipante(Participante $participante)
     {
         $errores = $participante->validar();
@@ -342,8 +292,7 @@ class Torneo
     {
         $errores = $ronda->validar();
 
-        # Dos rondas no pueden llevar el mismo numero, igual que la
-        # restriccion uq_ronda_num de la tabla.
+        # Dos rondas no pueden llevar el mismo numero, igual que la restriccion uq_ronda_num de la tabla.
         foreach ($this->rondas as $existente) {
             if ($existente->getNumero() === $ronda->getNumero()) {
                 $errores[] = 'Ya existe la ronda número ' . $ronda->getNumero() . '.';
@@ -368,8 +317,6 @@ class Torneo
             $errores[] = 'El máximo de participantes tiene que estar entre 2 y 128.';
         }
 
-        # La fecha de inicio es opcional, pero si viene tiene que ser una
-        # fecha que exista, con la forma de la base (2026-10-04).
         if (!empty($this->fecha_inicio) && !self::fechaValida($this->fecha_inicio)) {
             $errores[] = 'La fecha de inicio no es una fecha válida.';
         }
@@ -392,10 +339,6 @@ class Torneo
         return $errores;
     }
 
-    # Las reglas propias de una liga, ademas de las de validar(): el
-    # cupo va de 4 a 32 (el formulario de crear.php dice lo mismo).
-    # Desde la fase 3 una liga puede ser por equipos o individual: en
-    # una individual, cada jugador se anota con su cuenta (CU-09).
     public function validarLiga()
     {
         $errores = $this->validar();

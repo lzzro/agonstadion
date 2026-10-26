@@ -1,22 +1,4 @@
-// =====================================================================
-// Reportes, mis resultados e integrantes (tercera entrega) - Stadion
-// ---------------------------------------------------------------------
-//   node tests/e2e/reportes.js
-//
-// Con cuentas nuevas en cada corrida (ver comun.js), mira en la
-// pantalla Y en la base:
-//   1. una eliminacion directa individual de 4 con su sede (RF-13),
-//      jugada hasta la final con clics
-//   2. "Mis resultados" de cada jugador (RF-26): sus partidos con el
-//      marcador visto desde su lado, y las Finales y los Kotinos reales
-//   3. los reportes (RF-28): los de la organizadora (sus torneos y los
-//      numeros), los de otra organizadora (ninguno), los de la
-//      administracion (todos, con quien organiza), y sin el rol
-//   4. los integrantes con su dorsal (RF-12) y una liga con dos
-//      clasificados a playoffs (RF-14): el integrante ve el equipo y los
-//      partidos del equipo en "Mis resultados"
-// Deja rastro, como ligas.js.
-// =====================================================================
+// Reportes, mis resultados e integrantes - Stadion
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
@@ -37,7 +19,7 @@ let nav = null;
   const url_panel = await c.direccionDe(O.p, 'panel.php');
   const tko = await c.token(O.p);
 
-  // --- 1. Una eliminacion directa individual, con su sede --------------
+  // 1. Una eliminacion directa individual, con su sede
   console.log('--- 1. La copa, con su sede ---');
   const copa = `Copa de Troya ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);
@@ -68,8 +50,7 @@ let nav = null;
   await O.p.goto(`${BASE}/panel.php`);
   await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${idc} a.btn-primario`)]);
   const url_partidos = O.p.url().split('?')[0];
-  // Gana siempre el local: el sembrado 1 (Aquiles) gana la copa, y el 2
-  // (Hector) llega a la final.
+  // Gana siempre el local: el sembrado 1 (Aquiles) gana la copa, y el 2 (Hector) llega a la final.
   for (let ronda = 0; ronda < 2; ronda++) {
     await O.p.goto(`${url_partidos}?id=${idc}`);
     const ids = await O.p.$$eval('#fecha form.cargar-resultado input[name="id_enfrentamiento"]', l => l.map(e => e.value));
@@ -82,7 +63,7 @@ let nav = null;
   }
   t.chk(sql(`SELECT estado FROM torneo WHERE id_torneo = ${idc}`) === 'finalizado', 'semifinales y final jugadas: la copa termina');
 
-  // --- 2. Mis resultados (RF-26) ----------------------------------------
+  // 2. Mis resultados (RF-26)
   console.log('--- 2. Mis resultados ---');
   const verPerfil = async (cuenta) => {
     const J = await c.entrar(nav, cuenta);
@@ -109,7 +90,7 @@ let nav = null;
   t.chk(paris.stats.join(' ') === 'Torneos:1 Finales:0 Kotinos · victorias:0' && paris.filas.length === 1
         && paris.filas[0].endsWith('| 0 – 1 | Derrota'), 'Paris: un partido, perdido en la semifinal');
 
-  // --- 3. Reportes (RF-28) ---------------------------------------------
+  // 3. Reportes (RF-28)
   console.log('--- 3. Reportes ---');
   await O.p.goto(`${BASE}/panel.php`);
   await Promise.all([O.p.waitForNavigation(), O.p.click('main a.btn:has-text("Reportes")')]);
@@ -149,7 +130,7 @@ let nav = null;
   t.chk(res.status() === 302 && /login\.php/.test(res.headers()['location'] || ''), 'sin sesion, al acceso');
   await anon.close();
 
-  // --- 4. Integrantes (RF-12) y playoffs (RF-14) ---------------------------
+  // 4. Integrantes (RF-12) y playoffs (RF-14)
   console.log('--- 4. Integrantes y playoffs ---');
   const cap = await c.cuentaNueva(nav, 'Jasón', `Yolco ${sufijo}`);
   const miembro = await c.cuentaNueva(nav, 'Orfeo', `Tracia ${sufijo}`);

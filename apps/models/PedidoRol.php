@@ -1,19 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: PedidoRol   ->   tabla "pedido_rol" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Una cuenta pide un rol (hoy, organizador) y un administrador lo
-# aprueba o lo rechaza. Composicion: el pedido tiene adentro la cuenta
-# que pide (Usuario), el rol pedido (Rol) y, una vez resuelto, la cuenta
-# que lo resolvio (Usuario).
-#
-# Las reglas del dominio viven aca, y la base repite las que puede
-# (ver los CHECK de pedido_rol en schema.sql):
-#   - solo se resuelve un pedido pendiente
-#   - lo resuelve una cuenta con el rol administrador
-#   - nadie resuelve su propio pedido
-# =====================================================================
+# Modelo: PedidoRol -> tabla "pedido_rol" de sql/schema.sql
 
 require_once __DIR__ . '/Usuario.php';
 require_once __DIR__ . '/Rol.php';
@@ -47,8 +33,6 @@ class PedidoRol
 
     public function getIdPedidoRol()    { return $this->id_pedido_rol; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdPedidoRol($id_pedido_rol)
     {
         $this->id_pedido_rol = (int)$id_pedido_rol;
@@ -65,8 +49,7 @@ class PedidoRol
     public function estaAprobado()  { return $this->estado === 'aprobado'; }
     public function estaRechazado() { return $this->estado === 'rechazado'; }
 
-    # Si $administrador puede resolver este pedido. Devuelve un arreglo
-    # de motivos por los que no; vacio quiere decir que si.
+    # Si $administrador puede resolver este pedido.
     public function motivosParaNoResolver($administrador)
     {
         $motivos = array();

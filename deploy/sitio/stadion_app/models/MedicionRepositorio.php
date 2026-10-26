@@ -1,20 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: MedicionRepositorio   ->   tabla "medicion"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acceso a la base para el rendimiento fisico (RF-29):
-#   - guardar una medicion de la cuenta de la sesion
-#   - borrar una suya (solo de esa cuenta: el id de otra no borra nada)
-#   - las mediciones de una cuenta, de la mas vieja a la mas nueva (la
-#     evolucion en el tiempo)
-#   - la comparacion entre participantes de una prueba: la mejor marca
-#     de cada cuenta, ordenada (ver Medicion::esMejor)
-#
-# Se guardan solo los datos crudos; los indicadores los calcula Medicion.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: MedicionRepositorio -> tabla "medicion"
 
 require_once __DIR__ . '/Medicion.php';
 
@@ -31,9 +16,7 @@ class MedicionRepositorio
         $this->conexion = $conexion;
     }
 
-    # Guarda la medicion. Devuelve un arreglo de errores, vacio si quedo
-    # guardada; el id queda en el objeto. La fecha no puede ser futura
-    # (hoy, en Montevideo: ver apps/fechas.php).
+    # Guarda la medicion.
     public function insertar(Medicion $medicion, $hoy)
     {
         $errores = $medicion->validar();
@@ -81,8 +64,6 @@ class MedicionRepositorio
         return $borradas === 1;
     }
 
-    # Las de una cuenta, por fecha (y en el mismo dia, por orden de
-    # carga). null si la consulta no se puede hacer.
     public function listarDeUsuario(Usuario $usuario)
     {
         $sql = 'SELECT id_medicion, prueba, distancia_cm, tiempo_s, masa_kg, fecha, fecha_carga
@@ -104,10 +85,6 @@ class MedicionRepositorio
         return $lista;
     }
 
-    # La comparacion de una prueba: la mejor marca de cada cuenta activa
-    # que tiene alguna, de la mejor a la peor. Cada elemento:
-    # array('usuario' => Usuario, 'mejor' => Medicion, 'cantidad' => N).
-    # null si la consulta no se puede hacer.
     public function comparacion($prueba)
     {
         $sql = "SELECT m.id_medicion, m.prueba, m.distancia_cm, m.tiempo_s, m.masa_kg, m.fecha,

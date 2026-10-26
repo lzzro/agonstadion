@@ -1,27 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: ConfiguracionTorneo   ->   tabla "configuracion_torneo"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Relacion 1:1 con torneo: los parametros de puntaje y las reglas.
-#
-# Aca vive calcularPuntos(), que es la contracara de la decision del
-# schema de NO guardar los puntos en tabla_posiciones. Los puntos se
-# calculan siempre a partir de estos parametros, asi que si el
-# organizador cambia el puntaje, la tabla de posiciones se acomoda sola.
-#
-# El criterio de desempate decide el orden entre dos con los mismos
-# puntos: 'diferencia' mira primero la diferencia de tantos y despues
-# los tantos a favor; 'favor', al reves. Si todo coincide, el orden es
-# alfabetico, para que la tabla salga siempre igual: sin mirar
-# mayusculas ni tildes (ver claveAlfabetica), como ordena la base.
-#
-# Desde la fase 3, el formato de los partidos: un partido unico (mejor_de
-# en null) o una serie al mejor de 3, 5 o 7 (mapas, sets, partidas). Una
-# serie al mejor de un numero impar siempre tiene ganador, asi que no
-# admite empate: lo dice validar(), igual que ck_config_serie_empate de
-# la tabla. erroresMarcador() es la regla de cada marcador que se carga.
-# =====================================================================
+# Modelo: ConfiguracionTorneo -> tabla "configuracion_torneo"
 
 class ConfiguracionTorneo
 {
@@ -67,8 +45,6 @@ class ConfiguracionTorneo
 
     public function getIdTorneo()          { return $this->id_torneo; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdTorneo($id_torneo)
     {
         $this->id_torneo = (int)$id_torneo;
@@ -91,8 +67,7 @@ class ConfiguracionTorneo
         return $this->mejor_de !== null;
     }
 
-    # Lo que gana una serie: 2 de 3, 3 de 5, 4 de 7. null en un partido
-    # unico.
+    # Lo que gana una serie: 2 de 3, 3 de 5, 4 de 7. null en un partido unico.
     public function ganaSerieCon()
     {
         if (!$this->esSerie()) {
@@ -101,9 +76,7 @@ class ConfiguracionTorneo
         return intdiv($this->mejor_de, 2) + 1;
     }
 
-    # Los formatos de partido, con su nombre para el formulario de
-    # crear.php. La clave es lo que se guarda en la base ('' es NULL: un
-    # partido unico).
+    # Los formatos de partido, con su nombre para el formulario de crear.php.
     public static function formatosPartido()
     {
         return array(
@@ -139,15 +112,7 @@ class ConfiguracionTorneo
              . $this->ganaSerieCon() . ' (' . $this->marcadoresDeSerie() . ').';
     }
 
-    # Los errores de un marcador para esta liga, antes de guardarlo. Un
-    # walkover no se mira: su marcador lo pone el sistema (0 a 0, con el
-    # ganador aparte). Si no:
-    #   - cada lado de 0 a 500 (el formulario lleva el mismo rango): la
-    #     tabla acumula los tantos en un SMALLINT (hasta 32767), y 62
-    #     partidos (32 equipos, ida y vuelta) a 500 entran;
-    #   - en una serie, uno llega justo a lo que gana la serie y el otro
-    #     queda por debajo: al mejor de 3, 2-0 o 2-1 (ni 3-0, ni 1-1);
-    #   - en un partido unico de una liga sin empates, un ganador.
+    # Los errores de un marcador para esta liga, antes de guardarlo.
     public function erroresMarcador($local, $visitante, $walkover = false)
     {
         $errores = array();
@@ -172,8 +137,7 @@ class ConfiguracionTorneo
         return $errores;
     }
 
-    # Los criterios de desempate, con su nombre para el formulario de
-    # crear.php. La clave es lo que se guarda en la base.
+    # Los criterios de desempate, con su nombre para el formulario de crear.php.
     public static function criterios()
     {
         return array(
@@ -182,8 +146,6 @@ class ConfiguracionTorneo
         );
     }
 
-    # El criterio contado en una frase, con la unidad de la disciplina
-    # ("mapas", "goles", "tantos"): lo que muestra la pestana Reglas.
     public function textoDesempate($unidad)
     {
         if ($this->criterio_desempate === 'favor') {
@@ -213,7 +175,6 @@ class ConfiguracionTorneo
     }
 
     # Cuantos enfrentamientos genera una liga con esta configuracion.
-    # Es el numero que muestra la pantalla de creacion de torneo.
     public function enfrentamientosDeLiga($cantidad_participantes)
     {
         $cantidad = (int)$cantidad_participantes;
@@ -227,10 +188,6 @@ class ConfiguracionTorneo
         return (int)$partidos;
     }
 
-    # Cuantas fechas tiene una liga de esa cantidad de participantes: con
-    # un numero par, uno menos (cada uno juega en todas); con uno impar,
-    # tantas como participantes (en cada fecha uno queda libre). El doble
-    # si es de ida y vuelta.
     public function rondasDeLiga($cantidad_participantes)
     {
         $cantidad = (int)$cantidad_participantes;
@@ -244,11 +201,6 @@ class ConfiguracionTorneo
         return $rondas;
     }
 
-    # Ordena un arreglo de objetos PosicionTabla como la tabla de la
-    # pantalla: por puntos, y entre iguales segun el criterio de
-    # desempate (ver la cabecera). Es el mismo orden de la consulta de
-    # ejemplo del schema, y vive aca porque depende de estos puntajes. El
-    # puesto de cada uno es su lugar en el arreglo devuelto.
     public function ordenarPosiciones($posiciones)
     {
         $ordenadas = $posiciones;
@@ -303,15 +255,6 @@ class ConfiguracionTorneo
         return $ordenadas;
     }
 
-    # El nombre listo para ordenar: en minuscula y sin tildes ni otras
-    # marcas, asi "Ómnibus" va con las o, "atlántida" antes que "Aurora" y
-    # "São Paulo" antes que "Sur". Comparar los bytes tal cual (strcmp)
-    # pone toda mayuscula antes de toda minuscula, y toda letra con marca
-    # despues de la z. Se sigue a utf8mb4_unicode_ci, el cotejo de la base:
-    # cada letra con marca va con su letra base (la ñ con la n, la ß como
-    # ss, la œ como oe), y las que ese cotejo trata como letras propias
-    # (æ, đ, ħ, ı, ł, ŋ, ø, ŧ, þ) van despues de todas las de su letra
-    # base: se les pone "~", que en la comparacion va despues de la z.
     public static function claveAlfabetica($nombre)
     {
         $letras = array(
@@ -321,8 +264,7 @@ class ConfiguracionTorneo
             'w' => 'ŵ', 'y' => 'ýÿŷ', 'z' => 'źżž',
             'a~' => 'æ', 'd~' => 'đ', 'd~~' => 'ð', 'h~' => 'ħ', 'i~' => 'ı', 'l~' => 'ł', 'n~' => 'ŋ',
             'o~' => 'ø', 't~' => 'ŧ', 'z~' => 'þ');
-        # La İ en minuscula es una i con un punto combinado aparte: el
-        # punto se saca.
+        # La İ en minuscula es una i con un punto combinado aparte: el punto se saca.
         $cambios = array('ß' => 'ss', 'œ' => 'oe', "\u{307}" => '');
         foreach ($letras as $base => $con_marca) {
             foreach (preg_split('//u', $con_marca, -1, PREG_SPLIT_NO_EMPTY) as $letra) {
@@ -332,9 +274,7 @@ class ConfiguracionTorneo
         return strtr(mb_strtolower((string)$nombre, 'UTF-8'), $cambios);
     }
 
-    # Menor que 0 si $a va antes, mayor si va despues. Si las dos claves
-    # coinciden ("Vortex" y "vortex"), decide el texto tal cual: el orden
-    # nunca queda librado al azar.
+    # Menor que 0 si $a va antes, mayor si va despues.
     public static function compararNombres($a, $b)
     {
         $orden = strcmp(self::claveAlfabetica($a), self::claveAlfabetica($b));
@@ -351,9 +291,6 @@ class ConfiguracionTorneo
             $errores[] = 'Los puntos por victoria no pueden ser menores que los de '
                        . 'empate, ni los de empate menores que los de derrota.';
         }
-        # Minimo 1, el mismo min="1" del formulario de crear.php: una
-        # victoria que no suma puntos no distingue al que gana. Mismo
-        # rango que la restriccion ck_config_victoria de la tabla.
         if ($this->puntos_victoria < 1 || $this->puntos_victoria > 10) {
             $errores[] = 'Los puntos por victoria tienen que estar entre 1 y 10.';
         }

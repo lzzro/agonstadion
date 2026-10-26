@@ -1,5 +1,4 @@
-# Lo que no hace falta mandarle a Docker para armar la imagen del sitio
-# (el Dockerfile copia solo deploy/, docker/web y scripts/).
+# Lo que no se manda a Docker al armar la imagen del sitio.
 .git
 vendor
 backups

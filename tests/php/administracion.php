@@ -1,25 +1,5 @@
 <?php
-# =====================================================================
 # Administracion, equipos, reportes y mis resultados - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   php tests/php/administracion.php    (con la base de PRUEBA migrada,
-#                                        hasta la 008)
-#
-# Los repositorios de la tercera entrega que no son de los formatos:
-#   1. Los modulos (RF-24): deshabilitar y habilitar, nunca el ultimo.
-#   2. Las cuentas (RF-11 y RF-24): la baja logica y la vuelta, el rol
-#      administrador; nunca la cuenta propia ni una de muestra.
-#   3. Los integrantes con su dorsal (RF-12): sumar por correo, el
-#      dorsal sin repetir, la baja (libera el dorsal), la vuelta, y solo
-#      el capitan.
-#   4. Una eliminacion directa individual de 4, jugada hasta su final:
-#      los partidos de cada jugador (RF-26), las finales y el campeon, y
-#      los numeros de los reportes (RF-28) contados a mano.
-#
-# Crea sus propias cuentas (prueba-...@ejemplo.invalid), su equipo y su
-# torneo, y al final los BORRA, pase lo que pase, y deja los modulos
-# como estaban. No toca nada mas.
-# =====================================================================
 
 require __DIR__ . '/comun.php';
 require_once $APLICACION . '/models/CatalogoRepositorio.php';
@@ -85,7 +65,7 @@ function cuenta($nombre, $apellido, $roles = array())
     return $u;
 }
 
-# --- 1. Modulos -----------------------------------------------------
+# 1. Modulos
 echo "-- Modulos (RF-24)\n";
 $catalogo = new CatalogoRepositorio($conexion);
 $conexion->query('UPDATE modulo_competencia SET habilitado = 1');
@@ -101,7 +81,7 @@ chk($catalogo->cambiarModulo(999999, true) === array('Ese módulo no existe.'), 
 chk(empty($catalogo->cambiarModulo($m['Suizo']->getIdModulo(), true)) && empty($catalogo->cambiarModulo($m['Eliminación directa']->getIdModulo(), true)),
     'y vuelven a habilitarse');
 
-# --- 2. Cuentas -----------------------------------------------------
+# 2. Cuentas
 echo "-- Cuentas (RF-11 y RF-24)\n";
 $admin = cuenta('Ariadna', 'Minos', array('administrador'));
 $otra  = cuenta('Teseo', 'Atenas');
@@ -131,7 +111,7 @@ chk(empty($usuarios->cambiarAdministrador($admin, $otra->getIdUsuario(), false)[
     'y se quita (le queda el de jugador)');
 chk($usuarios->cambiarActivo($admin, 999999999, false)['errores'] === array('Esa cuenta no existe.'), 'una cuenta que no existe, no');
 
-# --- 3. Integrantes -------------------------------------------------
+# 3. Integrantes
 echo "-- Integrantes con su dorsal (RF-12)\n";
 $capitan = cuenta('Jasón', 'Yolco');
 $heracles = cuenta('Heracles', 'Tebas');
@@ -175,7 +155,7 @@ chk(empty($equipos->sumarIntegrante($id_argo, $capitan, $heracles->getCorreo(), 
     && valor($conexion, "SELECT CONCAT(activo, '|', dorsal) FROM integrante_equipo WHERE id_equipo = $id_argo AND id_usuario = "
                         . (int)$heracles->getIdUsuario()) === '1|7', 'Heracles vuelve, con otro dorsal');
 
-# --- 4. Una eliminacion directa jugada hasta la final ---------------
+# 4. Una eliminacion directa jugada hasta la final
 echo "-- Mis resultados (RF-26) y reportes (RF-28)\n";
 $org = cuenta('Atalanta', 'Arcadia', array('organizador'));
 $jugadores = array(cuenta('Aquiles', 'Ftía'), cuenta('Héctor', 'Troya'), cuenta('Ayax', 'Salamina'), cuenta('Paris', 'Troya'));

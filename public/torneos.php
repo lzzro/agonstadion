@@ -3,20 +3,6 @@ require __DIR__ . '/../apps/config/pagina.php';
 require_once $carpeta_app . '/models/TorneoRepositorio.php';
 require_once $carpeta_app . '/ligas.php';
 
-# =====================================================================
-# Torneos publicos - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Todo sale de la base (TorneoRepositorio::listarPublicos): los torneos
-# con la inscripcion abierta, en curso o finalizados, con su estado, su
-# organizador y su avance. Nada escrito a mano. Lo que organiza una
-# cuenta de muestra (las ligas de la migracion 005) lleva la marca "De
-# muestra".
-#
-# "Proximas fechas" junta dos cosas que tienen dia: el cierre de la
-# fecha en juego de cada liga, y el comienzo de las que todavia tienen
-# la inscripcion abierta. Solo lo que es de hoy en adelante.
-# =====================================================================
-
 $lista = null;
 $conexion = conectarBD();
 if ($conexion !== null) {
@@ -42,8 +28,7 @@ if (is_array($lista)) {
                 'torneo' => $t, 'que' => 'Inicio', 'verbo' => 'empieza');
         }
     }
-    # De la mas cercana a la mas lejana (la clave empieza con el dia), y
-    # solo las tres primeras.
+    # De la mas cercana a la mas lejana (la clave empieza con el dia), y solo las tres primeras.
     ksort($proximas);
     $proximas = array_slice($proximas, 0, 3);
 }

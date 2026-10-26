@@ -1,12 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: TipoTorneo   ->   tabla "tipo_torneo" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Define QUIEN compite. compite_equipo = 1 -> los participantes son
-# equipos; 0 -> son usuarios. Torneo usa este dato para aceptar o
-# rechazar una inscripcion.
-# =====================================================================
+# Modelo: TipoTorneo -> tabla "tipo_torneo" de sql/schema.sql
 
 class TipoTorneo
 {
@@ -29,8 +22,6 @@ class TipoTorneo
 
     public function getIdTipoTorneo() { return $this->id_tipo_torneo; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdTipoTorneo($id_tipo_torneo)
     {
         $this->id_tipo_torneo = (int)$id_tipo_torneo;

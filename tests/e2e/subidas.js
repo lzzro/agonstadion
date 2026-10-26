@@ -1,43 +1,4 @@
-// =====================================================================
 // La subida de la foto de perfil y la portada - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/subidas.js
-//
-// Las defensas de ImagenSubida y de public/subidas/.htaccess:
-//   1. sin sesion no se sube nada
-//   2. JPG, PNG y WEBP de verdad se aceptan, con un nombre de 32
-//      caracteres al azar y la extension de su tipo real; la anterior se
-//      borra del disco; el nombre que manda el navegador no se usa (un
-//      ../ no sale de la carpeta); la foto se entrega como imagen, con
-//      X-Content-Type-Options: nosniff
-//   3. lo que se rechaza: PHP con nombre o tipo de imagen, texto, GIF,
-//      SVG con script, mas de 4000 px de lado, mas de 2 MB, ningun
-//      archivo
-//   4. cada cuenta cambia solo SU foto (un id_usuario en el formulario
-//      no sirve), y cada carga aceptada queda en la auditoria
-//   5. la carpeta no ejecuta nada: una imagen con PHP pegado al final se
-//      entrega tal cual; archivos .php, .phtml, .phar, .user.ini puestos a
-//      mano en la carpeta no corren (403), y el mismo PHP fuera de la
-//      carpeta si corre (el control de que la prueba mide al .htaccess);
-//      la carpeta no se lista y el .htaccess no se entrega
-//
-// Las imagenes se fabrican en cada corrida, en memoria, con el propio
-// Chromium (un canvas): el repositorio no guarda archivos de prueba.
-//
-// SOLO TOCA LO QUE ELLA MISMA CREA, igual que permisos.js: dos cuentas de
-// @ejemplo.invalid, con contrasena al azar. Los archivos que pone a mano
-// (en la carpeta de las subidas y el control en la raiz publica) se
-// borran enseguida, y otra vez al final por las dudas. Al final se
-// borran sus cuentas y sus fotos (limpiarCuentas en comun.js), y se
-// comprueba que la base (CHECKSUM TABLE) y la carpeta de las subidas
-// quedan como estaban.
-//
-// Variables de entorno, ademas de las de comun.js (ver tests/README.md):
-//   STADION_SUBIDAS  la carpeta de las fotos del sitio de prueba
-//                    (por defecto public/subidas del repositorio)
-//   STADION_PUBLICA  la raiz publica del sitio de prueba, donde se pone
-//                    el control (por defecto public/ del repositorio)
-// =====================================================================
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -52,8 +13,7 @@ const puestos = new Set();
 function poner(archivo, contenido) {
   fs.writeFileSync(archivo, contenido);
   puestos.add(archivo);
-  // Del mismo dueno que la carpeta: PHP-FPM puede negarse a leer un
-  // archivo de otro.
+  // Del mismo dueno que la carpeta: PHP-FPM puede negarse a leer un archivo de otro.
   try { const d = fs.statSync(path.dirname(archivo)); fs.chownSync(archivo, d.uid, d.gid); } catch (e) { /* sin permiso: queda del que corre */ }
 }
 function sacar(archivo) { try { fs.unlinkSync(archivo); } catch (e) { /* ya no estaba */ } puestos.delete(archivo); }
@@ -110,7 +70,7 @@ let nav;
     const portada = cuenta => sql(`SELECT IFNULL(foto_portada, 'NULL') FROM usuario WHERE id_usuario = ${cuenta.id}`);
     const existe = nombre => fs.existsSync(path.join(SUBIDAS, nombre));
 
-    // --- 1. Sin sesion ------------------------------------------------------
+    // 1. Sin sesion
     console.log('--- 1. Sin sesion ---');
     const anon = await nav.newContext();
     const PERFIL = new URL((await anon.request.get(`${BASE}/perfil.php`, { maxRedirects: 0 })).headers()['location'], `${BASE}/perfil.php`).href;
@@ -119,7 +79,7 @@ let nav;
           'subir sin sesion: 302 al acceso, y ningun archivo nuevo en la carpeta');
     await anon.close();
 
-    // --- 2. Imagenes validas ------------------------------------------------
+    // 2. Imagenes validas
     console.log('--- 2. Imagenes validas ---');
     const S = await c.entrar(nav, A);
     const TK = await c.token(S.p);
@@ -150,7 +110,7 @@ let nav;
     t.chk(g.status() === 200 && g.headers()['content-type'] === 'image/webp', `la foto se entrega como imagen (${g.status()} ${g.headers()['content-type']})`);
     t.chk(/nosniff/i.test(g.headers()['x-content-type-options'] || ''), `con X-Content-Type-Options: ${g.headers()['x-content-type-options']}`);
 
-    // --- 3. Lo que se rechaza --------------------------------------------------
+    // 3. Lo que se rechaza
     console.log('--- 3. Lo que se rechaza (el tipo se mira por dentro, no por el nombre) ---');
     const carpeta = c.archivosSubidas();
     const rechazo = async (imagen, aviso, que) => {
@@ -168,7 +128,7 @@ let nav;
     r = await subir({ accion: 'foto' });
     t.chk(r.aviso === 'Falta elegir una imagen.', `sin archivo: "${r.aviso}"`);
 
-    // --- 4. Cada cuenta cambia solo su foto, y la auditoria ---------------------
+    // 4. Cada cuenta cambia solo su foto, y la auditoria
     console.log('--- 4. Cada cuenta cambia solo su foto ---');
     r = await subir({ accion: 'foto', imagen: archivo('otra.png', 'image/png', img.otra) }, { id_usuario: String(B.id) });
     t.chk(foto(B) === 'NULL' && foto(A) !== p_foto && existe(foto(A)),
@@ -177,7 +137,7 @@ let nav;
     t.chk(cargas('Carga de foto de perfil') === '4' && cargas('Carga de portada') === '1',
           'en la auditoria: 4 "Carga de foto de perfil" y 1 "Carga de portada" (una por carga aceptada, ninguna por las rechazadas)');
 
-    // --- 5. La carpeta no ejecuta nada -----------------------------------------
+    // 5. La carpeta no ejecuta nada
     console.log('--- 5. La carpeta no ejecuta nada ---');
     const poliglota = Buffer.concat([img.png, Buffer.from(PHP)]);
     r = await subir({ accion: 'foto', imagen: archivo('poliglota.png', 'image/png', poliglota) });

@@ -5,20 +5,7 @@ require_once $carpeta_app . '/models/ParticipanteRepositorio.php';
 require_once $carpeta_app . '/models/FixtureRepositorio.php';
 require_once $carpeta_app . '/ligas.php';
 
-# =====================================================================
-# Llave - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La llave es la de la eliminacion directa (fase 3 del motor de
-# torneos). Sin numero, la pagina lista las eliminaciones directas
-# publicas, cada una con el enlace a su llave, y las ligas y suizos con
-# el de su tabla. llave.php?id=N de una eliminacion directa dibuja su
-# llave, leida de la base (llaveHtml, en apps/ligas.php: las rondas que
-# faltan van "Por definir"); de una liga o un suizo, dice que no tiene
-# llave y lleva a su tabla, que es lo que los ordena.
-#
-# Marca Torneos en el menu, con aria-current="true": es el detalle de un
-# torneo, igual que torneo.php.
-# =====================================================================
+# La llave es la de la eliminacion directa (fase 3 del motor de torneos).
 
 $lista = null;
 $liga  = null;
@@ -29,8 +16,7 @@ if ($conexion !== null) {
     $lista = $torneos->listarPublicos();
     if (isset($_GET['id']) && is_string($_GET['id']) && (int)$_GET['id'] > 0) {
         $liga = $torneos->buscarPorId((int)$_GET['id']);
-        # Solo un torneo publico: un borrador o uno cancelado no se nombra
-        # (torneo.php tampoco lo muestra).
+        # Solo un torneo publico: un borrador o uno cancelado no se nombra (torneo.php tampoco lo muestra).
         if ($liga !== null && !in_array($liga->getEstado(), array('inscripcion', 'en_curso', 'finalizado'))) {
             $liga = null;
         }
@@ -43,8 +29,7 @@ if ($conexion !== null) {
     $conexion->close();
 }
 
-# Los torneos publicos: los de eliminacion directa (con llave) y los
-# demas (con tabla).
+# Los torneos publicos: los de eliminacion directa (con llave) y los demas (con tabla).
 $con_llave = array();
 $ligas = array();
 if (is_array($lista)) {

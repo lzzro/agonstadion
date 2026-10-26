@@ -1,9 +1,6 @@
-# ---------------------------------------------------------------------
 # Lo que NUNCA va al repositorio
-# ---------------------------------------------------------------------
 
 # Configuracion local con las credenciales reales de la base de datos.
-# Cada maquina tiene la suya; el repositorio solo lleva el ejemplo.
 apps/config/database.local.php
 
 # Credenciales de sgdm_admin que usa el script de respaldo.
@@ -12,9 +9,6 @@ scripts/respaldo.local.cnf
 # Credenciales de sgdm_consulta que usa el script de monitoreo de la base.
 scripts/consultas.local.cnf
 
-# Las claves del cifrado y la firma de los respaldos (las crea
-# scripts/generar-claves-respaldo.sh en el servidor). La privada y la
-# frase no salen nunca de ahi.
 scripts/firma/
 
 # Por si alguna vez se usan otros nombres para lo mismo
@@ -22,31 +16,21 @@ scripts/firma/
 *.local.cnf
 .env
 
-# ---------------------------------------------------------------------
 # Lo que generan los scripts: no es codigo, no se versiona
-# ---------------------------------------------------------------------
 
-# Respaldos diarios: pesan y ademas llevan un volcado de la base con
-# los datos de las personas adentro.
 backups/
 
 # Lecturas de disco, memoria y servicios que grafica Grafana.
 metricas/
 
-# Fotos de perfil y portadas que sube la gente: son datos de personas,
-# no codigo. Se versiona solo el .htaccess que impide ejecutar nada en
-# esa carpeta.
+# Fotos de perfil y portadas que sube la gente: son datos de personas, no codigo.
 public/subidas/*
 !public/subidas/.htaccess
 
-# Lo que baja Composer (PHPUnit, solo para las pruebas): se instala con
-# composer install, no se versiona.
 /vendor/
 /composer.lock
 
-# ---------------------------------------------------------------------
 # Basura del sistema y de los editores
-# ---------------------------------------------------------------------
 Thumbs.db
 desktop.ini
 .DS_Store

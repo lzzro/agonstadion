@@ -1,24 +1,9 @@
 <?php
-# =====================================================================
 # Vista parcial: como se muestra una liga
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Lo que repiten las paginas que leen ligas de la base (torneos.php,
-# torneo.php, el inicio, calendario.php y el panel): el chip de estado,
-# la linea de datos de las tarjetas y la barra de avance. Asi una liga
-# se nombra igual en todas partes.
-#
-# El chip sigue la tabla de estados de DESIGN.md (color y forma):
-#   inscripcion                  Inscripcion abierta (punto hueco, olivo)
-#   en curso, con un partido en vivo   En vivo (punto lleno, cinabrio)
-#   en curso                     En juego (cuadrado)
-#   finalizado, cancelado        Finalizado / Cancelado (raya)
-# =====================================================================
 
 require_once __DIR__ . '/fechas.php';
 require_once __DIR__ . '/models/Llave.php';
 
-# array(clase, texto) del chip.
 function chipLiga(Torneo $torneo, $en_vivo)
 {
     $estado = $torneo->getEstado();
@@ -43,9 +28,6 @@ function chipLigaHtml(Torneo $torneo, $en_vivo)
     return '<span class="estado ' . $chip[0] . '">' . $chip[1] . '</span>';
 }
 
-# El chip del vencedor (DESIGN.md: color vencedor y la rama de olivo en
-# miniatura, el unico lugar donde va la rama fuera del pie). Va solo al
-# lado del campeon de una liga terminada.
 function chipVencedor()
 {
     return '<span class="estado estado-vencedor"><svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">'
@@ -59,8 +41,6 @@ function marcaMuestra($texto = 'De muestra')
     return '<span class="muestra">' . htmlspecialchars($texto) . '</span>';
 }
 
-# La marca de un total: "De muestra" si todo lo que suma sale de ligas de
-# muestra, "Incluye muestra" si solo una parte, nada si ninguna.
 function marcaTotal($de_muestra, $en_total)
 {
     if ($de_muestra <= 0) {
@@ -75,8 +55,7 @@ function plural($cantidad, $singular, $plural)
     return (int)$cantidad . ' ' . (((int)$cantidad === 1) ? $singular : $plural);
 }
 
-# Los que compiten, con su cantidad: "8 equipos" o, en una liga
-# individual (fase 3), "8 jugadores".
+# Los que compiten, con su cantidad: "8 equipos" o, en una liga individual (fase 3), "8 jugadores".
 function participantesDe(Torneo $torneo, $cantidad)
 {
     return $torneo->esPorEquipos() ? plural($cantidad, 'equipo', 'equipos') : plural($cantidad, 'jugador', 'jugadores');
@@ -88,9 +67,6 @@ function nombreParticipantes(Torneo $torneo)
     return $torneo->esPorEquipos() ? 'equipos' : 'jugadores';
 }
 
-# Las palabras de cada formato (fase 3): una liga juega "fechas" y arma
-# un "fixture"; la eliminacion directa y el suizo juegan "rondas", y
-# arman una llave o la primera ronda.
 function palabrasDe(Torneo $torneo)
 {
     if ($torneo->esEliminacion()) {
@@ -108,8 +84,7 @@ function palabrasDe(Torneo $torneo)
                  'formato' => 'Liga');
 }
 
-# El formato en pocas palabras: "Liga · una vuelta", "Eliminación
-# directa", "Suizo a 4 rondas".
+# El formato en pocas palabras: "Liga · una vuelta", "Eliminación directa", "Suizo a 4 rondas".
 function formatoTexto(Torneo $torneo)
 {
     $config = $torneo->getConfiguracion();
@@ -123,9 +98,6 @@ function formatoTexto(Torneo $torneo)
     return 'Liga · ' . vueltasTexto($config);
 }
 
-# Donde esta la liga, en pocas palabras, para las tarjetas: la fecha en
-# juego sobre el total, o la inscripcion con el cupo.
-#   $fila   un elemento de TorneoRepositorio::listarPublicos()
 function avanceLiga($fila)
 {
     $torneo = $fila['torneo'];
@@ -147,16 +119,12 @@ function avanceLiga($fila)
     if ($torneo->esLiga()) {
         return $texto . ' · Fecha ' . $fila['actual'] . ' de ' . $fila['fechas'];
     }
-    # En la llave y el suizo las rondas se arman de a una: el total es el
-    # previsto en la configuracion.
+    # En la llave y el suizo las rondas se arman de a una: el total es el previsto en la configuracion.
     $config = $torneo->getConfiguracion();
     $total  = ($config === null || $config->getRondasPrevistas() === null) ? $fila['fechas'] : $config->getRondasPrevistas();
     return $texto . ' · Ronda ' . $fila['actual'] . ' de ' . $total;
 }
 
-# El ancho de la barra, en por ciento: la fecha en juego sobre el total
-# (la misma regla de siempre: ronda actual sobre rondas totales), o el
-# cupo ocupado mientras la inscripcion esta abierta.
 function porcentajeLiga($fila)
 {
     $torneo = $fila['torneo'];
@@ -182,8 +150,6 @@ function vueltasTexto($configuracion)
     return ($configuracion !== null && $configuracion->esIdaYVuelta()) ? 'ida y vuelta' : 'una vuelta';
 }
 
-# El marcador de un resultado, como se muestra: "2 – 1", o "W.O." si se
-# gano por walkover (sin marcador: ver Resultado).
 function marcadorTexto(Resultado $resultado)
 {
     if ($resultado->esWalkover()) {
@@ -192,9 +158,6 @@ function marcadorTexto(Resultado $resultado)
     return $resultado->getPuntajeLocal() . ' – ' . $resultado->getPuntajeVisitante();
 }
 
-# Un partido jugado visto desde uno de sus dos lados ("Mis resultados"
-# del perfil, RF-26): el rival, el marcador con el propio primero y el
-# desenlace, 'G', 'E' o 'P' (un walkover se decide por su ganador).
 function partidoDesde(Enfrentamiento $enfrentamiento, Participante $propio)
 {
     $resultado = $enfrentamiento->getResultado();
@@ -219,12 +182,7 @@ function partidoDesde(Enfrentamiento $enfrentamiento, Participante $propio)
                  'walkover' => $resultado->esWalkover());
 }
 
-# El renglon de un partido, igual en el calendario de la liga y en el
-# del sitio. A la izquierda la hora (o el marcador, si ya se jugo, o una
-# raya si no tiene hora); arriba de los equipos, $arriba_html (el dia,
-# o la liga y la fecha), ya escapado por quien llama; a la derecha, el
-# chip si esta en vivo. Un marcador nunca se parte (.hora lleva
-# white-space: nowrap en el CSS).
+# El renglon de un partido, igual en el calendario de la liga y en el del sitio.
 function filaPartido(Enfrentamiento $enfrentamiento, $arriba_html)
 {
     $resultado = $enfrentamiento->getResultado();
@@ -253,8 +211,7 @@ function filaPartido(Enfrentamiento $enfrentamiento, $arriba_html)
        . $chip . '</div>' . "\n";
 }
 
-# Con la primera letra en mayuscula ("Viernes 18 de septiembre"). Los
-# dias de la semana empiezan todos con una letra sin tilde.
+# Con la primera letra en mayuscula ("Viernes 18 de septiembre").
 function mayuscula($texto)
 {
     return ucfirst((string)$texto);
@@ -266,14 +223,6 @@ function conSigno($numero)
     return ((int)$numero > 0) ? '+' . (int)$numero : (string)(int)$numero;
 }
 
-# La llave de una eliminacion directa (fase 3), con el marcado de
-# siempre (.llave, .llave-ronda, .par, .cruce: ver style.css, que la
-# dibuja apilada en el telefono y en columnas con lineas desde 1024 px).
-# Las rondas que todavia no se armaron van con "Por definir". El que
-# pasa de cada cruce va en olivo y en negrita (.pasa), y lo dice tambien
-# en texto para el lector de pantalla.
-#   $rondas   las rondas jugadas o en juego (FixtureRepositorio::fechasDe)
-#   $total    cuantas rondas tiene la llave
 function llaveHtml($rondas, $total)
 {
     $html = '<div class="llave">' . "\n";
@@ -296,8 +245,6 @@ function llaveHtml($rondas, $total)
     return $html . '</div>' . "\n";
 }
 
-# Un cruce de la llave: dos renglones, cada uno con su nombre y su
-# marcador. null es un cruce por definir.
 function cruceHtml($partido)
 {
     if ($partido === null) {

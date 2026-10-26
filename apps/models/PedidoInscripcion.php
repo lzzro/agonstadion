@@ -1,22 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: PedidoInscripcion   ->   tabla "pedido_inscripcion"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# El capitan de un equipo pide lugar en una liga con la inscripcion
-# abierta, y quien la organiza lo acepta o lo rechaza. Es el mismo
-# esquema que PedidoRol: el pedido es la historia, y aceptarlo es
-# agregar la fila de participante (ver PedidoInscripcionRepositorio).
-#
-# Composicion: contiene el Torneo, el Equipo, el Usuario que pide y el
-# Usuario que lo resolvio (o null mientras esta pendiente).
-#
-# Las reglas del dominio:
-#   - solo se resuelve un pedido pendiente
-#   - solo lo resuelve quien organiza la liga
-#   - un solo pendiente por equipo y liga (lo garantiza la base con
-#     uq_pinsc_pendiente; aca solo se da el aviso claro)
-# =====================================================================
+# Modelo: PedidoInscripcion -> tabla "pedido_inscripcion"
 
 require_once __DIR__ . '/Usuario.php';
 require_once __DIR__ . '/Equipo.php';
@@ -53,8 +36,6 @@ class PedidoInscripcion
 
     public function getIdPedidoInscripcion() { return $this->id_pedido_inscripcion; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdPedidoInscripcion($id_pedido_inscripcion)
     {
         $this->id_pedido_inscripcion = (int)$id_pedido_inscripcion;
@@ -72,8 +53,7 @@ class PedidoInscripcion
     public function estaAceptado()  { return $this->estado === 'aceptado'; }
     public function estaRechazado() { return $this->estado === 'rechazado'; }
 
-    # Si $organizador puede resolver este pedido. Devuelve un arreglo de
-    # motivos por los que no; vacio quiere decir que si.
+    # Si $organizador puede resolver este pedido.
     public function motivosParaNoResolver($organizador)
     {
         $motivos = array();

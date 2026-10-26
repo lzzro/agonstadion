@@ -1,6 +1,5 @@
 <?php
-# Los tres modelos de Fisica del rendimiento (RF-29), con los valores de
-# la segunda entrega de Fisica.
+# Los tres modelos de Fisica del rendimiento (RF-29), con los valores de la segunda entrega de Fisica.
 
 use PHPUnit\Framework\TestCase;
 

@@ -1,22 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: PosicionTabla   ->   tabla "tabla_posiciones" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acumulado de un participante en su torneo. Composicion: contiene el
-# objeto Participante al que pertenece la fila.
-#
-# Esta clase es la contracara de la decision de normalizacion del
-# schema: la base guarda SOLO los contadores, y los datos derivados
-# (partidos jugados, diferencia, puntos) se calculan aca. Los puntos
-# necesitan la ConfiguracionTorneo, porque dependen de cuanto vale una
-# victoria en ese torneo.
-#
-# El puesto no es atributo de esta clase ni columna de la tabla: no
-# depende del participante sino de como les fue a todos los demas, asi
-# que sale de ordenar la lista con
-# ConfiguracionTorneo->ordenarPosiciones().
-# =====================================================================
+# Modelo: PosicionTabla -> tabla "tabla_posiciones" de sql/schema.sql
 
 require_once __DIR__ . '/Participante.php';
 require_once __DIR__ . '/ConfiguracionTorneo.php';
@@ -61,7 +44,7 @@ class PosicionTabla
         return $this->participante->getNombreVisible();
     }
 
-    # --- Datos derivados: no se guardan en la base ---
+    # Datos derivados: no se guardan en la base
 
     public function getPartidosJugados()
     {
@@ -78,10 +61,9 @@ class PosicionTabla
         return $configuracion->calcularPuntos($this->ganados, $this->empatados, $this->perdidos);
     }
 
-    # --- Acumulacion ---
+    # Acumulacion
 
-    # Suma un partido ya jugado. Es el unico momento en que los
-    # contadores cambian, igual que en la base.
+    # Suma un partido ya jugado.
     public function sumarPartido($puntaje_propio, $puntaje_rival)
     {
         $propio = (int)$puntaje_propio;
@@ -99,10 +81,6 @@ class PosicionTabla
         $this->contra = $this->contra + $rival;
     }
 
-    # Suma un partido segun quien lo gano, no segun el marcador: es lo
-    # que hace falta para un walkover, que se gana 0 a 0 (ver
-    # Resultado). $desenlace es 'G' (lo gano este), 'E' (empate) o 'P'
-    # (lo perdio). Los tantos suman igual que en sumarPartido().
     public function sumarResultado($puntaje_propio, $puntaje_rival, $desenlace)
     {
         if ($desenlace === 'G') {
@@ -115,10 +93,6 @@ class PosicionTabla
         $this->favor  = $this->favor + (int)$puntaje_propio;
         $this->contra = $this->contra + (int)$puntaje_rival;
     }
-
-    # El orden de la tabla (y por lo tanto el puesto de cada uno) lo
-    # resuelve ConfiguracionTorneo->ordenarPosiciones(), porque depende
-    # de cuanto vale una victoria en ese torneo.
 
     public function validar()
     {

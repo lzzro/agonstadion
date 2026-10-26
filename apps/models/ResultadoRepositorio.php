@@ -1,57 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: ResultadoRepositorio   ->   tablas "resultado", "enfrentamiento",
-#                                     "ronda", "tabla_posiciones" y "torneo"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Fase 3 del motor de torneos: lo que pasa en una liga despues del
-# fixture (CU-15 Cargar resultado y CU-16 Publicar ronda; RF-21, RF-22 y
-# RF-27).
-#   - cargarResultado   el marcador de un partido, o un walkover; si ya
-#                       tenia uno, lo corrige
-#   - programar         el dia, la hora y el lugar de un partido
-#   - cambiarEnVivo     marca un partido en vivo mientras se juega, o lo
-#                       saca
-#   - cerrarFecha       cierra la fecha en juego, con todos sus partidos
-#                       jugados; la ultima cierra la liga con su campeon
-#
-# Las reglas (que marcador vale, que se puede cerrar) son de los modelos:
-# ConfiguracionTorneo::erroresMarcador, Enfrentamiento::asignarResultado,
-# programar y cambiarEnVivo, Ronda::cerrar y Torneo::finalizar. Aca se
-# lee lo que hace falta, se les pregunta y se guarda.
-#
-# Cada accion va en una transaccion, con la fila del torneo bloqueada
-# (TorneoRepositorio::bloquearYContar, SELECT ... FOR UPDATE), igual que
-# las de la fase 2: dos cargas a la vez no se pisan, y la liga es de la
-# cuenta que actua o no se hace nada.
-#
-# Las fechas se juegan en orden: los resultados se cargan solo en la
-# fecha en juego (la primera sin cerrar), y cerrarla habilita la
-# siguiente (RF-27). Un resultado se corrige mientras su fecha no se
-# cierra. Programar se puede en cualquier fecha sin cerrar.
-#
-# La tabla de posiciones se vuelve a calcular entera desde los partidos
-# jugados cada vez que se carga o se corrige un resultado
-# (TablaPosiciones), y se guardan solo sus contadores (RF-22). Asi una
-# correccion no deja restos del marcador anterior.
-#
-# Los playoffs (clasifican_playoffs > 0) quedan para cuando una liga
-# pueda seguir en una llave: hoy "Nuevo torneo" guarda 0, y la liga
-# termina con el primero de la tabla.
-#
-# Los otros dos formatos (tambien fase 3) se juegan igual, ronda por
-# ronda, con una diferencia al cerrar: la ronda siguiente no existe
-# todavia, y se arma en ese momento.
-#   - eliminacion directa: con los que pasan de cada cruce, en el orden
-#     de la llave (Llave.php); cerrada la final, su ganador es el
-#     campeon. Un partido de la llave no termina empatado (la
-#     configuracion no admite empate: ver Torneo::validarConfiguracion).
-#   - suizo: con la tabla de ese momento, sin repetir cruces (Suizo.php),
-#     hasta las rondas previstas; despues, el primero de la tabla. Ahi
-#     quedar libre suma como un partido ganado.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: ResultadoRepositorio -> tablas "resultado", "enfrentamiento", "ronda", "tabla_posiciones" y "torneo"
 
 require_once __DIR__ . '/Resultado.php';
 require_once __DIR__ . '/TablaPosiciones.php';
@@ -74,12 +22,6 @@ class ResultadoRepositorio
         $this->conexion = $conexion;
     }
 
-    # --- Cargar o corregir un resultado --------------------------------
-    # $desenlace: 'marcador' (con $local y $visitante, numeros o null si
-    # no llegaron), 'wo-local' o 'wo-visitante' (gana por walkover ese
-    # lado, sin marcador). Devuelve array('errores' => ..., 'detalle' =>
-    # lo que va a la auditoria, 'correccion' => si ya tenia resultado,
-    # 'numero' => la fecha).
     public function cargarResultado($id_torneo, $id_enfrentamiento, Usuario $organizador,
                                     $local, $visitante, $desenlace)
     {
@@ -143,8 +85,7 @@ class ResultadoRepositorio
             return $salida;
         }
 
-        # Guardar: el resultado (nuevo o corregido), el partido jugado, la
-        # fecha en curso y la tabla.
+        # Guardar: el resultado (nuevo o corregido), el partido jugado, la fecha en curso y la tabla.
         $id_partido    = (int)$partido->getIdEnfrentamiento();
         $id_ganador    = ($ganador === null) ? null : (int)$ganador->getIdParticipante();
         $id_carga      = (int)$organizador->getIdUsuario();
@@ -184,11 +125,6 @@ class ResultadoRepositorio
         return $salida;
     }
 
-    # --- Dia, hora y lugar -------------------------------------------
-    # $fecha_hora: AAAA-MM-DD HH:MM o null (a confirmar); $lugar: texto,
-    # vacio si no se sabe. Las fechas de la ronda pasan a ser el primer y
-    # el ultimo dia de sus partidos. Devuelve array('errores' =>,
-    # 'detalle' =>, 'numero' =>).
     public function programar($id_torneo, $id_enfrentamiento, Usuario $organizador, $fecha_hora, $lugar)
     {
         $salida = array('errores' => array(), 'detalle' => '', 'numero' => 0);
@@ -239,9 +175,6 @@ class ResultadoRepositorio
         return $salida;
     }
 
-    # --- En vivo -----------------------------------------------------
-    # Solo en la fecha en juego. Devuelve array('errores' =>, 'detalle'
-    # =>, 'numero' =>).
     public function cambiarEnVivo($id_torneo, $id_enfrentamiento, Usuario $organizador, $en_vivo)
     {
         $salida = array('errores' => array(), 'detalle' => '', 'numero' => 0);
@@ -284,14 +217,6 @@ class ResultadoRepositorio
         return $salida;
     }
 
-    # --- Cerrar la fecha en juego --------------------------------------
-    # Con todos sus partidos jugados (o libres). Si era la ultima, la
-    # liga queda finalizada, con la fecha de fin de hoy (o la de inicio,
-    # si todavia no llego) y su campeon: el primero de la tabla.
-    # Devuelve array('errores' =>, 'numero' =>, 'id_ronda' =>, 'detalle'
-    # =>, 'final' => si cerro la competencia, 'campeon' => su nombre,
-    # 'siguiente' => el nombre de la ronda que se armo, en la llave y el
-    # suizo).
     public function cerrarFecha($id_torneo, $id_ronda, Usuario $organizador)
     {
         $salida = array('errores' => array(), 'numero' => 0, 'id_ronda' => (int)$id_ronda,
@@ -412,10 +337,9 @@ class ResultadoRepositorio
         return $salida;
     }
 
-    # --- Auxiliares (de lectura) -------------------------------------
+    # Auxiliares (de lectura)
 
-    # La fecha en juego: la primera sin cerrar, o null si estan todas
-    # cerradas.
+    # La fecha en juego: la primera sin cerrar, o null si estan todas cerradas.
     public static function fechaEnJuego($rondas)
     {
         foreach ($rondas as $ronda) {
@@ -426,9 +350,6 @@ class ResultadoRepositorio
         return null;
     }
 
-    # El campeon de una competencia terminada (un Participante, o null):
-    # en la eliminacion directa, el que pasa de la final; en la liga y el
-    # suizo, el primero de la tabla, calculada desde los partidos.
     public static function campeon(Torneo $torneo, $participantes, $rondas)
     {
         if ($torneo->esEliminacion()) {
@@ -473,9 +394,7 @@ class ResultadoRepositorio
         return null;
     }
 
-    # '' si la fecha (o ronda) es la que esta en juego; si no, el
-    # porque. En la llave y el suizo los nombres de las rondas no llevan
-    # articulo ("Cuartos de final"), asi que se nombran sin el.
+    # '' si la fecha (o ronda) es la que esta en juego; si no, el porque.
     private static function fueraDeTurno(Torneo $torneo, $rondas, Ronda $ronda)
     {
         if ($ronda->estaCerrada()) {
@@ -490,9 +409,6 @@ class ResultadoRepositorio
         return '';
     }
 
-    # Los cruces de la ronda siguiente de un suizo: la tabla de ahora
-    # (con los libres sumados), sin los dados de baja, sin repetir
-    # cruces, y libre el de mas abajo que todavia no lo estuvo.
     private function emparejarSuizo($liga)
     {
         $en_competencia = array();
@@ -522,13 +438,8 @@ class ResultadoRepositorio
         return Suizo::emparejar($ordenados, $cruzados, $libres);
     }
 
-    # --- Auxiliares (de escritura) -----------------------------------
+    # Auxiliares (de escritura)
 
-    # Con la transaccion abierta: bloquea la liga, comprueba que sea de
-    # esta cuenta y este en curso con su fixture, y lee sus participantes
-    # (con las bajas, que figuran en lo que jugaron) y sus fechas.
-    # Devuelve array('torneo', 'participantes', 'rondas') o
-    # array('error' => texto).
     private function abrirLiga($id_torneo, Usuario $organizador)
     {
         $torneos = new TorneoRepositorio($this->conexion);
@@ -568,8 +479,7 @@ class ResultadoRepositorio
                                'i', array((int)$ronda->getIdRonda()));
     }
 
-    # Vuelve a calcular la tabla desde los partidos jugados y guarda los
-    # contadores de cada fila.
+    # Vuelve a calcular la tabla desde los partidos jugados y guarda los contadores de cada fila.
     private function guardarTabla($liga)
     {
         $tabla = new TablaPosiciones($liga['torneo']->getConfiguracion(), $liga['participantes'], $liga['torneo']->esSuizo());

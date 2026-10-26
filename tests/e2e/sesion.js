@@ -1,43 +1,4 @@
-// =====================================================================
-// La cabecera con sesion, el perfil y la tarjeta de los roles
-// Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/sesion.js
-//
-//   1. sin sesion, la cabecera de siempre: Iniciar sesion · Crear torneo
-//   2. con sesion y sin foto: un circulo con las iniciales en cada
-//      pagina, con el nombre en aria-label y title, antes de Crear torneo,
-//      de 34 px (30 en el telefono), olivo palido de dia y el de noche,
-//      con foco visible
-//   3. con foto: la misma foto del perfil, recortada en el circulo
-//   4. los nombres para mostrar (Usuario::paraMostrar): "ariadna" sube la
-//      primera letra, "de Ítaca" queda como se escribio; la base y el
-//      formulario, tal cual
-//   5. cerrar sesion desde el perfil: formulario POST debajo del nombre,
-//      texto discreto; vuelve al inicio, borra la sesion y la cookie, y
-//      queda "logout" en la auditoria
-//   6. media hora sin uso: la cabecera vuelve a Iniciar sesion
-//   7. el perfil con pestanas (Datos, Mis torneos, Rendimiento), sin
-//      JavaScript; las estadisticas, todas de la base; Rendimiento
-//      sin mediciones; la foto y la portada
-//   8. la tarjeta de los roles: pedir el de organizador con clics de
-//      verdad, la administracion (su lista, sus marcas, sin desborde en
-//      tres anchos y dos modos), rechazar, pedir otra vez y aprobar, y el
-//      registro en sustantivos
-//
-// "Mis torneos" con ligas de verdad lo prueba ligas.js, que las arma.
-//
-// SOLO TOCA LO QUE ELLA MISMA CREA, igual que permisos.js: cuentas de
-// @ejemplo.invalid con contrasena al azar; el administrador es una de
-// ellas (sql/primer_administrador.sql). Al final se borran sus cuentas,
-// sus pedidos, su auditoria y sus fotos (limpiarCuentas en comun.js), y
-// se comprueba que la base (CHECKSUM TABLE) y la carpeta de las subidas
-// quedan como estaban.
-//
-// Variables de entorno: las de comun.js, STADION_SUBIDAS (ver
-// subidas.js) y STADION_SESIONES (ver permisos.js; sin la carpeta de
-// las sesiones, los pasos 5 y 6 no miran el archivo de la sesion).
-// =====================================================================
+// La cabecera con sesion, el perfil y la tarjeta de los roles Stadion (Agon)
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -86,8 +47,7 @@ let nav;
   const propias = [];
   nav = await c.navegador();
   try {
-    // Nombres guardados en minuscula (y uno con mayuscula adentro), para
-    // probar Usuario::paraMostrar.
+    // Nombres guardados en minuscula (y uno con mayuscula adentro), para probar Usuario::paraMostrar.
     const A = await c.cuentaNueva(nav, 'ariadna', 'minos', propias);
     const O = await c.cuentaNueva(nav, 'odiseo', 'de Ítaca', propias);
     const N = await c.cuentaNueva(nav, 'nausícaa', 'Prueba', propias);
@@ -95,13 +55,12 @@ let nav;
     t.chk(sql(`SELECT COUNT(*) FROM usuario_rol ur JOIN rol r USING (id_rol) WHERE ur.id_usuario = ${A.id} AND r.nombre = 'administrador'`) === '1',
           'tres cuentas nuevas de @ejemplo.invalid; la primera, administradora (sql/primer_administrador.sql)');
 
-    // --- 1. Sin sesion ----------------------------------------------------------
+    // 1. Sin sesion
     console.log('--- 1. Sin sesion ---');
     const v = await nav.newContext({ viewport: { width: 1024, height: 900 } });
     const pv = await v.newPage();
     const sin = [];
-    // (login.php y registro.php no llevan estas acciones: su <header> es
-    // el panel de marmol.)
+    // (login.php y registro.php no llevan estas acciones: su <header> es el panel de marmol.)
     for (const pag of PAGINAS.slice(0, 5)) {
       await pv.goto(`${BASE}/${pag}`);
       const acciones = await pv.$$eval('header .acciones > *', es => es.map(e => e.tagName + ' ' + (e.getAttribute('href') || '').replace(/^\.\//, '')
@@ -111,7 +70,7 @@ let nav;
     t.chk(sin.length === 0, `sin sesion, la cabecera de siempre en 5 paginas: Iniciar sesion · Crear torneo, sin circulo${sin.length ? ' (' + sin.join('; ') + ')' : ''}`);
     await v.close();
 
-    // --- 2. Con sesion y sin foto ---------------------------------------------------
+    // 2. Con sesion y sin foto
     console.log('--- 2. Con sesion y sin foto: el circulo con las iniciales ---');
     const S = await c.entrar(nav, A, { viewport: { width: 1024, height: 900 } });
     const p = S.p;
@@ -146,15 +105,14 @@ let nav;
     }
     t.chk(foco && foco.startsWith('solid 2px'), `con Tab el circulo toma un foco visible (${foco})`);
 
-    // --- 3. Con foto --------------------------------------------------------------
+    // 3. Con foto
     console.log('--- 3. Con foto: la misma del perfil, en el circulo ---');
     await p.goto(`${BASE}/perfil.php`);
     const PERFIL = p.url().split('#')[0];
     await p.setInputFiles('form.subida:has(input[value="foto"]) input[type=file]', await imagen(nav, 'image/jpeg', 300, 300));
     await Promise.all([p.waitForNavigation(), p.click('form.subida:has(input[value="foto"]) button')]);
     const grande = await p.evaluate(() => document.querySelector('main img.avatar').getAttribute('src').split('/').pop());
-    // La carpeta que mira la prueba tiene que ser la del sitio: si no, la
-    // limpieza borraria en otro lado.
+    // La carpeta que mira la prueba tiene que ser la del sitio: si no, la limpieza borraria en otro lado.
     if (!t.chk(fs.existsSync(path.join(c.SUBIDAS, grande)), `la foto queda en la carpeta de las subidas que mira la prueba (${c.SUBIDAS})`)) {
       throw new Error('la carpeta de las subidas no es la del sitio: ver STADION_SUBIDAS');
     }
@@ -166,10 +124,8 @@ let nav;
       t.chk(k.tag === 'IMG' && k.src.endsWith(grande) && bien, `${pag}: <img> ${grande}, la del perfil (cargada, object-fit cover, alt vacio: el enlace ya dice a quien lleva)`);
     }
 
-    // --- 4. Nombres para mostrar -----------------------------------------------------
+    // 4. Nombres para mostrar
     console.log('--- 4. Nombres para mostrar ---');
-    // Una medicion, para que la cuenta figure en la comparacion de
-    // Rendimiento (se va con la cuenta al final: ON DELETE CASCADE).
     sql(`INSERT INTO medicion (id_usuario, prueba, distancia_cm, fecha) VALUES (${A.id}, 'reaccion', 10, '2026-10-01')`);
     await p.goto(PERFIL);
     const n = await p.evaluate(() => ({ h1: document.querySelector('main h1').textContent, nombre: document.querySelector('input[name=nombre]').value,
@@ -180,7 +136,7 @@ let nav;
           'el formulario muestra lo guardado tal cual, y la base no cambia');
     t.chk(/administrador/.test(n.linea) && /jugador/.test(n.linea), `debajo del nombre, los roles: "${n.linea.trim()}"`);
 
-    // --- 5. Cerrar sesion desde el perfil ------------------------------------------------
+    // 5. Cerrar sesion desde el perfil
     console.log('--- 5. Cerrar sesion desde el perfil ---');
     const f = await p.evaluate(() => { const x = document.querySelector('.perfil-cabecera form.salir-perfil'); const b = x && x.querySelector('button');
       const s = b && getComputedStyle(b);
@@ -206,7 +162,7 @@ let nav;
     }
     t.chk(salidas() === String(parseInt(salidas0, 10) + 1), 'y queda una fila "logout" en la auditoria');
 
-    // --- 6. Media hora sin uso -------------------------------------------------------------
+    // 6. Media hora sin uso
     console.log('--- 6. Media hora sin uso ---');
     await S.ctx.close();
     const S2 = await c.entrar(nav, A, { viewport: { width: 1024, height: 900 } });
@@ -221,7 +177,7 @@ let nav;
     }
     await S2.ctx.close();
 
-    // --- 7. El perfil con pestanas ----------------------------------------------------------
+    // 7. El perfil con pestanas
     console.log('--- 7. El perfil con pestanas ---');
     const P = await c.entrar(nav, N, { viewport: { width: 1024, height: 900 } });
     const pp = P.p;
@@ -269,7 +225,7 @@ let nav;
     t.chk(/subidas\/[0-9a-f]{32}\.webp$/.test(con.b) && con.cb === 600, `la portada: ${con.b && con.b.split('/').pop()}, cargada (${con.cb} px)`);
     await P.ctx.close();
 
-    // --- 8. La tarjeta de los roles -----------------------------------------------------------
+    // 8. La tarjeta de los roles
     console.log('--- 8. La tarjeta de los roles y la administracion ---');
     const J = await c.entrar(nav, O, { viewport: { width: 390, height: 900 } });
     const pj = J.p;
@@ -336,8 +292,7 @@ let nav;
     await J.ctx.close();
     await D.ctx.close();
 
-    // La tarjeta en su estado inicial, en el telefono: sin desborde y con
-    // el foco a la vista.
+    // La tarjeta en su estado inicial, en el telefono: sin desborde y con el foco a la vista.
     for (const modo of ['dia', 'noche']) {
       const x = await c.entrar(nav, N, { viewport: { width: 390, height: 900 } });
       if (modo === 'noche') await x.p.evaluate(() => { try { localStorage.setItem('stadion-tema', 'noche'); } catch (e) { /* sin almacenamiento */ } });

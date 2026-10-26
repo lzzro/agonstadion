@@ -1,15 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: IntegranteEquipo   ->   tabla "integrante_equipo"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Tabla intermedia de la relacion N:M entre equipo y usuario. Tiene
-# clase propia, y no un simple arreglo de usuarios, porque la relacion
-# lleva atributos: dorsal, activo y fecha de alta.
-#
-# El id del equipo no es atributo de esta clase: el integrante vive
-# dentro del objeto Equipo que lo contiene.
-# =====================================================================
+# Modelo: IntegranteEquipo -> tabla "integrante_equipo"
 
 require_once __DIR__ . '/Usuario.php';
 

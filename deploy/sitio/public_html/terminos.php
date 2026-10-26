@@ -2,17 +2,7 @@
 require __DIR__ . '/../stadion_app/config/pagina.php';
 require_once $carpeta_app . '/config/contacto.php';
 
-# =====================================================================
-# Terminos y privacidad - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Pagina fija (tercera entrega): las condiciones de uso y lo que se hace
-# con los datos de cada cuenta. No lee de la base. La casilla "Conforme
-# con los terminos" del registro trae aca, en otra pestana, para no
-# perder lo escrito en el formulario. Se llega tambien desde el pie.
-# El menu no marca ninguna entrada: la pagina no depende de ninguna.
-# Lo que dice tiene que coincidir con lo que el sistema hace: si cambia
-# un dato que se guarda, cambia esta pagina.
-# =====================================================================
+# Pagina fija: las condiciones de uso y lo que se hace con los datos de cada cuenta.
 ?>
 <!DOCTYPE html>
 <html lang="es">

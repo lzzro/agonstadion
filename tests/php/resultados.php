@@ -1,24 +1,5 @@
 <?php
-# =====================================================================
 # Resultados, fechas y final de una liga (fase 3) - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   php tests/php/resultados.php        (con la base de PRUEBA migrada,
-#                                        hasta la 006)
-#
-# Dos partes:
-#   1. Las reglas de los modelos, sin la base: el marcador de una serie
-#      al mejor de 3, 5 y 7, una liga sin empates, el walkover, el dia y
-#      la hora, el en vivo, y la tabla calculada por el ganador.
-#   2. ResultadoRepositorio contra la base, con dos ligas propias (una al
-#      mejor de 3 con 5 equipos, asi cada fecha tiene un libre; otra de
-#      partido unico con empates): cargar, corregir, walkover, en vivo,
-#      programar, las fechas en orden, cerrar, y el final con su
-#      campeon. Tambien las restricciones nuevas de la base (la 006).
-#
-# Crea sus propias cuentas (prueba-...@ejemplo.invalid), ligas y equipos,
-# con nombres al azar, y al final los BORRA, pase lo que pase: solo las
-# filas cuyos numeros anoto al crearlas. No toca nada mas.
-# =====================================================================
 
 require __DIR__ . '/comun.php';
 require_once $APLICACION . '/models/ConfiguracionTorneo.php';
@@ -35,7 +16,7 @@ require_once $APLICACION . '/models/UsuarioRepositorio.php';
 
 echo "===== Resultados, fechas y final (fase 3) =====\n";
 
-# --- 1. Los modelos ----------------------------------------------------
+# 1. Los modelos
 echo "-- Modelos\n";
 $serie3 = new ConfiguracionTorneo(1, 3, 1, 0, 0, 0, 0, null, null, 'diferencia', 3);
 $serie5 = new ConfiguracionTorneo(1, 3, 1, 0, 0, 0, 0, null, null, 'diferencia', 5);
@@ -101,7 +82,7 @@ chk($filas[2]->getGanados() === 1 && $filas[1]->getPerdidos() === 1 && $filas[1]
     && $filas[1]->getPartidosJugados() === 1,
     'la tabla suma el walkover como victoria y derrota, 0 a 0, y no cuenta un partido sin jugar');
 
-# --- 2. Contra la base -----------------------------------------------------
+# 2. Contra la base
 echo "-- Contra la base\n";
 $conexion = conexionDePrueba();
 $conexion->query("SET time_zone = '-03:00'");
@@ -113,9 +94,6 @@ if (!chk((int)valor($conexion, "SELECT COUNT(*) FROM information_schema.COLUMNS 
 $marca = bin2hex(random_bytes(4));
 $creado = array('usuarios' => array(), 'torneos' => array(), 'equipos' => array());
 
-# Borra lo que la prueba creo, y nada mas: las fechas (con sus partidos y
-# resultados), los participantes (con su fila de la tabla), las ligas
-# (con su configuracion), los equipos y las cuentas. Corre siempre.
 function limpiar($conexion, $creado)
 {
     foreach ($creado['torneos'] as $id) {
@@ -329,8 +307,6 @@ chk(in_array('Las fechas se cierran en orden: primero la Fecha 1.', $r['errores'
 $r = $repo->cerrarFecha($id, $f1->getIdRonda(), $otro);
 chk(!empty($r['errores']), 'otra cuenta no cierra fechas');
 
-# El resto de la liga: el local gana 2-0 en los impares, el visitante 2-1
-# en los pares, y cada fecha se cierra.
 $cuenta = 0;
 $final = null;
 foreach (fechas($id) as $i => $ronda) {

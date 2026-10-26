@@ -1,29 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: FixtureRepositorio   ->   tablas "ronda", "enfrentamiento",
-#                                   "resultado" y "tabla_posiciones"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Guarda el fixture que arma Fixture.php y lee las fechas de una liga.
-# Desde la fase 3 tambien la primera ronda de una eliminacion directa
-# (Llave.php: las demas se arman al cerrar cada una) y la de un suizo
-# (Suizo.php), con insertarRonda(), que usa tambien ResultadoRepositorio.
-#
-# Generar el fixture es todo o nada, en una transaccion y con la fila
-# del torneo bloqueada:
-#   1. la liga es de esta cuenta, tiene la inscripcion cerrada (esta en
-#      curso) y 4 equipos o mas;
-#   2. si ya tiene fixture: sin resultados cargados se borra (solo si se
-#      pidio rehacerlo; el panel pide confirmarlo antes), y con
-#      resultados no se toca nunca;
-#   3. se guardan las fechas ("Fecha 1", "Fecha 2"...) y sus cruces, sin
-#      dia ni hora: eso se carga despues;
-#   4. cada equipo queda con su fila en la tabla de posiciones, en cero;
-#   5. la configuracion anota cuantas fechas tiene la liga.
-# Borrar una ronda borra sus enfrentamientos (ON DELETE CASCADE).
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: FixtureRepositorio -> tablas "ronda", "enfrentamiento", "resultado" y "tabla_posiciones"
 
 require_once __DIR__ . '/Fixture.php';
 require_once __DIR__ . '/Llave.php';
@@ -47,9 +23,7 @@ class FixtureRepositorio
         $this->conexion = $conexion;
     }
 
-    # Genera y guarda el fixture. $rehacer dice si se confirmo borrar el
-    # que ya hay. Devuelve array('errores' => ..., 'fechas' => N,
-    # 'partidos' => N).
+    # Genera y guarda el fixture. $rehacer dice si se confirmo borrar el que ya hay.
     public function generar(Torneo $torneo, Usuario $organizador, $rehacer)
     {
         $salida    = array('errores' => array(), 'fechas' => 0, 'partidos' => 0);
@@ -111,11 +85,9 @@ class FixtureRepositorio
             $salida['errores'][] = 'El fixture no se puede armar por ahora.';
             return $salida;
         }
-        # Las rondas que se guardan ahora, segun el formato: la liga
-        # entera, o la primera ronda de la llave o del suizo.
         $configuracion = $actual->getConfiguracion();
         $cantidad = count($participantes);
-        $rondas   = array();   # cada una: array('nombre' => ..., 'cruces' => ...)
+        $rondas   = array();
         if ($actual->esEliminacion()) {
             $llave   = new Llave($participantes);
             $errores = $llave->generar();
@@ -187,10 +159,6 @@ class FixtureRepositorio
         return $salida;
     }
 
-    # Guarda una ronda con sus cruces, en el orden en que vienen (el
-    # numero de cada cruce es su lugar: en la llave, ese orden decide
-    # quien se cruza despues). Tiene que llamarse con una transaccion
-    # abierta. true si quedo guardada.
     public function insertarRonda($id_torneo, $numero, $nombre, $cruces)
     {
         $id_torneo = (int)$id_torneo;
@@ -239,11 +207,7 @@ class FixtureRepositorio
         return array('fechas' => (int)$fila['fechas'], 'resultados' => (int)$fila['resultados']);
     }
 
-    # Las fechas de una liga, cada una con sus enfrentamientos y, si se
-    # jugaron, su resultado. Dentro de cada fecha, por dia y hora (los
-    # que no tienen, al final, en el orden del fixture). $participantes es el arreglo de
-    # ParticipanteRepositorio::listarDeTorneo (con las bajas): los cruces
-    # usan esos mismos objetos. null si la consulta no se puede hacer.
+    # Las fechas de una liga, cada una con sus enfrentamientos y, si se jugaron, su resultado.
     public function fechasDe($id_torneo, $participantes)
     {
         $sql = 'SELECT r.id_ronda, r.numero AS ronda, r.nombre AS nombre_ronda, r.fecha_inicio,
@@ -287,9 +251,7 @@ class FixtureRepositorio
         return array_values($rondas);
     }
 
-    # Arma un Enfrentamiento, con su Resultado si tiene, a partir de una
-    # fila. Los participantes salen del arreglo que se pasa. Lo usa
-    # tambien el calendario del sitio.
+    # Arma un Enfrentamiento, con su Resultado si tiene, a partir de una fila.
     public static function construirEnfrentamiento($fila, $participantes)
     {
         $id_local = (int)$fila['id_participante_local'];

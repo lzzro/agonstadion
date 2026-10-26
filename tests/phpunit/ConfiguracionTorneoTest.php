@@ -1,6 +1,5 @@
 <?php
-# Las reglas de un partido: series al mejor de N, el empate y el
-# walkover.
+# Las reglas de un partido: series al mejor de N, el empate y el walkover.
 
 use PHPUnit\Framework\TestCase;
 

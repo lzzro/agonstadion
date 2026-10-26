@@ -1,25 +1,4 @@
-// =====================================================================
 // La administracion completa (RF-24 y RF-11) - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/administracion.js
-//
-// Con cuentas nuevas, mira en la pantalla Y en la base:
-//   1. los modulos: deshabilitar el suizo con un clic; "Nuevo torneo" ya
-//      no lo ofrece y un POST armado con el suizo da su error; volver a
-//      habilitarlo; la auditoria
-//   2. la baja logica (RF-11): sin la casilla, no; con ella, la cuenta
-//      queda de baja, su sesion abierta se cierra en el pedido siguiente
-//      y el inicio de sesion la rechaza; reactivarla
-//   3. las cuentas administrativas: sumar a la administracion (la cuenta
-//      entra a la pagina) y quitar (403); la cuenta propia y una de
-//      muestra no cambian
-//   4. el registro de auditoria: el filtro por accion y las paginas
-//   5. sin token, 403 y nada cambia
-//
-// SOLO TOCA LO QUE ELLA MISMA CREA, como sesion.js: al final borra sus
-// cuentas y su auditoria, deja los modulos como estaban y comprueba que
-// la base (CHECKSUM TABLE) quedo igual.
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto } = c;
@@ -46,7 +25,7 @@ let nav;
     const tk = await c.token(AD.p);
     const aviso = async () => ((await AD.p.textContent('[role="status"]').catch(() => '')) || '').trim();
 
-    // --- 1. Modulos ---------------------------------------------------------------
+    // 1. Modulos
     console.log('--- 1. Modulos ---');
     await AD.p.goto(`${ADMIN}#modulos`);
     const estados = await AD.p.$$eval('#modulos .modulo', l => l.map(m => m.querySelector('strong').textContent + ':' + m.querySelector('.modulo-estado .etiqueta').textContent));
@@ -79,7 +58,7 @@ let nav;
     }
     t.chk(sql('SELECT GROUP_CONCAT(habilitado) FROM modulo_competencia') === '1,1,1', 'y vuelven a habilitarse con un clic');
 
-    // --- 2. La baja logica (RF-11) -------------------------------------------------
+    // 2. La baja logica (RF-11)
     console.log('--- 2. Baja logica ---');
     await TE.p.goto(`${BASE}/perfil.php`);
     t.chk(TE.p.url().includes('perfil'), 'Teseo tiene la sesion abierta');
@@ -113,7 +92,7 @@ let nav;
     await TE2.p.goto(`${BASE}/perfil.php`);
     t.chk(!/login\.php/.test(TE2.p.url()), 'y vuelve a iniciar sesion');
 
-    // --- 3. Cuentas administrativas ----------------------------------------------
+    // 3. Cuentas administrativas
     console.log('--- 3. Cuentas administrativas ---');
     let res = await TE2.ctx.request.get(ADMIN, { maxRedirects: 0 });
     t.chk(res.status() === 403, 'sin el rol, la administracion responde 403');
@@ -141,7 +120,7 @@ let nav;
       t.chk(r.cuerpo.includes('Una cuenta de muestra no cambia de estado.'), 'una cuenta de muestra tampoco');
     }
 
-    // --- 4. El registro --------------------------------------------------------------
+    // 4. El registro
     console.log('--- 4. El registro de auditoria ---');
     await AD.p.goto(`${ADMIN}?filtro=baja#auditoria`);
     const lineas = await AD.p.$$eval('#auditoria .registro-linea span:last-child', l => l.map(x => x.textContent));
@@ -159,7 +138,7 @@ let nav;
       t.chk(AD.p.url().includes('pagina=2') && (await AD.p.$$('#auditoria .registro-linea')).length > 0, '"Anteriores" lleva a la pagina 2');
     }
 
-    // --- 5. Sin token ---------------------------------------------------------------------
+    // 5. Sin token
     console.log('--- 5. Sin token ---');
     r = await c.postear(AD.ctx, ADMIN, { accion: 'dar_admin', id_usuario: String(T.id) });
     t.chk(r.estado === 403 && sql(`SELECT COUNT(*) FROM usuario_rol ur JOIN rol r USING (id_rol) WHERE ur.id_usuario = ${T.id} AND r.nombre = 'administrador'`) === '0',
@@ -171,8 +150,6 @@ let nav;
       const [id, hab] = par.split(':');
       sql(`UPDATE modulo_competencia SET habilitado = ${parseInt(hab, 10)} WHERE id_modulo = ${parseInt(id, 10)}`);
     }
-    // La auditoria de los modulos lleva el id del modulo, no de una cuenta:
-    // limpiarCuentas la borra por la cuenta que la hizo.
     c.limpiarCuentas(propias);
   }
   t.chk(c.huellaBase() === antes, 'la base quedo como estaba (CHECKSUM TABLE de usuario, usuario_rol, pedido_rol, auditoria y medicion)');

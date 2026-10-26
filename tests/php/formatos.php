@@ -1,25 +1,5 @@
 <?php
-# =====================================================================
 # Eliminacion directa y suizo (fase 3) - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   php tests/php/formatos.php        (con la base de PRUEBA migrada,
-#                                      hasta la 006)
-#
-# Dos partes:
-#   1. Los modelos, sin la base: la siembra de la llave y sus pases
-#      libres (de 4 a 32), los nombres de las rondas, la ronda que sigue
-#      y quien pasa; el suizo: la primera ronda, el emparejamiento sin
-#      repetir (tambien cuando hay que volver atras), el libre, y que el
-#      libre sume en la tabla del suizo y no en la de la liga.
-#   2. Contra la base, con torneos propios: una eliminacion directa de 6
-#      (dos pases libres) jugada entera hasta su campeon, y un suizo de 5
-#      a 3 rondas (un libre por ronda, nunca el mismo), sin cruces
-#      repetidos, con la tabla guardada igual a la recalculada. Y las
-#      reglas que cruzan formato y configuracion.
-#
-# Crea sus propias cuentas, torneos y equipos y al terminar los BORRA,
-# pase lo que pase: solo las filas cuyos numeros anoto al crearlas.
-# =====================================================================
 
 require __DIR__ . '/comun.php';
 require_once $APLICACION . '/models/Llave.php';
@@ -52,7 +32,7 @@ function nombres($cruces)
     return implode(' ', $texto);
 }
 
-# --- 1. Los modelos ----------------------------------------------------
+# 1. Los modelos
 echo "-- La llave\n";
 chk(implode(',', Llave::ordenSiembra(8)) === '1,8,4,5,2,7,3,6', 'la siembra de 8: 1-8, 4-5, 2-7, 3-6');
 $l = new Llave(equipos(6));
@@ -121,7 +101,7 @@ $tabla_liga->sumarRondas(array($r));
 chk($tabla_suizo->getPosiciones()[1]->getGanados() === 1 && $tabla_liga->getPosiciones()[1]->getGanados() === 0,
     'el libre suma un partido ganado en el suizo, y nada en la liga');
 
-# --- 2. Contra la base -----------------------------------------------------
+# 2. Contra la base
 echo "-- Contra la base\n";
 $conexion = conexionDePrueba();
 $conexion->query("SET time_zone = '-03:00'");
@@ -183,8 +163,6 @@ function rondasDe($id)
     global $inscritos, $fixtures;
     return $fixtures->fechasDe($id, $inscritos->listarDeTorneo($id, true));
 }
-# Juega la ronda en juego: gana siempre el de numero de equipo mas chico
-# (E1 le gana a todos), y la cierra.
 function jugarRonda($torneo)
 {
     global $repo, $org;

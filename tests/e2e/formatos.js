@@ -1,21 +1,4 @@
-// =====================================================================
 // Eliminacion directa y suizo, de punta a punta (fase 3) - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/formatos.js
-//
-// Con cuentas nuevas en cada corrida (ver comun.js), juega por las
-// pantallas una eliminacion directa y un suizo, y mira la pantalla Y la
-// base:
-//   1. "Nuevo torneo" pregunta el formato; una eliminacion directa no
-//      admite empate ni ida y vuelta; el suizo pide sus rondas
-//   2. la eliminacion directa: "Armar la llave" en el panel, la llave en
-//      la pagina del torneo y en llave.php (con "Por definir"), "Rondas y
-//      resultados", cada ronda cerrada arma la siguiente, y la final da
-//      el campeon (con el chip de vencedor)
-//   3. el suizo: "Armar la primera ronda", la tabla, tres rondas sin
-//      repetir rival, el libre, y el campeon
-// Deja rastro, como ligas.js.
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
@@ -34,7 +17,7 @@ let nav = null;
   const pub = await nav.newContext();
   const P = await pub.newPage();
 
-  // --- 1. El formato ---------------------------------------------------
+  // 1. El formato
   console.log('--- 1. Nuevo torneo: el formato ---');
   await O.p.goto(`${BASE}/crear.php`);
   t.chk(await O.p.title() === 'Nuevo torneo · Stadion'
@@ -52,7 +35,7 @@ let nav = null;
   r = await c.postear(O.ctx, url_crear, { ...base, nombre: `Raro ${sufijo}`, formato: 'americano', vueltas: 'una', partido: 'empate' });
   t.chk(r.cuerpo.includes('id="error-formato"'), 'un formato inventado: error al lado de "Formato"');
 
-  // --- 2. Eliminacion directa ------------------------------------------
+  // 2. Eliminacion directa
   console.log('--- 2. Eliminacion directa ---');
   const copa = `Copa Formatos ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);
@@ -129,7 +112,7 @@ let nav = null;
   t.chk((await O.p.textContent(`#liga-${idc}`)).includes('Torneo terminado') && (await O.p.textContent(`#liga-${idc} .fila strong`)) === campeon,
         'el panel muestra el torneo terminado y su campeon');
 
-  // --- 3. Suizo --------------------------------------------------------
+  // 3. Suizo
   console.log('--- 3. Suizo ---');
   const suizo = `Suizo Formatos ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);

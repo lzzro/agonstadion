@@ -1,26 +1,5 @@
 #!/bin/bash
-# =====================================================================
-# Claves del cifrado y la firma de los respaldos - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   bash scripts/generar-claves-respaldo.sh
-#
-# Se corre UNA vez, en el servidor, con la cuenta que corre el respaldo
-# (la de cron). Crea en scripts/firma/:
-#   respaldo.clave          la frase del cifrado AES-256: 48 bytes al
-#                           azar (openssl rand), nadie la escribe
-#   respaldo-privada.pem    la clave privada RSA de 3072 bits: firma
-#   respaldo-publica.pem    la publica: verifica (se puede copiar a
-#                           otra maquina para verificar alli)
-# Las dos primeras quedan en modo 600 y la carpeta en 700: solo su
-# duenio. Nada de esto va al repositorio (.gitignore).
-#
-# IMPORTANTE: sin respaldo.clave, un respaldo cifrado no se puede abrir
-# nunca. Guardar una copia de la frase y de la clave privada fuera del
-# servidor (un pendrive guardado), no junto a los respaldos.
-#
-# Si las claves ya estan, no hace nada: pisarlas dejaria sin abrir los
-# respaldos hechos con las anteriores.
-# =====================================================================
+# Crea una vez las claves del cifrado y la firma de los respaldos, en scripts/firma/.
 
 set -u
 CARPETA="$(cd "$(dirname "$0")" && pwd)/firma"

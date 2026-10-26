@@ -1,37 +1,5 @@
 <?php
-# =====================================================================
 # Vista: panel del organizador
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La incluye panelController.php. Recibe:
-#   $organizador     la cuenta de la sesion (Usuario, con el rol)
-#   $ligas           TorneoRepositorio::listarDeOrganizador(), o null si
-#                    no se pudo leer
-#   $equipos_de      id de liga => participantes anotados
-#   $pendientes_de   id de liga => pedidos de lugar pendientes
-#   $campeon_de      id de torneo terminado => su campeon (Participante),
-#                    o null si no se pudo leer
-#   $mensaje, $errores           resultado de la ultima accion
-#   $errores_equipo, $valor_equipo   el campo "equipo" de cada liga
-#   $ruta_publica, $ruta_perfil, $ruta_crear, $ruta_panel,
-#   $ruta_partidos, $ruta_reportes   direcciones
-#
-# Una sola pagina que se recorre: arriba la lista de ligas, y debajo una
-# tarjeta por liga (id="liga-N") con lo que se puede hacer en su estado:
-#   inscripcion  anotar equipos, resolver pedidos, cerrar la inscripcion
-#   en curso     armar el fixture, o rehacerlo si no tiene resultados;
-#                con fixture, el enlace a "Fechas y resultados"
-#                (partidosController.php, fase 3)
-#   finalizado   el campeon, y las fechas jugadas
-# Una liga sin terminar se puede cancelar (RF-17), con su casilla de
-# confirmacion: deja de verse, y lo jugado queda en la base.
-# Lo que el estado todavia no permite va como texto apagado, con la nota
-# que dice por que (DESIGN.md, "Accion no disponible").
-#
-# Usa el menu compartido, con Organizadores marcado: es su destino.
-# Todo formulario lleva el token (campoCsrf) y cada boton que se repite
-# dice de que liga o de que equipo es.
-# =====================================================================
 
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }

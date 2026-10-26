@@ -1,14 +1,5 @@
 <?php
-# =====================================================================
-# Direcciones que usan las paginas publicas - COPIA DE PUBLICACION
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Generado por scripts/armar-deploy.sh. No editar a mano.
-#
-# Vistas desde una pagina de public_html/ (/index.php, /torneos.php...).
-# Los controladores se alcanzan por los puentes de
-# public_html/controllers/.
-# =====================================================================
+# Direcciones de las paginas en la copia de publicacion. Generado por scripts/armar-deploy.sh.
 
 $ruta_publica     = '.';
 $ruta_perfil      = 'controllers/perfil.php';

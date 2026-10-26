@@ -1,39 +1,5 @@
 #!/bin/bash
-# =====================================================================
 # La migracion 007, en bases de prueba propias - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   bash tests/sql/migracion_007.sh [socket...]
-#
-# Prueba sql/migraciones/007_mediciones.sql (la tabla medicion, RF-29)
-# en cada servidor de MariaDB cuyo socket se le pase (sin argumentos,
-# /run/mysqld/mysqld.sock). Crea sus propias bases, con el prefijo t007_
-# y un sufijo al azar, y las borra al terminar, tambien si algo falla
-# (trap). Nunca toca sgdm. Corre la 007 sin el bloque del permiso de
-# sgdm_app ("[solo servidor propio]").
-#
-# La base de antes de la 007 es el schema.sql del commit 5d8c612 (el
-# ultimo antes de la fase 3) con la 005 y la 006.
-#
-# Casos:
-#   1. Base de antes: la 007 da en su ultima consulta lo de su cabecera
-#      (tabla 1, CHECK 37), y la tabla medicion queda como en una base
-#      nueva (SHOW CREATE TABLE).
-#   2. La 007 otra vez: no cambia nada.
-#   3. Base nueva (schema.sql de ahora, la 005 y la 006): lo mismo (con
-#      las CHECK que suman las migraciones que siguen), y la 007 no
-#      cambia nada. La base de antes con la 007 y las que siguen queda
-#      igual que la nueva.
-#   4. Sin la 006: frena en la primera consulta, sin cambiar nada.
-#   5. Las restricciones: cada prueba con sus datos y en rango, y sin
-#      ninguno de los que pide en NULL (un BETWEEN sobre NULL no frena una
-#      CHECK); una medicion bien cargada entra; y al borrar la cuenta se
-#      van sus mediciones.
-#   6. El original trae el permiso dentro del bloque "[solo servidor
-#      propio]".
-#
-# Escribe una linea por comprobacion (ok o FALLA) y al final TODO BIEN o
-# cuantas fallaron; sale con 0 o con 1, y con 2 si no puede ni empezar.
-# =====================================================================
 
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -169,8 +135,6 @@ for SOCKET in "${SOCKETS[@]}"; do
     chk 'la tabla medicion queda como en la base nueva (SHOW CREATE TABLE)' \
         iguales "$(estructura "$VIEJA" medicion)" "$(estructura "$NUEVA" medicion)" \
         || diff <(estructura "$VIEJA" medicion) <(estructura "$NUEVA" medicion) | detalle
-    # La base de antes con esta migracion y las que siguen queda igual
-    # que una nueva (las que siguen pueden cambiar tablas que ya estaban).
     VUELTA=$BASE
     crear_base aldia
     cargar "$BASE" "$TMP/schema_viejo.sql" && cargar "$BASE" "$TMP/005.sql" && cargar "$BASE" "$TMP/006.sql" && cargar "$BASE" "$TMP/007.sql"

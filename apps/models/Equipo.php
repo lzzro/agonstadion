@@ -1,14 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Equipo   ->   tabla "equipo" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Composicion: contiene un Usuario (el capitan, que puede quedar en
-# null porque la clave foranea de la tabla admite NULL) y un arreglo de
-# objetos IntegranteEquipo.
-#
-# La baja es logica, igual que en usuario.
-# =====================================================================
+# Modelo: Equipo -> tabla "equipo" de sql/schema.sql
 
 require_once __DIR__ . '/Usuario.php';
 require_once __DIR__ . '/IntegranteEquipo.php';
@@ -41,8 +32,6 @@ class Equipo
 
     public function getIdEquipo()    { return $this->id_equipo; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdEquipo($id_equipo)
     {
         $this->id_equipo = (int)$id_equipo;
@@ -74,8 +63,6 @@ class Equipo
     {
         $errores = $integrante->validar();
 
-        # El dorsal no se puede repetir dentro del mismo equipo, igual
-        # que la restriccion uq_integ_dorsal de la tabla.
         if ($integrante->getDorsal() !== null && $this->dorsalOcupado($integrante->getDorsal())) {
             $errores[] = 'El dorsal ' . $integrante->getDorsal() . ' ya está ocupado en este equipo.';
         }

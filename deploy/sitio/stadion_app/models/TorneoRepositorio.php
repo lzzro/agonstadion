@@ -1,35 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: TorneoRepositorio   ->   tablas "torneo" y "configuracion_torneo"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acceso a la base para los torneos:
-#   - en que torneos compite una persona (la pestana "Mis torneos" del
-#     perfil)
-#   - los torneos publicos, para torneos.php, torneo.php y el inicio
-#   - las ligas de un organizador, para su panel
-#   - crear una liga y cerrar su inscripcion
-#   - cancelar una liga (RF-17, fase 3): no se borra, deja de verse
-#
-# Una persona compite en un torneo de dos maneras, segun el tipo:
-#   - individual: hay un participante con su id_usuario
-#   - por equipos: hay un participante con el id de un equipo del que
-#     la persona es integrante activa (tabla integrante_equipo)
-# La consulta junta los dos casos. Las inscripciones dadas de baja no
-# cuentan: quien se bajo de un torneo ya no esta en el.
-#
-# Publico es todo torneo con la inscripcion abierta, en curso o
-# finalizado. Un borrador todavia no se publico, y uno cancelado ya no
-# se muestra.
-#
-# Crear una liga son dos filas (torneo y su configuracion) y cerrar la
-# inscripcion toca el torneo y los pedidos pendientes: cada una va en
-# una transaccion, todo o nada. Cerrar bloquea antes la fila del torneo
-# (SELECT ... FOR UPDATE), igual que aceptar un pedido y agregar un
-# equipo: asi dos de esas acciones a la vez no se pisan.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: TorneoRepositorio -> tablas "torneo" y "configuracion_torneo"
 
 require_once __DIR__ . '/Torneo.php';
 require_once __DIR__ . '/Participante.php';
@@ -49,10 +19,6 @@ class TorneoRepositorio
         $this->conexion = $conexion;
     }
 
-    # --- Lectura compartida -------------------------------------------
-    # Las columnas de un torneo, sus catalogos, su organizador y su
-    # configuracion, con los nombres que espera construirTorneo(). Las
-    # usan tambien los otros repositorios de las ligas.
     public static function columnas()
     {
         return 't.id_torneo, t.nombre, t.fecha_inicio, t.fecha_fin,
@@ -78,8 +44,6 @@ class TorneoRepositorio
                 LEFT JOIN configuracion_torneo c ON c.id_torneo = t.id_torneo';
     }
 
-    # Arma el Torneo, con su configuracion si la tiene, a partir de una
-    # fila con las columnas de columnas().
     public static function construirTorneo($fila)
     {
         $organizador = new Usuario($fila['id_organizador'], null, null,
@@ -109,16 +73,6 @@ class TorneoRepositorio
         return $torneo;
     }
 
-    # --- Mis torneos (perfil) -----------------------------------------
-    # Devuelve un arreglo de inscripciones, cada una con dos objetos:
-    #   'torneo'       el Torneo, con su disciplina, tipo, modulo y
-    #                  organizador
-    #   'participante' como compite la persona en ese torneo (ella
-    #                  sola, o su equipo)
-    # No se usa agregarParticipante() de Torneo porque esa funcion es la
-    # de una inscripcion nueva, y rechaza los torneos que ya empezaron.
-    # Si la consulta no se puede hacer, devuelve null (distinto de un
-    # arreglo vacio, que quiere decir "ningun torneo").
     public function buscarPorUsuario($id_usuario)
     {
         $sql = 'SELECT ' . self::columnas() . ',
@@ -168,19 +122,12 @@ class TorneoRepositorio
         return $inscripciones;
     }
 
-    # --- Un torneo ----------------------------------------------------
-    # El torneo con ese id, o null si no existe. Un borrador o un
-    # cancelado tambien se devuelven: la pagina decide si los muestra.
     public function buscarPorId($id_torneo)
     {
         $lista = $this->listar('WHERE t.id_torneo = ?', 'i', array((int)$id_torneo), '');
         return empty($lista) ? null : $lista[0]['torneo'];
     }
 
-    # El que muestra torneo.php sin numero, y al que apunta "Posiciones"
-    # en el menu: primero uno con un partido en vivo, despues el que
-    # esta en curso desde hace mas tiempo, despues uno con la inscripcion
-    # abierta. null si no hay ningun torneo publico.
     public function idDestacado()
     {
         $sql = "SELECT t.id_torneo
@@ -202,11 +149,6 @@ class TorneoRepositorio
         return ($fila === null) ? null : (int)$fila['id_torneo'];
     }
 
-    # --- Listados -----------------------------------------------------
-    # Los torneos publicos, con lo que muestran sus tarjetas. Primero los
-    # que tienen un partido en vivo, despues los en curso, los que tienen
-    # la inscripcion abierta y los finalizados. null si la consulta no se
-    # puede hacer.
     public function listarPublicos()
     {
         return $this->listar("WHERE t.estado IN ('inscripcion', 'en_curso', 'finalizado')", '', array(),
@@ -215,8 +157,7 @@ class TorneoRepositorio
                                        t.fecha_inicio IS NULL, t.fecha_inicio, t.nombre");
     }
 
-    # Las ligas de un organizador, para su panel: todas menos las
-    # canceladas, las mas nuevas primero.
+    # Las ligas de un organizador, para su panel: todas menos las canceladas, las mas nuevas primero.
     public function listarDeOrganizador($id_usuario)
     {
         return $this->listar("WHERE t.id_usuario_organizador = ? AND t.estado <> 'cancelado'",
@@ -224,10 +165,6 @@ class TorneoRepositorio
                              'ORDER BY t.fecha_creacion DESC, t.id_torneo DESC');
     }
 
-    # Los torneos de los reportes (RF-28): los de un organizador, o con
-    # null los de todos (la administracion). Tambien los cancelados, que
-    # conservan su historial. Primero los en curso, despues los que
-    # tienen la inscripcion abierta, los terminados y los cancelados.
     public function listarParaReportes($id_organizador)
     {
         $orden = "ORDER BY CASE t.estado WHEN 'en_curso' THEN 0 WHEN 'inscripcion' THEN 1
@@ -240,8 +177,7 @@ class TorneoRepositorio
                              'i', array((int)$id_organizador), $orden);
     }
 
-    # Cuantos torneos publicos organiza una cuenta, para la tarjeta del
-    # organizador de torneo.php.
+    # Cuantos torneos publicos organiza una cuenta, para la tarjeta del organizador de torneo.php.
     public function cantidadDeOrganizador($id_usuario)
     {
         $sql = "SELECT COUNT(*) AS cantidad FROM torneo
@@ -258,11 +194,6 @@ class TorneoRepositorio
         return (int)$fila['cantidad'];
     }
 
-    # Si ya hay una liga vigente (no finalizada ni cancelada) con ese
-    # nombre, para dar un aviso claro antes de intentar. La base lo frena
-    # igual (uq_torneo_vigente), incluso si dos se crean a la vez: por eso
-    # el 1062 del INSERT da el mismo aviso. Compara con el cotejo de la
-    # tabla, que no distingue mayusculas ni tildes.
     public function nombreEnUso($nombre)
     {
         $sql = "SELECT 1 FROM torneo
@@ -278,16 +209,6 @@ class TorneoRepositorio
         return $hay;
     }
 
-    # --- Crear una liga -----------------------------------------------
-    # Guarda el torneo con la inscripcion abierta y su configuracion, en
-    # una transaccion: sin configuracion no hay con que armar la tabla,
-    # asi que una no queda sin la otra. El organizador es el que trae el
-    # objeto (el controlador pone siempre la cuenta de la sesion).
-    # Devuelve un arreglo de errores, vacio si quedo creada; el id queda
-    # en el objeto. Desde la fase 3 sirve para los tres formatos (liga,
-    # eliminacion directa y suizo): el modulo lo trae el torneo, y las
-    # reglas que los cruzan son de Torneo::validarConfiguracion. En el
-    # suizo, rondas_previstas guarda las rondas que se van a jugar.
     public function crearLiga(Torneo $torneo, ConfiguracionTorneo $configuracion)
     {
         $errores = array_merge($torneo->validarLiga(), $configuracion->validar(),
@@ -323,9 +244,6 @@ class TorneoRepositorio
             $duplicado = ($sentencia->errno === 1062);
             $sentencia->close();
             $this->conexion->rollback();
-            # 1062: uq_torneo_vigente (otra liga vigente con ese nombre,
-            # creada a la vez) o uq_torneo_nom (una terminada con el mismo
-            # nombre y la misma fecha). Las dos son el nombre.
             return array($duplicado ? 'Ya hay una liga en juego con ese nombre.'
                                     : 'La liga no se puede crear por ahora.');
         }
@@ -367,11 +285,6 @@ class TorneoRepositorio
         return array();
     }
 
-    # --- Cerrar la inscripcion ----------------------------------------
-    # La liga pasa a en curso (Torneo::cerrarInscripcion pone las reglas)
-    # y los pedidos que quedaban pendientes se rechazan: ya no hay lugar
-    # que dar. Todo en una transaccion, con la fila del torneo bloqueada.
-    # Devuelve array('errores' => ..., 'rechazados' => cantidad).
     public function cerrarInscripcion(Torneo $torneo, Usuario $organizador)
     {
         $resultado = array('errores' => array(), 'rechazados' => 0);
@@ -413,10 +326,6 @@ class TorneoRepositorio
             return $resultado;
         }
 
-        # GREATEST: la resolucion nunca queda antes del pedido, aunque el
-        # pedido se haya guardado con la hora del servidor (antes de que la
-        # conexion pasara a la de Montevideo, ver config/database.php); si
-        # no, ck_pinsc_fechas frenaria una resolucion legitima.
         $sql = "UPDATE pedido_inscripcion
                    SET estado = 'rechazado', fecha_resolucion = GREATEST(NOW(), fecha_pedido), id_usuario_resuelve = ?
                  WHERE id_torneo = ? AND estado = 'pendiente'";
@@ -441,14 +350,6 @@ class TorneoRepositorio
         return $resultado;
     }
 
-    # --- Cancelar una liga (RF-17) ------------------------------------
-    # Un torneo con inscriptos no se borra (participante lo retiene con
-    # ON DELETE RESTRICT): se cancela. Queda en la base con todo lo que se
-    # jugo, y deja de verse en el sitio y en el panel. Los pedidos de
-    # lugar que quedaban pendientes se rechazan. Las reglas (no se cancela
-    # una terminada ni una ya cancelada) son de Torneo::cancelar. Todo en
-    # una transaccion, con la fila del torneo bloqueada.
-    # Devuelve array('errores' => ..., 'rechazados' => cantidad).
     public function cancelar(Torneo $torneo, Usuario $organizador)
     {
         $resultado = array('errores' => array(), 'rechazados' => 0);
@@ -498,11 +399,6 @@ class TorneoRepositorio
         return $resultado;
     }
 
-    # Bloquea la fila del torneo hasta el final de la transaccion y
-    # cuenta sus participantes en competencia. Devuelve null si el torneo
-    # no existe o no lo organiza esa cuenta. Tiene que llamarse con una
-    # transaccion abierta: el bloqueo dura lo que ella. La usan tambien
-    # los otros repositorios de las ligas.
     public function bloquearYContar($id_torneo, $id_organizador)
     {
         $sql = 'SELECT id_torneo FROM torneo
@@ -540,17 +436,6 @@ class TorneoRepositorio
         return (int)$fila['cantidad'];
     }
 
-    # --- Auxiliar ---------------------------------------------------
-    # Una sola consulta para los listados: cambian el WHERE y el orden.
-    # Cada elemento trae el Torneo y lo que muestran las tarjetas:
-    #   'inscriptos'  participantes en competencia
-    #   'fechas'      rondas del fixture (0 si todavia no hay)
-    #   'cerradas'    rondas cerradas
-    #   'actual'      numero de la primera ronda sin cerrar, o null
-    #   'fin_actual'  el ultimo dia de esa ronda, o null
-    #   'en_vivo'     si tiene un partido en vivo
-    #   'pedidos'     pedidos de inscripcion pendientes
-    #   'resultados'  partidos con resultado cargado
     private function listar($condicion, $tipos, $valores, $orden)
     {
         $sql = "SELECT " . self::columnas() . ",

@@ -1,26 +1,5 @@
 #!/bin/bash
-# =====================================================================
 # Arma la copia de publicacion - Stadion (Agon)
-# Proyecto de Lucas Martiarena
-# ---------------------------------------------------------------------
-# Genera deploy/sitio/ a partir de public/ y apps/, partida en dos:
-#
-#     deploy/sitio/
-#     ├── public_html/      -> lo unico que el servidor publica
-#     └── stadion_app/      -> la aplicacion, AL LADO de public_html,
-#                              fuera del alcance de la web
-#
-# Asi la configuracion con la contrasena de la base, los modelos y los
-# controladores no quedan dentro de la carpeta que el servidor publica.
-# Es la copia que usa Docker (docker/web/Dockerfile).
-#
-# Existe para que la copia no se desincronice del original. Despues de
-# tocar cualquier cosa en public/ o en apps/, se corre esto y la copia
-# queda al dia. Sin script habria que acordarse de copiar a mano cada
-# archivo, y tarde o temprano una correccion quedaria solo de un lado.
-#
-# No sube nada a ningun lado: solo escribe carpetas locales.
-# =====================================================================
 
 set -u
 
@@ -52,32 +31,18 @@ avisar "Rehaciendo $DESTINO"
 rm -rf "$DESTINO"
 mkdir -p "$PUBLICO/controllers" "$PRIVADO"
 
-# ---------------------------------------------------------------------
 # 1. Lo publico: las paginas, el CSS, el JS y las imagenes.
-# ---------------------------------------------------------------------
 cp -r "$RAIZ/public/." "$PUBLICO/"
 
-# Las fotos que se hayan subido en la maquina local NO viajan: son de
-# prueba, y son datos de personas. De la carpeta de subidas solo va el
-# .htaccess que impide ejecutar nada ahi.
+# Las fotos que se hayan subido en la maquina local NO viajan: son de prueba, y son datos de personas.
 find "$PUBLICO/subidas" -mindepth 1 ! -name '.htaccess' -exec rm -rf {} +
 avisar "Paginas y recursos copiados (subidas: solo el .htaccess)."
 
-# ---------------------------------------------------------------------
 # 2. Lo privado: la aplicacion entera, que queda FUERA de public_html.
-#
-#    La configuracion local con la contrasena real NUNCA se copia. Es
-#    la de la maquina de Lucas y ademas no tiene por que viajar: cada
-#    instalacion escribe la suya (Docker usa docker/web/database.docker.php).
-# ---------------------------------------------------------------------
 cp -r "$RAIZ/apps/." "$PRIVADO/"
 rm -f "$PRIVADO/config/database.local.php"
 avisar "Aplicacion copiada (sin la configuracion local)."
 
-# El CSS y el JS van con una marca de version que sale del contenido del
-# archivo (config/recursos.php). Para leerlo, recursos.php busca la
-# carpeta publica al lado de la aplicacion: en la maquina local es
-# public/, y en esta copia, public_html/.
 sed -i "s|\$carpeta  = __DIR__ \. '/\.\./\.\./public';|\$carpeta  = __DIR__ . '/../../public_html';|" "$PRIVADO/config/recursos.php"
 if ! grep -q "/../../public_html';" "$PRIVADO/config/recursos.php"; then
     echo "ERROR: config/recursos.php de la copia no apunta a public_html/." >&2
@@ -89,34 +54,12 @@ if [ -e "$PRIVADO/config/database.local.php" ]; then
     exit 9
 fi
 
-# ---------------------------------------------------------------------
 # 3. Las rutas de los formularios.
-#
-#    En la maquina local los formularios apuntan a
-#    ../apps/controllers/xxxController.php, que Apache alcanza por un
-#    Alias. En esta copia no hay Alias: stadion_app/ queda fuera de la
-#    carpeta publica a proposito. Los formularios pasan a apuntar a los
-#    puentes de controllers/.
-# ---------------------------------------------------------------------
 sed -i 's|action="\.\./apps/controllers/loginController\.php"|action="controllers/login.php"|' "$PUBLICO/login.php"
 sed -i 's|action="\.\./apps/controllers/registroController\.php"|action="controllers/registrar.php"|' "$PUBLICO/registro.php"
 avisar "Rutas de los formularios ajustadas."
 
-# ---------------------------------------------------------------------
 # 4. El arranque de las paginas.
-#
-#    Cada pagina .php empieza incluyendo apps/config/pagina.php, que
-#    mira si hay sesion para armar la cabecera. En esta copia esa
-#    carpeta se llama stadion_app/ y queda al lado de public_html.
-#
-#    Ademas las paginas necesitan saber donde esta el perfil, y esa
-#    direccion tambien cambia: en esta copia es el puente de
-#    controllers/. Se reescribe el archivo que la guarda.
-#
-#    perfil.php, rendimiento.php y admin.php ya no hacen falta
-#    tocarlos: son desvios del lado del servidor al perfil real y a la
-#    administracion real, en las dos instalaciones.
-# ---------------------------------------------------------------------
 for PAGINA in "$PUBLICO"/*.php; do
     sed -i "s|__DIR__ \. '/\.\./apps/config/pagina\.php'|__DIR__ . '/../stadion_app/config/pagina.php'|" "$PAGINA"
 done
@@ -127,16 +70,7 @@ fi
 
 cat > "$PRIVADO/config/rutas_paginas.php" <<'RUTAS'
 <?php
-# =====================================================================
-# Direcciones que usan las paginas publicas - COPIA DE PUBLICACION
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Generado por scripts/armar-deploy.sh. No editar a mano.
-#
-# Vistas desde una pagina de public_html/ (/index.php, /torneos.php...).
-# Los controladores se alcanzan por los puentes de
-# public_html/controllers/.
-# =====================================================================
+# Direcciones de las paginas en la copia de publicacion. Generado por scripts/armar-deploy.sh.
 
 $ruta_publica     = '.';
 $ruta_perfil      = 'controllers/perfil.php';
@@ -148,18 +82,7 @@ $ruta_partidos    = 'controllers/partidos.php';
 RUTAS
 avisar "Paginas apuntadas a stadion_app/ y a los puentes."
 
-# ---------------------------------------------------------------------
 # 5. Los puentes.
-#
-#    Cada uno hace una sola cosa: incluir el controlador de verdad, que
-#    vive fuera de public_html. Son cortos a proposito. Toda la logica
-#    esta del otro lado, donde ningun pedido web puede llegar.
-#
-#    Esto es lo que hace que config/ sea inalcanzable por URL: no hace
-#    falta un .htaccess bien escrito ni confiar en la configuracion del
-#    servidor, porque la carpeta directamente no esta dentro de lo que
-#    el servidor publica.
-# ---------------------------------------------------------------------
 escribir_puente() {
     local ARCHIVO="$1"
     local CONTROLADOR="$2"
@@ -167,28 +90,11 @@ escribir_puente() {
 
     cat > "$PUBLICO/controllers/$ARCHIVO" <<PUENTE
 <?php
-# =====================================================================
-# Puente: $QUE_HACE
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Generado por scripts/armar-deploy.sh. No editar a mano.
-#
-# Este archivo no decide nada: solo llama al controlador de verdad, que
-# vive en stadion_app/, fuera de public_html. Asi los modelos y la
-# configuracion con la contrasena de la base quedan donde ningun pedido
-# web puede alcanzarlos, ni con un .htaccess mal escrito, porque no
-# estan dentro de la carpeta que el servidor publica.
-#
-# Si stadion_app/ no quedara al lado de public_html, la unica linea que
-# hay que cambiar es la de \$APLICACION.
-# =====================================================================
+# Puente: $QUE_HACE. Llama al controlador de stadion_app/, fuera de lo publicado.
+# Generado por scripts/armar-deploy.sh.
 
-# Desde public_html/controllers/, subir dos veces deja en la carpeta
-# donde esta stadion_app/, al lado de public_html/.
 \$APLICACION = __DIR__ . '/../../stadion_app';
 
-# Donde estan el CSS, el JS y las paginas, vistos desde la direccion de
-# este archivo en el navegador (/controllers/...).
 \$ruta_publica     = '..';
 \$ruta_perfil      = 'perfil.php';
 \$ruta_salir       = 'salir.php';
@@ -199,9 +105,6 @@ escribir_puente() {
 \$ruta_partidos    = 'partidos.php';
 \$ruta_reportes    = 'reportes.php';
 
-# Donde se guardan las fotos de perfil y las portadas: la carpeta
-# subidas/ de public_html, al lado de esta. La que tiene el .htaccess
-# que impide ejecutar nada.
 \$carpeta_subidas = __DIR__ . '/../subidas';
 
 if (!is_dir(\$APLICACION)) {
@@ -226,16 +129,7 @@ escribir_puente "partidos.php"    "partidosController.php"    "fechas y resultad
 escribir_puente "reportes.php"    "reportesController.php"    "reportes de los torneos"
 avisar "Diez puentes escritos."
 
-# ---------------------------------------------------------------------
 # 6. La codificacion de las tablas.
-#
-#    Cada tabla de sql/schema.sql tiene que declarar su codificacion
-#    (utf8mb4), asi el resultado no depende de la base donde se importe:
-#    una base creada con la codificacion de fabrica queda en latin1, y
-#    en latin1 un emoji no entra. Se comprueba aca, asi una tabla nueva
-#    que la olvide no pasa desapercibida.
-#    (tr saca el \r de los finales de renglon de Windows.)
-# ---------------------------------------------------------------------
 ESQUEMA="$RAIZ/sql/schema.sql"
 [ -f "$ESQUEMA" ] || { echo "ERROR: no aparece $ESQUEMA" >&2; exit 5; }
 TABLAS=$(tr -d '\r' < "$ESQUEMA" | grep -c '^CREATE TABLE')
@@ -247,9 +141,7 @@ if [ "$TABLAS" -eq 0 ] || [ "$TABLAS" -ne "$CON_CODIFICACION" ]; then
 fi
 avisar "Esquema revisado: $TABLAS tablas, todas en utf8mb4."
 
-# ---------------------------------------------------------------------
-# 8. Comprobaciones: que no se haya colado nada que no deba estar.
-# ---------------------------------------------------------------------
+# 7. Comprobaciones: que no se haya colado nada que no deba estar.
 COLADOS=0
 # Las pruebas (tests/) son de la maquina local: no viajan nunca.
 if find "$DESTINO" -path '*/tests' -o -path '*/tests/*' | grep -q .; then

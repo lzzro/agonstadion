@@ -3,21 +3,7 @@ require __DIR__ . '/../apps/config/pagina.php';
 require_once $carpeta_app . '/models/EnfrentamientoRepositorio.php';
 require_once $carpeta_app . '/ligas.php';
 
-# =====================================================================
-# Calendario del sitio - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Los partidos de una semana, de lunes a domingo, de todas las ligas
-# publicas. Todo sale de la base (EnfrentamientoRepositorio::entreDias).
-# El dia de la semana se calcula de la fecha, no se escribe a mano.
-#
-# calendario.php?semana=AAAA-MM-DD muestra la semana de ese dia. Sin
-# semana, la del partido en vivo; si no hay, la del proximo partido; y
-# si tampoco, la de hoy. "Semana anterior", "Hoy" y "Semana siguiente"
-# son enlaces comunes, sin JavaScript.
-#
-# Un partido sin hora va en el ultimo dia de su fecha, como "Horario a
-# confirmar". Los de una liga de muestra llevan la marca "De muestra".
-# =====================================================================
+# Los partidos de una semana, de lunes a domingo, de todas las ligas publicas.
 
 $hoy = date('Y-m-d');
 $partidos = null;
@@ -55,8 +41,7 @@ if (is_array($partidos)) {
     }
 }
 
-# "Semana del 14 al 20 de septiembre", o "del 28 de septiembre al 4 de
-# octubre" si cruza de mes.
+# "Semana del 14 al 20 de septiembre", o "del 28 de septiembre al 4 de octubre" si cruza de mes.
 if (substr($lunes, 5, 2) === substr($domingo, 5, 2)) {
     $titulo_semana = 'Semana del ' . (int)substr($lunes, 8, 2) . ' al ' . fechaTexto($domingo);
 } else {

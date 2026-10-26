@@ -1,31 +1,8 @@
-// =====================================================================
 // Fase 2 del motor de torneos, de punta a punta - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/ligas.js
-//
-// Con cuentas nuevas en cada corrida (ver comun.js), recorre lo que
-// pide la fase 2 y mira el resultado en la pantalla Y en la base:
-//   1. crear una liga: solo organizadores; validacion en el servidor,
-//      campo por campo, con "Aviso ·" en el titulo; la liga nace con la
-//      inscripcion abierta y queda en la auditoria
-//   2. el organizador anota equipos a mano, por nombre
-//   3. un jugador arma su equipo en el perfil y pide lugar; un solo
-//      pendiente por equipo y liga; el organizador acepta o rechaza
-//   4. el cupo se respeta (anotar y aceptar)
-//   5. cerrar la inscripcion (con 4 o mas) rechaza los pendientes
-//   6. el fixture: solo con la inscripcion cerrada; todos contra todos,
-//      nadie dos veces por fecha, un libre por fecha si son impares; no
-//      se rehace sin confirmar, ni con resultados
-//   7. ida y vuelta: dos cruces por pareja, con la localia al reves
-//   8. permisos: sin sesion, sin el rol, con la liga de otro, sin token
-//   9. las cuentas de muestra no inician sesion
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
 
-// Un dia contado desde hoy en Montevideo (UTC-3 todo el ano, como el
-// sitio), como AAAA-MM-DD: diaMvd(0) es hoy, diaMvd(-1) ayer.
 const diaMvd = dias => new Date(Date.now() - 3 * 3600 * 1000 + dias * 86400 * 1000).toISOString().slice(0, 10);
 
 let nav = null;
@@ -34,7 +11,7 @@ let nav = null;
   nav = await c.navegador();
   const sufijo = azar();
 
-  // --- Las cuentas ---------------------------------------------------
+  // Las cuentas
   const org = await c.cuentaNueva(nav, 'Olga', 'Organiza');
   const org2 = await c.cuentaNueva(nav, 'Otto', 'Organiza');
   const jugador = await c.cuentaNueva(nav, 'Julia', 'Capitana');
@@ -51,7 +28,7 @@ let nav = null;
   const url_panel = await c.direccionDe(O2.p, 'panel.php');
   t.chk(/crear/i.test(url_crear) && /panel/i.test(url_panel), `crear.php y panel.php llevan a sus controladores (${url_crear}, ${url_panel})`);
 
-  // --- 1. Crear una liga ----------------------------------------------
+  // 1. Crear una liga
   console.log('--- 1. Crear una liga ---');
   await O.p.goto(`${BASE}/crear.php`);
   t.chk(await O.p.title() === 'Nuevo torneo · Stadion', 'el formulario abre para un organizador');
@@ -77,8 +54,7 @@ let nav = null;
     cupo: '8', vueltas: 'una', victoria: '2', empate: '3', derrota: '0', desempate: 'diferencia', partido: 'empate', compite: 'equipos', formato: 'liga', inicio: '' });
   t.chk(r.cuerpo.includes('El empate no vale más que la victoria.'), 'el empate no puede valer mas que la victoria');
 
-  // Una fecha de inicio que ya paso (ayer, en Montevideo), y el minimo
-  // del campo, que es hoy.
+  // Una fecha de inicio que ya paso (ayer, en Montevideo), y el minimo del campo, que es hoy.
   r = await c.postear(O.ctx, url_crear, { token_csrf: tk, nombre: `Liga Y ${sufijo}`, disciplina: sql(`SELECT id_disciplina FROM disciplina WHERE nombre = 'Ajedrez'`),
     cupo: '8', vueltas: 'una', victoria: '3', empate: '1', derrota: '0', desempate: 'diferencia', partido: 'empate', compite: 'equipos', formato: 'liga', inicio: diaMvd(-1) });
   t.chk(r.cuerpo.includes('La fecha de inicio va de hoy en adelante.') && r.cuerpo.includes('id="error-inicio"'),
@@ -114,7 +90,7 @@ let nav = null;
   t.chk(r.cuerpo.includes('id="error-nombre"') && r.cuerpo.includes('Ya hay una liga en juego con ese nombre.'),
         'dos ligas vigentes no comparten nombre (ni cambiando mayusculas)');
 
-  // --- 2. Anotar equipos a mano ---------------------------------------
+  // 2. Anotar equipos a mano
   console.log('--- 2. Equipos anotados por el organizador ---');
   const anotar = async (nombre) => {
     await O.p.goto(`${BASE}/panel.php`);
@@ -139,7 +115,7 @@ let nav = null;
   t.chk(await O.p.$(`#liga-${id} form.accion-liga input[value="cerrar"]`) === null
         && (await O.p.textContent(`#liga-${id}`)).includes('Con menos de 4 equipos'), 'y el panel lo muestra apagado, con la nota');
 
-  // --- 3. El jugador arma su equipo y pide lugar ------------------------
+  // 3. El jugador arma su equipo y pide lugar
   console.log('--- 3. Pedido de lugar ---');
   await J.p.goto(`${BASE}/crear.php`);
   t.chk(/aviso=organizador/.test(J.p.url()) && J.p.url().endsWith('#roles'), 'sin el rol, crear.php lleva al perfil, a los roles');
@@ -181,8 +157,6 @@ let nav = null;
   const url_insc = await J.p.evaluate(() => { const f = document.querySelector('form[action*="nscripcion"]'); return f ? f.action : null; });
   const id_equipo_j = sql(`SELECT id_equipo FROM equipo WHERE nombre = ${texto(equipo_j)}`);
   const tkj2 = await c.token(J.p) || tkj;
-  // El formulario ya no esta (no hay equipo que pueda pedir): la
-  // direccion del controlador sale de la de crear.
   const insc = url_insc || url_crear.replace(/crearController\.php$/, 'inscripcionController.php').replace(/crear\.php$/, 'inscripcion.php');
   r = await c.postear(J.ctx, insc, { token_csrf: tkj2, id_torneo: String(id), id_equipo: id_equipo_j });
   t.chk(r.destino.includes('aviso=en-revision'), 'un segundo pedido del mismo equipo: "ya tiene un pedido en revisión"');
@@ -200,7 +174,7 @@ let nav = null;
   await J2.p.goto(`${BASE}/torneo.php?id=${id}`);
   await Promise.all([J2.p.waitForNavigation(), J2.p.click('form.pedir-lugar button')]);
 
-  // --- El organizador resuelve ----------------------------------------
+  // El organizador resuelve
   console.log('--- El organizador acepta y rechaza ---');
   await O.p.goto(`${BASE}/panel.php`);
   t.chk((await O.p.$$(`#liga-${id} .pedido`)).length === 2, 'el panel muestra los dos pedidos pendientes');
@@ -223,8 +197,6 @@ let nav = null;
   t.chk(O.p.url().includes('aviso=pedido-rechazado'), 'rechazar');
   t.chk(sql(`SELECT COUNT(*) FROM participante p JOIN equipo e USING (id_equipo) WHERE p.id_torneo = ${id} AND e.nombre = ${texto(equipo_j)}`) === '1',
         'el aceptado juega la liga');
-  // En el perfil del capitan aceptado, "Mis torneos" ya la lista, con su
-  // equipo; en el del rechazado, no.
   const misTorneos = async pag => {
     await pag.goto(`${await c.direccionDe(pag, 'perfil.php')}#mis-torneos`);
     await pag.reload();
@@ -250,7 +222,7 @@ let nav = null;
   await Promise.all([J2.p.waitForNavigation(), J2.p.click('form.pedir-lugar button')]);
   t.chk(J2.p.url().includes('aviso=pedido-enviado'), 'y lo pide otra vez');
 
-  // --- 4. El cupo -------------------------------------------------------
+  // 4. El cupo
   console.log('--- 4. El cupo ---');
   await anotar(`Equipo D ${sufijo}`);
   t.chk(sql(`SELECT COUNT(*) FROM participante WHERE id_torneo = ${id}`) === '5', 'cinco de cinco');
@@ -266,7 +238,7 @@ let nav = null;
   r = await c.postear(O.ctx, url_panel, { token_csrf: tko, accion: 'fixture', id_torneo: String(id) });
   t.chk(r.cuerpo.includes('El fixture se arma con la inscripción cerrada.'), 'el fixture no se arma con la inscripcion abierta');
 
-  // --- 5. Cerrar la inscripcion ------------------------------------------
+  // 5. Cerrar la inscripcion
   console.log('--- 5. Cierre de la inscripcion ---');
   await O.p.goto(`${BASE}/panel.php`);
   await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id} form.accion-liga button`)]);
@@ -278,7 +250,7 @@ let nav = null;
   r = await c.postear(O.ctx, url_panel, { token_csrf: tko, accion: 'agregar', id_torneo: String(id), equipo: `Tarde ${sufijo}` });
   t.chk(r.cuerpo.includes('La inscripción de esa liga está cerrada.'), 'con la inscripcion cerrada no se anota a nadie');
 
-  // --- 6. El fixture --------------------------------------------------------
+  // 6. El fixture
   console.log('--- 6. El fixture ---');
   const fixture = () => sql(`SELECT r.numero, e.numero, e.id_participante_local, IFNULL(e.id_participante_visitante, 0), e.id_enfrentamiento
                              FROM ronda r JOIN enfrentamiento e USING (id_ronda) WHERE r.id_torneo = ${id} ORDER BY r.numero, e.numero`)
@@ -328,14 +300,12 @@ let nav = null;
         'y el panel lo muestra apagado, con la nota');
 
   // La pagina publica de la liga.
-  // (Una recarga: la direccion es la misma de antes con otra ancla, y
-  // sin recargar el navegador mostraria la pagina vieja.)
   await J.p.goto(`${BASE}/torneo.php?id=${id}#calendario`);
   await J.p.reload();
   const cal = await J.p.textContent('#calendario');
   t.chk(cal.includes('Fecha 5') && cal.includes('queda libre') && cal.includes(equipo_j), 'torneo.php muestra el fixture, con el libre');
 
-  // --- 7. Ida y vuelta ---------------------------------------------------------
+  // 7. Ida y vuelta
   console.log('--- 7. Ida y vuelta ---');
   const liga2 = `Liga Doble ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);
@@ -365,7 +335,7 @@ let nav = null;
   const vuelta = fd.filter(f => f[0] > 3).map(f => `${f[3]}-${f[2]}`).sort();
   t.chk(JSON.stringify(ida) === JSON.stringify(vuelta), 'la vuelta repite la ida con la localia al reves');
 
-  // --- 8. Sin sesion y sin token ------------------------------------------------
+  // 8. Sin sesion y sin token
   console.log('--- 8. Sin sesion y sin token ---');
   const anon = await nav.newContext();
   for (const url of [url_crear, url_panel]) {
@@ -377,7 +347,7 @@ let nav = null;
   r = await c.postear(O.ctx, url_crear, { nombre: `Sin token ${sufijo}`, cupo: '8' });
   t.chk(r.estado === 403, 'crear sin token: 403');
 
-  // --- 9. Las cuentas de muestra no inician sesion ----------------------------------
+  // 9. Las cuentas de muestra no inician sesion
   console.log('--- 9. Cuentas de muestra ---');
   const m = await anon.newPage();
   await m.goto(`${BASE}/login.php`);

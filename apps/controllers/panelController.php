@@ -1,42 +1,5 @@
 <?php
-# =====================================================================
 # Controlador: panel del organizador
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Fase 2 del motor de torneos. Reemplaza a la maqueta panel.html (la
-# cuenta fija "Club Sur"): muestra las ligas de la cuenta de la sesion,
-# con su estado, los equipos anotados sobre el cupo y los pedidos
-# pendientes, y recibe las acciones de cada liga.
-#
-# Es solo para cuentas con el rol organizador, comprobado ACA en cada
-# pedido, con la cuenta de la sesion leida de la base (igual que
-# crearController.php):
-#   sin sesion vigente   a la pagina de acceso
-#   sin el rol, al abrir el panel: al perfil, a la tarjeta de los roles,
-#                        con un aviso
-#   sin el rol, con un POST armado a mano: 403, sin hacer nada
-#
-# Recibe siete formularios, que se distinguen por el campo "accion":
-#   agregar     anotar un equipo a mano, por nombre (ver
-#               ParticipanteRepositorio::agregarEquipo)
-#   aceptar     aceptar el pedido de lugar de un capitan
-#   rechazar    rechazarlo
-#   cerrar      cerrar la inscripcion (con 4 equipos o mas)
-#   fixture     armar el fixture (con la inscripcion cerrada)
-#   rehacer     borrar el fixture y armarlo de nuevo: solo sin
-#               resultados, y con la casilla de confirmacion marcada
-#   cancelar    cancelar la liga (RF-17, fase 3): no se borra, deja de
-#               verse; con su propia casilla de confirmacion
-# De cada formulario se leen solo numeros (el de la liga o el del
-# pedido), el nombre del equipo y la casilla. Quien actua es siempre la
-# cuenta de la sesion, y cada repositorio comprueba, con la fila del
-# torneo bloqueada, que la liga sea de esa cuenta: un numero de liga
-# ajena cambiado a mano no hace nada.
-#
-# Todo formulario trae el token de config/csrf.php. Cada accion hecha
-# queda en la auditoria, y despues se vuelve al panel con un GET
-# (?aviso=...): recargar la pagina no repite la accion.
-# =====================================================================
 
 require_once __DIR__ . '/../config/sesion.php';
 require_once __DIR__ . '/../config/csrf.php';
@@ -64,9 +27,7 @@ $errores = array();
 $errores_equipo = array();   # id de liga => mensaje, al lado del campo
 $valor_equipo   = array();   # id de liga => lo que se escribio
 
-# Los avisos despues de una accion. Llegan por la direccion como un
-# codigo, nunca como texto: la direccion no puede poner palabras en la
-# pagina.
+# Los avisos despues de una accion.
 $avisos = array(
     'liga-creada'        => 'El torneo queda creado, con la inscripción abierta.',
     'equipo-anotado'     => 'El equipo queda anotado.',
@@ -78,7 +39,7 @@ $avisos = array(
     'liga-cancelada'     => 'El torneo queda cancelado: deja de verse en el sitio, y lo jugado queda guardado.'
 );
 
-# --- 1. Sin sesion vigente, al acceso --------------------------------
+# 1. Sin sesion vigente, al acceso
 if (!sesionVigente()) {
     header('Location: ' . $ruta_publica . '/login.php');
     exit;
@@ -86,7 +47,7 @@ if (!sesionVigente()) {
 
 $id_usuario = (int)$_SESSION['id_usuario'];
 
-# --- 2. Conexion, cuenta y rol ---------------------------------------
+# 2. Conexion, cuenta y rol
 $conexion = conectarBD();
 if ($conexion === null) {
     $errores[] = $error_bd;
@@ -125,7 +86,7 @@ $fixtures      = new FixtureRepositorio($conexion);
 $auditorias    = new AuditoriaRepositorio($conexion);
 $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
 
-# --- 3. Las acciones ---------------------------------------------------
+# 3. Las acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $accion    = (isset($_POST['accion']) && is_string($_POST['accion'])) ? $_POST['accion'] : '';
@@ -153,8 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     } elseif (in_array($accion, array('agregar', 'cerrar', 'fixture', 'rehacer', 'cancelar'))) {
-        # La liga, y que sea de esta cuenta. Los repositorios lo vuelven a
-        # mirar con la fila bloqueada; esto da el aviso claro.
+        # La liga, y que sea de esta cuenta.
         $torneo = ($id_torneo > 0) ? $torneos->buscarPorId($id_torneo) : null;
         if ($torneo === null || (int)$torneo->getOrganizador()->getIdUsuario() !== $id_usuario) {
             $errores[] = 'Esa competencia no está a cargo de esta cuenta.';
@@ -185,8 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $resultado = $torneo->esPorEquipos() ? $participantes->agregarEquipo($torneo, $organizador, $nombre)
                        : array('errores' => array('En esta competencia compiten jugadores: cada uno se anota con su cuenta.'));
             if (empty($resultado['errores'])) {
-                # El equipo nuevo (si hubo que crearlo) y la inscripcion,
-                # cada una con el id de su propia fila.
+                # El equipo nuevo (si hubo que crearlo) y la inscripcion, cada una con el id de su propia fila.
                 if ($resultado['id_equipo_nuevo'] !== null) {
                     $auditorias->registrar(new Auditoria(null, $organizador, 'equipo', 'alta',
                         $resultado['id_equipo_nuevo'], mb_substr('Equipo ' . $nombre, 0, 255), $ip));
@@ -215,8 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
         } else {
-            # fixture o rehacer. Rehacer pide la casilla marcada: sin
-            # ella no se borra nada.
             $rehacer = ($accion === 'rehacer');
             if ($rehacer && !isset($_POST['confirmo'])) {
                 $errores[] = 'Rehacer el fixture pide marcar la confirmación.';
@@ -246,19 +203,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-# --- 4. El aviso de la accion anterior -------------------------------
-# Solo un texto de la lista: un ?aviso[]=x (un arreglo) no es un aviso.
 if (isset($_GET['aviso']) && is_string($_GET['aviso']) && isset($avisos[$_GET['aviso']]) && empty($errores)) {
     $mensaje = $avisos[$_GET['aviso']];
 }
 
-# --- 5. Lo que muestra el panel ---------------------------------------
-# null quiere decir que no se pudo leer, para que la vista no lo
-# confunda con "ninguna liga".
 $ligas = $torneos->listarDeOrganizador($id_usuario);
 $equipos_de   = array();   # id de liga => participantes
 $pendientes_de = array();  # id de liga => pedidos pendientes
-$campeon_de    = array();  # id de torneo terminado => su campeon (Participante), o null
+$campeon_de    = array();
 if (is_array($ligas)) {
     foreach ($ligas as $fila) {
         $id = (int)$fila['torneo']->getIdTorneo();

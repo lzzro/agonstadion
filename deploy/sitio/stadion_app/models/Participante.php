@@ -1,17 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Participante   ->   tabla "participante" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Es la inscripcion de un competidor en un torneo. Por composicion
-# contiene un Usuario (torneo individual) o un Equipo (torneo por
-# equipos), nunca los dos y nunca ninguno: es la misma regla que la
-# restriccion ck_part_competidor de la tabla.
-#
-# El resto del sistema (Enfrentamiento, Resultado, PosicionTabla)
-# trabaja siempre contra Participante y no necesita saber cual de los
-# dos casos es.
-# =====================================================================
+# Modelo: Participante -> tabla "participante" de sql/schema.sql
 
 require_once __DIR__ . '/Usuario.php';
 require_once __DIR__ . '/Equipo.php';
@@ -40,8 +28,6 @@ class Participante
 
     public function getIdParticipante()   { return $this->id_participante; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdParticipante($id_participante)
     {
         $this->id_participante = (int)$id_participante;
@@ -62,8 +48,7 @@ class Participante
         return $this->usuario !== null;
     }
 
-    # Equivale al COALESCE(equipo.nombre, CONCAT(usuario...)) de la
-    # consulta de posiciones del schema.
+    # Equivale al COALESCE(equipo.nombre, CONCAT(usuario...)) de la consulta de posiciones del schema.
     public function getNombreVisible()
     {
         if ($this->esEquipo()) {
@@ -80,8 +65,7 @@ class Participante
         return $this->estado === 'inscripto' || $this->estado === 'confirmado';
     }
 
-    # Baja del torneo: no se borra la fila, se marca, para no perder
-    # los enfrentamientos ya jugados.
+    # Baja del torneo: no se borra la fila, se marca, para no perder los enfrentamientos ya jugados.
     public function darDeBaja()
     {
         $this->estado = 'baja';

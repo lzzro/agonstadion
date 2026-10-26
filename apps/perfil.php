@@ -1,68 +1,5 @@
 <?php
-# =====================================================================
 # Vista de perfil
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La incluye perfilController.php despues de cargar al usuario. Recibe:
-#   $usuario        objeto Usuario con sus roles ya cargados
-#   $inscripciones  torneos de la persona (ver TorneoRepositorio), o
-#                   null si la consulta no se pudo hacer
-#   $mensaje        texto de resultado, si se acaba de guardar algo
-#   $errores        arreglo de mensajes, si algo fallo
-#   $pedido_organizador  el ultimo pedido del rol de organizador
-#                   (PedidoRol), o null si nunca lo pidio o ya lo tiene
-#   $ruta_publica, $ruta_perfil, $ruta_salir, $ruta_admin   direcciones
-#                   (ver apps/index.php). La de salida es para "Cerrar
-#                   sesion", que vive aca, debajo del nombre; la de
-#                   administracion solo se muestra a quien tiene el rol.
-#   $carpeta_subidas  la carpeta de las imagenes en el disco, para leer
-#                   las medidas de la portada (la deja el controlador)
-#   $equipos        los equipos que capitanea la persona (Equipo), o
-#                   null si no se pudieron leer
-#   $errores_equipo, $valores_equipo   el formulario de equipo nuevo
-#   $aviso_organizador  true si llega de crear.php o del panel sin el
-#                   rol: la tarjeta de los roles lo explica
-#   $integrantes_de id de equipo propio => sus integrantes (RF-12)
-#   $equipos_ajenos los equipos que integra sin ser capitan
-#   $errores_integrante, $valores_integrante   el formulario de sumar
-#                   un integrante, por equipo
-#   $mis_partidos   los partidos jugados de la persona (RF-26; ver
-#                   EnfrentamientoRepositorio::jugadosDe), o null
-#   $finales, $kotinos  las finales jugadas y los torneos ganados, o null
-#   $mediciones, $comparaciones, $errores_medicion, $valores_medicion,
-#   $hoy            el rendimiento fisico (RF-29)
-#
-# Todo formulario lleva el token de config/csrf.php (campoCsrf()).
-#
-# El nombre y el apellido se muestran con getNombreCompletoVisible():
-# primera letra en mayuscula si estan guardados en minuscula. Los campos
-# del formulario, en cambio, muestran lo guardado tal cual.
-#
-# Tres pestanas, con la misma mecanica sin JavaScript que torneo.php:
-# cada vista es un bloque con su id y su propia barra, y :target
-# muestra la que coincide con el ancla. Datos es la vista por defecto y
-# por eso va ultima (la regla esta explicada en style.css).
-#
-#   Datos         lo que sale de la base, y se edita: nombre, alias,
-#                 presentacion, foto y portada; y el cambio de la
-#                 contrasena (tercera entrega)
-#   Mis torneos   de la base: los torneos en los que compite la persona,
-#                 sola o con un equipo
-#   Rendimiento   de la base (RF-29, desde la tercera entrega): el ultimo
-#                 valor de cada indicador, su evolucion (con dos
-#                 mediciones o mas), la comparacion con las otras
-#                 cuentas, el formulario de cada prueba y la lista de
-#                 mediciones, cada una con "Borrar". Solo el nombre del
-#                 indicador y su valor: como se mide va en el documento
-#                 de Fisica, no en la pantalla (salvo la nota de los
-#                 instrumentos, al pie).
-#
-# Lo real y lo de muestra no se mezclan sin aviso: todo numero que no
-# sale de la base lleva al lado la marca "De muestra".
-#
-# Todo lo que viene de la base se imprime con htmlspecialchars: sin
-# eso, una presentacion con etiquetas HTML se ejecutaria en la pagina.
-# =====================================================================
 
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
@@ -106,8 +43,7 @@ require_once __DIR__ . '/config/csrf.php';
 require_once __DIR__ . '/models/ImagenSubida.php';
 require_once __DIR__ . '/config/recursos.php';
 
-# La fecha llega de la base como 2026-09-20 14:32:05. En pantalla va en
-# castellano y sin la hora, que a nadie le importa.
+# La fecha llega de la base como 2026-09-20 14:32:05.
 $meses = array(1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre');
 function fechaLarga($fecha, $meses)
@@ -130,13 +66,8 @@ if (!empty($alta)) {
     }
 }
 
-# La portada solo se muestra si el nombre tiene la forma de los que
-# genera el sistema. La foto la resuelve circuloPersona(), con el mismo
-# control (ver apps/cabecera.php).
+# La portada solo se muestra si el nombre tiene la forma de los que genera el sistema.
 $portada = ImagenSubida::nombreValido($usuario->getFotoPortada()) ? $usuario->getFotoPortada() : null;
-# Sus medidas reales, para el width y el height de la etiqueta: con
-# ellos el navegador reserva el lugar antes de bajar la imagen. Si el
-# archivo no se puede leer, la etiqueta va sin medidas, como antes.
 $medidas_portada = '';
 if ($portada !== null) {
     $datos_portada = @getimagesize($carpeta_subidas . '/' . $portada);
@@ -145,9 +76,7 @@ if ($portada !== null) {
     }
 }
 
-
-# Cantidad de torneos: la misma lista de la pestana, contada. Un torneo
-# en el que la persona aparece dos veces (dos equipos) cuenta una vez.
+# Cantidad de torneos: la misma lista de la pestana, contada.
 $cantidad_torneos = 0;
 if (is_array($inscripciones)) {
     $vistos = array();
@@ -213,8 +142,6 @@ $estados = array(
         if ($desde !== '') { $linea[] = $desde; }
         echo htmlspecialchars(implode(' · ', $linea));
       ?></p>
-      <?php # Cerrar sesion: el mismo formulario con POST de siempre, al
-            # mismo controlador. Vive aca y no en la cabecera. ?>
       <form class="salir-perfil" action="<?php echo htmlspecialchars($ruta_salir); ?>" method="post">
         <?php echo campoCsrf(); ?>
         <button type="submit">Cerrar sesión</button>
@@ -551,9 +478,6 @@ $estados = array(
     </form>
   </div>
   </section>
-<?php # El cambio de contrasena (tercera entrega): pide la actual, y la
-      # nueva pasa por las reglas del alta. Los errores van debajo del
-      # formulario, y cada campo los nombra en aria-describedby. ?>
 <?php
   $describe_clave = empty($errores_clave) ? '' : ' error-clave';
   $invalido_clave = empty($errores_clave) ? '' : ' aria-invalid="true"'; ?>
@@ -581,8 +505,6 @@ $estados = array(
 <aside>
 <div class="tarjeta">
   <span class="etiqueta">La cuenta</span>
-<?php # Dato arriba y valor abajo, como los roles: en la columna lateral
-      # un correo largo no entra al lado de su nombre. ?>
   <ul class="lista-apilada">
     <li><small>Correo</small><span class="valor-cuenta"><?php echo htmlspecialchars($usuario->getCorreo()); ?></span></li>
 <?php if ($desde !== '') { ?>
@@ -598,20 +520,14 @@ $estados = array(
   if (empty($roles)) { ?>
   <p>Sin roles asignados.</p>
 <?php } else { ?>
-<?php   # Nombre arriba y descripcion abajo, no en dos columnas: en la
-        # columna lateral no entran las dos una al lado de la otra. ?>
   <ul class="lista-apilada">
 <?php   foreach ($roles as $rol) { ?>
     <li><span><?php echo htmlspecialchars($rol->getNombre()); ?></span><small><?php echo htmlspecialchars($rol->getDescripcion()); ?></small></li>
 <?php   } ?>
   </ul>
 <?php } ?>
-<?php # El rol de organizador se pide desde aca y lo aprueba la
-      # administracion. Quien ya lo tiene no ve nada. ?>
 <?php if (!$usuario->tieneRol('organizador')) { ?>
   <div class="pedido-rol">
-<?php   # Llega de crear.php o del panel sin el rol: el aviso va aca, al
-        # lado del boton, que es a donde lleva el ancla #roles. ?>
 <?php   if ($aviso_organizador) { ?>
     <p class="aviso-rol" role="alert">Crear y organizar ligas pide el rol de organizador. Se pide acá, y lo aprueba la administración.</p>
 <?php   } ?>

@@ -1,27 +1,4 @@
-// =====================================================================
-// La politica de contrasenas (Ciberseguridad, tercera entrega)
-// Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/contrasenas.js
-//
-//   1. el alta rechaza una clave sin mayuscula, sin numero o con el
-//      nombre de la cuenta, y no crea la cuenta; con una que cumple, si
-//   2. el bloqueo: 5 inicios de sesion fallidos con el mismo correo, y
-//      el sexto, aun con la clave correcta, no entra; el aviso es el
-//      mismo con un correo que no tiene cuenta; el intento bloqueado
-//      queda en la auditoria y no alarga la pausa; pasados 15 minutos
-//      (las filas se corren 16 minutos para atras), entra
-//   3. cambiar la contrasena desde el perfil: con la actual equivocada,
-//      con la repeticion distinta, con una nueva que no cumple y con la
-//      misma, no cambia nada; con todo bien, cambia, deja la fila en la
-//      auditoria, y despues la vieja ya no entra y la nueva si; sin el
-//      token, 403
-//
-// SOLO TOCA LO QUE ELLA MISMA CREA: cuentas de @ejemplo.invalid con
-// contrasena al azar. Al final borra sus cuentas y su auditoria
-// (limpiarCuentas en comun.js, mas las filas del correo sin cuenta) y
-// comprueba que la base quedo como estaba (CHECKSUM TABLE).
-// =====================================================================
+// La politica de contrasenas - Stadion (Agon)
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto } = c;
@@ -69,7 +46,7 @@ let nav;
   const sin_cuenta = `prueba-${c.azar()}@ejemplo.invalid`;
   nav = await c.navegador();
   try {
-    // --- 1. El alta ------------------------------------------------------------
+    // 1. El alta
     console.log('--- 1. El alta ---');
     const ayuda = await (async () => {
       const ctx = await nav.newContext(); const p = await ctx.newPage();
@@ -95,7 +72,7 @@ let nav;
     const hash = sql(`SELECT hash_password FROM usuario WHERE id_usuario = ${A.id}`);
     t.chk(hash.startsWith('$2y$') && !hash.includes(A.clave), 'y en la base, solo el hash');
 
-    // --- 2. El bloqueo ---------------------------------------------------------
+    // 2. El bloqueo
     console.log('--- 2. El bloqueo ---');
     for (let i = 1; i <= 5; i++) {
       const r = await intentar(nav, A.correo, 'Equivocada' + i + '00');
@@ -121,7 +98,7 @@ let nav;
     r = await intentar(nav, A.correo, A.clave);
     t.chk(r.adentro, 'pasados 15 minutos del quinto fallo, la clave correcta entra');
 
-    // --- 3. Cambiar la contrasena ----------------------------------------------
+    // 3. Cambiar la contrasena
     console.log('--- 3. Cambiar la contraseña ---');
     const s = await c.entrar(nav, A);
     const p = s.p;

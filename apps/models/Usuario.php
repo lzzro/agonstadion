@@ -1,24 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Usuario   ->   tabla "usuario" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Composicion: un Usuario contiene un arreglo de objetos Rol, que es la
-# relacion N:M de la tabla intermedia "usuario_rol".
-#
-# La contrasena nunca se guarda en claro: entra por asignarClave(), que
-# la pasa por password_hash(), y se comprueba con verificarClave(), que
-# usa password_verify().
-#
-# La baja es logica (activo = 0), igual que en la base: el usuario de
-# base de datos de la aplicacion no tiene permiso de DELETE sobre esta
-# tabla, asi que darDeBaja() es la unica via.
-#
-# Una cuenta de muestra (de_muestra = 1) es una de las organizadoras de
-# las ligas de muestra de sql/migraciones/005_ligas.sql. No inicia
-# sesion nunca: el inicio de sesion la rechaza con esDeMuestra() antes
-# de mirar la clave (y, ademas, su hash no lo acepta password_verify).
-# =====================================================================
+# Modelo: Usuario -> tabla "usuario" de sql/schema.sql
 
 require_once __DIR__ . '/Rol.php';
 
@@ -63,8 +44,6 @@ class Usuario
 
     public function getIdUsuario()   { return $this->id_usuario; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdUsuario($id_usuario)
     {
         $this->id_usuario = (int)$id_usuario;
@@ -82,25 +61,12 @@ class Usuario
     public function getFotoPortada() { return $this->foto_portada; }
     public function getRoles()       { return $this->roles; }
 
-    # Equivale al CONCAT(nombre, ' ', apellido) de la consulta de
-    # posiciones del schema.
+    # Equivale al CONCAT(nombre, ' ', apellido) de la consulta de posiciones del schema.
     public function getNombreCompleto()
     {
         return $this->nombre . ' ' . $this->apellido;
     }
 
-    # --- Nombres para mostrar ----------------------------------------
-    # Lo que se guarda no se toca: si alguien se registra como "lucas",
-    # en la base queda "lucas". Solo al mostrarlo sale "Lucas".
-    #
-    # La regla: si el texto esta entero en minuscula, se sube la primera
-    # letra y nada mas. Si ya tiene alguna mayuscula, se respeta tal como
-    # la persona lo escribio. Asi "lucas" pasa a "Lucas", pero "de Itaca"
-    # (con la I mayuscula) queda como esta, con su "de" en minuscula: no
-    # se convierte palabra por palabra.
-    #
-    # Con las funciones mb_, que cuentan caracteres y no bytes: con
-    # strtoupper, una tilde o una enie quedarian sin convertir o rotas.
     public static function paraMostrar($texto)
     {
         $texto = (string)$texto;
@@ -135,15 +101,6 @@ class Usuario
     }
 
     # Toma la clave en claro, la valida y guarda solo el hash.
-    # Devuelve un arreglo de errores; vacio significa que se asigno.
-    #
-    # La politica de contrasenas de Ciberseguridad (primera entrega),
-    # desde la tercera entrega controlada por el sistema: 10 caracteres
-    # o mas, con una mayuscula, una minuscula y un numero, y sin el
-    # nombre, el apellido ni la parte del correo antes de la @ (cuando
-    # tienen 3 letras o mas). Vale para toda clave nueva: el alta y el
-    # cambio desde el perfil. Las cuentas que ya existian siguen
-    # entrando con su clave de antes.
     public function asignarClave($clave_en_claro)
     {
         $errores = array();
@@ -167,9 +124,6 @@ class Usuario
         return $errores;
     }
 
-    # true si la clave contiene, sin mirar mayusculas, el nombre, el
-    # apellido o la parte del correo antes de la @ de esta cuenta. Los de
-    # menos de 3 letras no cuentan: casi cualquier clave los tendria.
     private function contieneDatosPropios($clave_en_claro)
     {
         $clave = mb_strtolower($clave_en_claro, 'UTF-8');
@@ -212,8 +166,6 @@ class Usuario
         return false;
     }
 
-    # Las validaciones repiten las restricciones de la tabla, para
-    # avisar con un mensaje claro antes de llegar a la base.
     public function validar()
     {
         $errores = array();
@@ -234,8 +186,6 @@ class Usuario
             $errores[] = 'El apellido tiene que tener entre 2 y 40 caracteres.';
         }
 
-        # El alias es opcional, pero si viene tiene el mismo formato que
-        # el pattern del formulario de perfil: letras, numeros y guion bajo.
         if (!empty($this->alias)) {
             if (mb_strlen($this->alias) > 20) {
                 $errores[] = 'El alias no puede pasar de 20 caracteres.';

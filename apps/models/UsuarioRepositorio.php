@@ -1,17 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: UsuarioRepositorio   ->   tabla "usuario" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Esta clase es la unica que habla con la base. Usuario sigue siendo la
-# clase del dominio, sin saber que existe una base de datos: el
-# repositorio la recibe para guardar, y la construye al leer.
-#
-# Todas las consultas van con sentencias preparadas (prepare + bind).
-# Nunca se arma el SQL pegando texto: si el correo trajera una comilla
-# o un fragmento de SQL, con la concatenacion se ejecutaria; con
-# prepare viaja siempre como dato.
-# =====================================================================
+# Modelo: UsuarioRepositorio -> tabla "usuario" de sql/schema.sql
 
 require_once __DIR__ . '/Usuario.php';
 require_once __DIR__ . '/Rol.php';
@@ -29,9 +17,6 @@ class UsuarioRepositorio
         $this->conexion = $conexion;
     }
 
-    # --- Alta -------------------------------------------------------
-    # Inserta el usuario y le guarda el id que genera el AUTO_INCREMENT.
-    # Devuelve un arreglo de errores, vacio si se pudo guardar.
     public function insertar(Usuario $usuario)
     {
         $errores = $usuario->validar();
@@ -39,8 +24,7 @@ class UsuarioRepositorio
             return $errores;
         }
 
-        # Aviso temprano, para dar un mensaje claro en vez del error
-        # crudo de la restriccion UNIQUE.
+        # Aviso temprano, para dar un mensaje claro en vez del error crudo de la restriccion UNIQUE.
         if ($this->existeCorreo($usuario->getCorreo())) {
             return array('Ya hay una cuenta con ese correo.');
         }
@@ -65,9 +49,7 @@ class UsuarioRepositorio
                                $alias, $presentacion, $activo);
 
         if (!$sentencia->execute()) {
-            # 1062 es la violacion de una clave unica. Puede pasar aunque
-            # existeCorreo() haya dicho que no, si alguien se registro con
-            # el mismo correo en el medio.
+            # 1062 es la violacion de una clave unica.
             if ($sentencia->errno === 1062) {
                 $sentencia->close();
                 return array('Ya hay una cuenta con ese correo.');
@@ -79,14 +61,10 @@ class UsuarioRepositorio
         $usuario->setIdUsuario($this->conexion->insert_id);
         $sentencia->close();
 
-        # Toda cuenta nueva nace como jugador. Los demas roles
-        # (organizador, arbitro, administrador) se asignan aparte.
+        # Toda cuenta nueva nace como jugador.
         return $this->asignarRolPorNombre($usuario, 'jugador');
     }
 
-    # Agrega una fila en usuario_rol y tambien el Rol al objeto, para que
-    # el usuario en memoria quede igual que el de la base. El id del rol
-    # sale del catalogo por su nombre: no hay numeros fijos en el codigo.
     public function asignarRolPorNombre(Usuario $usuario, $nombre_rol)
     {
         if ($usuario->getIdUsuario() === null) {
@@ -117,7 +95,7 @@ class UsuarioRepositorio
         $sentencia->bind_param('ii', $id_usuario, $id_rol);
 
         if (!$sentencia->execute()) {
-            # 1062: el usuario ya tenia ese rol. No es un error.
+            # 1062: el usuario ya tenia ese rol.
             if ($sentencia->errno !== 1062) {
                 $sentencia->close();
                 return array('El rol no queda asignado.');
@@ -129,8 +107,6 @@ class UsuarioRepositorio
         return array();
     }
 
-    # --- Busqueda ---------------------------------------------------
-    # Devuelve el objeto Usuario o null si no hay ninguno con ese correo.
     public function buscarPorCorreo($correo)
     {
         $sql = 'SELECT id_usuario, correo, hash_password, nombre, apellido,
@@ -181,8 +157,6 @@ class UsuarioRepositorio
     }
 
     # Carga en el objeto los roles que la cuenta tiene asignados.
-    # Se hace aparte de buscarPorId porque no siempre hacen falta: el
-    # inicio de sesion no los necesita, el perfil si.
     public function cargarRoles(Usuario $usuario)
     {
         if ($usuario->getIdUsuario() === null) {
@@ -212,12 +186,6 @@ class UsuarioRepositorio
         return true;
     }
 
-    # --- Listado para la administracion -------------------------------
-    # Todas las cuentas, con sus roles y la fecha de su ultimo inicio de
-    # sesion (la ultima fila login_ok de la auditoria, o null si nunca
-    # entro). Devuelve un arreglo de arreglos:
-    #   array('usuario' => Usuario con roles, 'ultimo_acceso' => fecha)
-    # Sin el hash de la clave: la administracion no lo necesita.
     public function listarConRoles()
     {
         $sql = "SELECT u.id_usuario, u.correo, u.nombre, u.apellido, u.alias,
@@ -282,10 +250,6 @@ class UsuarioRepositorio
         return $hay;
     }
 
-    # --- Modificacion -----------------------------------------------
-    # Actualiza los datos del perfil. No toca el correo ni la
-    # contrasena: el correo identifica la cuenta y la clave se cambia
-    # por su propio camino.
     public function actualizarPerfil(Usuario $usuario)
     {
         $errores = $usuario->validar();
@@ -327,10 +291,6 @@ class UsuarioRepositorio
         return array();
     }
 
-    # --- Contrasena (tercera entrega) --------------------------------
-    # Guarda el hash nuevo de la cuenta. La clave ya paso por
-    # Usuario::asignarClave(), que la valido y la convirtio en hash: aca
-    # no llega nunca en claro. Solo una cuenta activa.
     public function actualizarClave(Usuario $usuario)
     {
         if ($usuario->getIdUsuario() === null || empty($usuario->getHashPassword())) {
@@ -352,12 +312,6 @@ class UsuarioRepositorio
         return array();
     }
 
-    # --- Imagenes -----------------------------------------------------
-    # Guarda el nombre de la foto de perfil o de la portada. $tipo es
-    # 'foto' o 'portada'. El nombre de la columna no puede viajar como
-    # dato de una sentencia preparada, asi que sale de esta lista fija y
-    # nunca de lo que mande el formulario.
-    # Devuelve true si la fila quedo actualizada.
     public function actualizarImagen(Usuario $usuario, $tipo, $archivo)
     {
         $columnas = array('foto' => 'foto_perfil', 'portada' => 'foto_portada');
@@ -378,24 +332,12 @@ class UsuarioRepositorio
         return $bien;
     }
 
-    # --- Baja logica ------------------------------------------------
-    # La cuenta no se borra: se marca. El usuario de base de datos de la
-    # aplicacion ni siquiera tiene permiso de DELETE sobre esta tabla.
     public function darDeBaja(Usuario $usuario)
     {
         $usuario->darDeBaja();
         return $this->actualizarPerfil($usuario);
     }
 
-    # --- Administracion (RF-11 y RF-24) -------------------------------
-    # La baja logica de una cuenta, o su vuelta, desde la administracion.
-    # Las reglas: la cuenta existe, no es la propia (una administradora
-    # no se da de baja a si misma: lo hace otra) y no es de muestra (esas
-    # no inician sesion nunca). Con la fila de la cuenta bloqueada. Una
-    # cuenta de baja no inicia sesion (RF-07) y, si tenia una abierta, se
-    # cierra en el pedido siguiente (cada controlador mira estaActivo()).
-    # Su historial queda: torneos, partidos, mediciones y auditoria.
-    # Devuelve array('errores' => [...], 'cuenta' => Usuario o null).
     public function cambiarActivo(Usuario $administrador, $id_cuenta, $activar)
     {
         $this->conexion->begin_transaction();
@@ -428,11 +370,7 @@ class UsuarioRepositorio
         return array('errores' => array(), 'cuenta' => $cuenta);
     }
 
-    # Da o quita el rol administrador (las cuentas administrativas,
-    # RF-24). Darlo: a una cuenta activa, que no sea de muestra. Quitarlo:
-    # nunca a la propia; asi siempre queda al menos una administradora,
-    # la que lo quita. Devuelve array('errores' => [...], 'cuenta' =>
-    # Usuario o null).
+    # Da o quita el rol administrador (las cuentas administrativas, RF-24).
     public function cambiarAdministrador(Usuario $administrador, $id_cuenta, $dar)
     {
         $this->conexion->begin_transaction();
@@ -490,8 +428,6 @@ class UsuarioRepositorio
         return ($fila === null) ? null : $this->construirUsuario($fila);
     }
 
-    # --- Auxiliar ---------------------------------------------------
-    # Arma el objeto del dominio a partir de una fila de la tabla.
     private function construirUsuario($fila)
     {
         return new Usuario(

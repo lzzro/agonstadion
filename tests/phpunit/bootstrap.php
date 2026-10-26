@@ -1,11 +1,5 @@
 <?php
-# =====================================================================
 # Arranque de las pruebas de PHPUnit - Stadion (Agon)
-# ---------------------------------------------------------------------
-# Carga las clases del dominio de apps/models: las pruebas de PHPUnit
-# son de las reglas de los modelos, sin la base ni el sitio (eso lo
-# prueban las baterias de tests/php, tests/e2e y tests/sql).
-# =====================================================================
 
 $APLICACION = __DIR__ . '/../../apps';
 require_once $APLICACION . '/fechas.php';

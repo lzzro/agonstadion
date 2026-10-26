@@ -1,14 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: ModuloCompetencia   ->   tabla "modulo_competencia"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Define COMO se arma el fixture: Liga, Eliminacion directa, Suizo (el
-# fixture lo arma FixtureRepositorio). Desde la migracion 008, cada uno
-# se habilita o se deshabilita desde la administracion (RF-24): uno
-# deshabilitado no se ofrece en "Nuevo torneo", y los torneos que ya lo
-# usan siguen igual.
-# =====================================================================
+# Modelo: ModuloCompetencia -> tabla "modulo_competencia"
 
 class ModuloCompetencia
 {
@@ -31,8 +22,6 @@ class ModuloCompetencia
 
     public function getIdModulo()   { return $this->id_modulo; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdModulo($id_modulo)
     {
         $this->id_modulo = (int)$id_modulo;

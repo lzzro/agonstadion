@@ -1,39 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Medicion   ->   tabla "medicion" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Una medicion de rendimiento fisico (RF-29, el modulo de Fisica): la
-# prueba, sus datos crudos y la fecha. Los tres modelos fisicos son los
-# de las entregas de Fisica Mecanica Clasica:
-#
-#   reaccion  Tiempo de reaccion (caida libre). Dato crudo: la distancia
-#             d que cae la regla antes de atraparla.
-#                 t = raiz(2d / g)
-#   sprint    Aceleracion de salida (dinamica). Datos crudos: el tiempo t
-#             en recorrer 10 m desde parado, y la masa m.
-#                 v = d / t        (velocidad media)
-#                 a = 2d / t^2     (de d = a t^2 / 2, partiendo del reposo
-#                                   con aceleracion constante)
-#                 F = m a          (fuerza neta media)
-#   salto     Potencia de salto (trabajo y energia). Datos crudos: el
-#             tiempo de vuelo t y la masa m.
-#                 h  = g t^2 / 8   (sube la mitad del vuelo, t/2)
-#                 Ep = m g h
-#                 P  = Ep / t_impulso, con t_impulso = 0,25 s
-#
-# Con g = 9,8 m/s^2, d = 10 m en el sprint y t_impulso = 0,25 s, los
-# mismos valores de la segunda entrega de Fisica.
-#
-# Solo se guardan los datos crudos: los indicadores son datos derivados
-# y se calculan aca cada vez, la misma decision que los puntos de la
-# tabla de posiciones (ver PosicionTabla). Asi, si se corrige una
-# formula, todas las mediciones se recalculan solas.
-#
-# Los rangos de validar() son los de la restriccion ck_med_datos: la
-# regla mide 30 cm, y los tiempos y las masas, lo posible para una
-# persona.
-# =====================================================================
+# Modelo: Medicion -> tabla "medicion" de sql/schema.sql
 
 require_once __DIR__ . '/Usuario.php';
 
@@ -99,7 +65,7 @@ class Medicion
         );
     }
 
-    # --- Modelo 1: tiempo de reaccion -------------------------------------
+    # Modelo 1: tiempo de reaccion
     public function tiempoReaccionMs()
     {
         if ($this->prueba !== 'reaccion' || $this->distancia_cm === null) {
@@ -108,7 +74,7 @@ class Medicion
         return sqrt(2 * ($this->distancia_cm / 100) / self::G) * 1000;
     }
 
-    # --- Modelo 2: sprint -------------------------------------------------
+    # Modelo 2: sprint
     public function velocidadMedia()
     {
         return ($this->prueba === 'sprint' && $this->tiempo_s > 0) ? self::DISTANCIA / $this->tiempo_s : null;
@@ -126,7 +92,7 @@ class Medicion
         return ($a === null || $this->masa_kg === null) ? null : $this->masa_kg * $a;
     }
 
-    # --- Modelo 3: salto --------------------------------------------------
+    # Modelo 3: salto
     public function altura()
     {
         return ($this->prueba === 'salto' && $this->tiempo_s !== null)
@@ -157,9 +123,6 @@ class Medicion
         return $this->potencia();
     }
 
-    # El indicador listo para mostrar: el tiempo en ms enteros, la
-    # aceleracion con dos decimales, la potencia en W enteros (como en
-    # las tablas de Fisica). Coma decimal, como se escribe en castellano.
     public static function formatear($prueba, $valor)
     {
         if ($valor === null) {
@@ -169,8 +132,6 @@ class Medicion
         return number_format($valor, $decimales, ',', '.');
     }
 
-    # Si $a es mejor marca que $b en esa prueba: en la reaccion, el
-    # tiempo menor; en las otras, el valor mayor.
     public static function esMejor($prueba, $a, $b)
     {
         return ($prueba === 'reaccion') ? $a < $b : $a > $b;

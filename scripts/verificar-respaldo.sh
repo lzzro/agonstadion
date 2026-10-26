@@ -1,23 +1,5 @@
 #!/bin/bash
-# =====================================================================
-# Verificar (y abrir) un respaldo - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   bash scripts/verificar-respaldo.sh backups/respaldo_AAAA-MM-DD.tar.gz.enc
-#   bash scripts/verificar-respaldo.sh backups/respaldo_AAAA-MM-DD.tar.gz.enc --abrir CARPETA
-#
-# Comprueba, en orden:
-#   1. el hash: el SHA-256 del archivo es el anotado en el .sha256
-#   2. la firma digital: el .sig se hizo con la clave privada del
-#      servidor sobre ESTE archivo (openssl dgst -verify, con la clave
-#      publica de scripts/firma/respaldo-publica.pem)
-# Con --abrir, ademas lo descifra (con scripts/firma/respaldo.clave) y
-# lo desempaqueta en CARPETA, que tiene que estar vacia o no existir:
-# ahi quedan base-sgdm.sql, apps/ y public/. Para restaurar la base,
-# ver docs/respaldos-cron.md.
-#
-# Sale con 0 si todo da bien; con 1 si el hash o la firma no coinciden
-# (el archivo cambio, o no es de este servidor: no usarlo).
-# =====================================================================
+# Comprueba el hash y la firma de un respaldo y lo abre en una carpeta vacia.
 
 set -u
 # Que el descifrado cuente aunque vaya en una tuberia con tar.

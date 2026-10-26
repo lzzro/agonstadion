@@ -1,19 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: EnfrentamientoRepositorio   ->   tabla "enfrentamiento"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Los partidos de todo el sitio, para calendario.php y el inicio: los de
-# una semana, y cual es la semana que se muestra primero. Y los jugados
-# de una persona, para "Mis resultados" del perfil (RF-26).
-#
-# Un partido con dia y hora va en su dia. Uno sin hora todavia ("Horario
-# a confirmar") va en el ultimo dia de su fecha, si la fecha tiene dias
-# puestos; si no, todavia no esta en el calendario. Solo cuentan los
-# torneos publicos (ver TorneoRepositorio), y nunca un partido anulado.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: EnfrentamientoRepositorio -> tabla "enfrentamiento"
 
 require_once __DIR__ . '/Enfrentamiento.php';
 require_once __DIR__ . '/Resultado.php';
@@ -35,13 +21,6 @@ class EnfrentamientoRepositorio
         $this->conexion = $conexion;
     }
 
-    # Los partidos entre dos dias (AAAA-MM-DD, los dos incluidos), en
-    # orden: por dia, los que tienen hora primero y por hora. Cada uno:
-    #   'dia'            el dia en que se muestra
-    #   'torneo'         el Torneo
-    #   'ronda'          la Ronda
-    #   'enfrentamiento' el Enfrentamiento, con su Resultado si tiene
-    # null si la consulta no se puede hacer.
     public function entreDias($desde, $hasta)
     {
         $sql = self::consulta() . "
@@ -57,12 +36,6 @@ class EnfrentamientoRepositorio
         return $this->leer($sentencia);
     }
 
-    # Los partidos jugados de esos participantes (los numeros de
-    # participante de una persona: los suyos y los de sus equipos), del
-    # mas nuevo al mas viejo, en cualquier torneo menos un borrador. Cada
-    # uno como en entreDias(), mas 'propio': el Participante de la
-    # persona en ese partido (el local o el visitante). Un libre no es un
-    # partido jugado. null si la consulta no se puede hacer.
     public function jugadosDe($ids_participante)
     {
         $ids = array();
@@ -72,8 +45,6 @@ class EnfrentamientoRepositorio
         if (empty($ids)) {
             return array();
         }
-        # Un signo de pregunta por numero: la lista se pasa igual con
-        # bind_param, nunca escrita dentro del SQL.
         $marcas = implode(', ', array_fill(0, count($ids), '?'));
         $sql = self::consulta() . "
                 WHERE t.estado <> 'borrador'
@@ -99,9 +70,6 @@ class EnfrentamientoRepositorio
         return $partidos;
     }
 
-    # Lo que comparten las dos consultas de partidos: el partido, su
-    # fecha, su torneo, los dos participantes con su nombre (un equipo o
-    # una persona) y el resultado, si tiene.
     private static function consulta()
     {
         return "SELECT " . TorneoRepositorio::columnas() . ",
@@ -130,11 +98,7 @@ class EnfrentamientoRepositorio
                     LEFT JOIN resultado re     ON re.id_enfrentamiento = en.id_enfrentamiento";
     }
 
-    # Corre la sentencia ya preparada y arma cada partido. Cada uno:
-    #   'dia'            el dia en que se muestra
-    #   'torneo'         el Torneo
-    #   'ronda'          la Ronda
-    #   'enfrentamiento' el Enfrentamiento, con su Resultado si tiene
+    # Corre la sentencia ya preparada y arma cada partido.
     private function leer($sentencia)
     {
         $sentencia->execute();
@@ -142,9 +106,7 @@ class EnfrentamientoRepositorio
 
         $partidos = array();
         while ($fila = $resultado->fetch_assoc()) {
-            # Los de cada partido, solo con su nombre: es lo que muestra
-            # el calendario. Un equipo, o en una liga individual (fase 3)
-            # una persona.
+            # Los de cada partido, solo con su nombre: es lo que muestra el calendario.
             $local = self::participanteDe($fila['id_participante_local'], $fila['equipo_local'],
                                           $fila['local_nombre'], $fila['local_apellido']);
             $visitante = null;
@@ -177,8 +139,7 @@ class EnfrentamientoRepositorio
         return $partidos;
     }
 
-    # Un participante con solo su nombre: el de su equipo, o el de la
-    # persona si compite sola.
+    # Un participante con solo su nombre: el de su equipo, o el de la persona si compite sola.
     private static function participanteDe($id, $equipo, $nombre, $apellido)
     {
         if ($equipo === null && $nombre !== null) {
@@ -187,9 +148,6 @@ class EnfrentamientoRepositorio
         return new Participante($id, null, new Equipo(null, (string)$equipo));
     }
 
-    # El dia que decide que semana muestra primero el calendario: el de
-    # un partido en vivo, o si no hay, el del proximo partido desde
-    # $ahora (AAAA-MM-DD HH:MM:SS). null si no hay ninguno de los dos.
     public function diaDestacado($ahora)
     {
         $sql = "SELECT DATE(en.fecha_hora) AS dia

@@ -1,6 +1,4 @@
-# Los scripts de bash y lo que usa Docker van siempre con fin de linea
-# de Unix (LF), tambien en una copia bajada en Windows: con CRLF, bash
-# dentro del contenedor no los entiende.
+# Los scripts de bash y lo de Docker siempre con fin de linea LF, tambien en Windows.
 *.sh            text eol=lf
 docker/**       text eol=lf
 .env.ejemplo    text eol=lf

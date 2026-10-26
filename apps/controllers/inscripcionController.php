@@ -1,31 +1,5 @@
 <?php
-# =====================================================================
 # Controlador: pedir lugar en una liga, o inscribirse en una individual
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Recibe por POST el formulario "Pedir lugar" de torneo.php: el capitan
-# de un equipo pide que su equipo juegue una liga con la inscripcion
-# abierta. Lo acepta o lo rechaza quien organiza la liga, desde su
-# panel (ver panelController.php).
-#
-# Desde la fase 3, si la liga es individual, el mismo formulario (sin
-# equipo) inscribe a la cuenta de la sesion directamente, sin pedido
-# (CU-09; ParticipanteRepositorio::inscribirJugador). Queda en la
-# auditoria como inscripcion.
-#
-# Solo con sesion vigente (sin ella, a la pagina de acceso). Quien pide
-# es siempre la cuenta de la sesion, y el equipo tiene que ser uno que
-# esa cuenta capitanea: del formulario solo se leen el numero de la liga
-# y el del equipo, y los dos se comprueban contra la base. Un numero de
-# equipo ajeno cambiado a mano no pide nada.
-#
-# Al terminar vuelve a la pagina de la liga con un codigo en la
-# direccion (?aviso=...), que la pagina traduce a su mensaje: la
-# direccion nunca pone texto propio en la pantalla. El pedido queda en
-# la auditoria.
-#
-# El formulario trae el token de config/csrf.php: sin el, 403 y nada.
-# =====================================================================
 
 require_once __DIR__ . '/../config/sesion.php';
 require_once __DIR__ . '/../config/csrf.php';

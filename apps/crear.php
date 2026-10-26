@@ -1,27 +1,5 @@
 <?php
-# =====================================================================
 # Vista: nuevo torneo (liga, eliminacion directa o suizo)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La incluye crearController.php. Recibe:
-#   $organizador    la cuenta de la sesion (Usuario, con el rol)
-#   $disciplinas    arreglo de Disciplina, indexado por id
-#   $valores        lo que muestra cada campo (lo que llego, o los
-#                   valores de una liga nueva)
-#   $hoy            la fecha de hoy en Montevideo (AAAA-MM-DD), el
-#                   minimo de la fecha de inicio
-#   $errores        avisos generales (arreglo)
-#   $errores_campo  campo => mensaje, para mostrar al lado del campo
-#   $ruta_publica, $ruta_perfil, $ruta_crear, $ruta_panel   direcciones
-#
-# Un campo con error lleva aria-invalid="true" (que el CSS dibuja con el
-# borde punteado, igual que :user-invalid), y su mensaje debajo, con un
-# id que el campo nombra en aria-describedby junto con su ayuda. Arriba
-# va la lista de los errores, cada uno con un enlace a su campo, dentro
-# de role="alert"; y el titulo empieza con "Aviso ·".
-#
-# Todo lo que viene del formulario se imprime con htmlspecialchars.
-# =====================================================================
 
 if (!isset($errores)) { $errores = array(); }
 if (!isset($errores_campo)) { $errores_campo = array(); }
@@ -34,8 +12,7 @@ require_once __DIR__ . '/models/ConfiguracionTorneo.php';
 require_once __DIR__ . '/models/Suizo.php';
 require_once __DIR__ . '/models/Llave.php';
 
-# Los atributos de accesibilidad de un campo: su ayuda (si tiene) y su
-# error (si tiene). Devuelve el texto listo para poner en la etiqueta.
+# Los atributos de accesibilidad de un campo: su ayuda (si tiene) y su error (si tiene).
 function atributosCampo($campo, $con_ayuda, $errores_campo)
 {
     $describe = array();
@@ -73,7 +50,6 @@ $nombres_campo = array('formato' => 'Formato', 'rondas' => 'Rondas del suizo', '
                        'desempate' => 'Desempate', 'inicio' => 'Fecha de inicio', 'sede' => 'Sede',
                        'clasifican' => 'Clasifican a playoffs');
 # El primer control de cada campo, para el enlace de la lista.
-# Solo los formatos habilitados (RF-24; los deja crearController).
 if (!isset($formatos_habilitados)) { $formatos_habilitados = array_keys(formatosDeTorneo()); }
 $formatos_torneo = array();
 foreach (formatosDeTorneo() as $clave => $f) {
@@ -97,8 +73,6 @@ $jugadores = ($valores['compite'] === 'jugadores');
 $formatos = formatosDePartido();
 $partido_elegido = isset($formatos[$valores['partido']]) ? $valores['partido'] : 'empate';
 
-# Lo que arma la liga con el cupo completo, con los valores del
-# formulario tal como estan (ver ConfiguracionTorneo).
 $cupo = ctype_digit($valores['cupo']) ? (int)$valores['cupo'] : 16;
 if ($cupo < 4 || $cupo > 32) { $cupo = 16; }
 $muestra_config = new ConfiguracionTorneo(null, 3, 1, 0, 1, 0, ($valores['vueltas'] === 'dos') ? 1 : 0);

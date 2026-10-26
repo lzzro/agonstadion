@@ -1,19 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: AuditoriaRepositorio   ->   tabla "auditoria" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Sabe agregar filas y leer las ultimas, y nada mas. Es a proposito: el
-# usuario de base de datos de la aplicacion tiene sobre esta tabla solo
-# SELECT (como sobre todas) e INSERT, asi que ni modificar ni borrar el
-# historial estaria permitido aunque esta clase lo intentara.
-#
-# La lectura es para la pagina de administracion (adminController.php),
-# que muestra el registro. Nadie mas lo ve.
-#
-# El id del usuario queda en NULL cuando la accion es anonima, que es el
-# caso de un intento de inicio de sesion con un correo que no existe.
-# =====================================================================
+# Modelo: AuditoriaRepositorio -> tabla "auditoria" de sql/schema.sql
 
 require_once __DIR__ . '/Auditoria.php';
 
@@ -67,18 +53,11 @@ class AuditoriaRepositorio
         return array();
     }
 
-    # Las ultimas $cantidad filas, de la mas nueva a la mas vieja, cada
-    # una con la cuenta que la produjo (o null si fue anonima). Devuelve
-    # null si la consulta no se puede hacer.
     public function listarRecientes($cantidad)
     {
         return $this->listar('', 1, $cantidad);
     }
 
-    # El registro de a paginas (la administracion, RF-24): las filas de
-    # una accion ('' son todas), de la mas nueva a la mas vieja, desde la
-    # pagina $pagina (la 1 es la mas nueva). null si la consulta no se
-    # puede hacer.
     public function listar($accion, $pagina, $por_pagina)
     {
         $donde = ($accion === '') ? '' : 'WHERE a.accion = ?';
@@ -116,15 +95,6 @@ class AuditoriaRepositorio
         return $filas;
     }
 
-    # Cuantos inicios de sesion fallidos con ese correo hubo en los
-    # ultimos $minutos (el bloqueo de la politica de contrasenas: 5 en 15
-    # minutos). Cuentan las filas login_error cuyo detalle es el correo
-    # intentado, exista o no la cuenta: asi el bloqueo no revela que
-    # correos tienen cuenta. Los intentos rechazados por el propio
-    # bloqueo quedan con otro detalle ("Bloqueo: ...") y no cuentan, para
-    # que la pausa dure 15 minutos desde el quinto fallo. La hora es la
-    # de la base, la misma que guarda fecha_hora. null si la consulta no
-    # se puede hacer.
     public function intentosFallidos($correo, $minutos)
     {
         $sql = 'SELECT COUNT(*) AS cuantos FROM auditoria
@@ -142,8 +112,7 @@ class AuditoriaRepositorio
         return (int)$fila['cuantos'];
     }
 
-    # Cuantas filas tiene el registro de una accion ('' son todas). null
-    # si la consulta no se puede hacer.
+    # Cuantas filas tiene el registro de una accion ('' son todas). null si la consulta no se puede hacer.
     public function contar($accion)
     {
         $sql = 'SELECT COUNT(*) AS cuantas FROM auditoria' . (($accion === '') ? '' : ' WHERE accion = ?');

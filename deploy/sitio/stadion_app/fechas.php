@@ -1,17 +1,5 @@
 <?php
-# =====================================================================
 # Fechas en castellano, para las paginas de las ligas
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La base guarda las fechas como 2026-09-18 y 2026-09-18 19:00:00. En
-# pantalla van en castellano: "viernes 18 de septiembre", "19:00". El
-# dia de la semana sale de la fecha misma (date('w')), nunca escrito a
-# mano: asi no puede quedar un "jueves 18" en un ano en que el 18 es
-# viernes.
-#
-# La hora de "hoy" es la de Montevideo, no la del servidor (que puede
-# estar en otra zona, por ejemplo UTC).
-# =====================================================================
 
 date_default_timezone_set('America/Montevideo');
 
@@ -47,13 +35,13 @@ function fechaConDia($fecha)
     return ($texto === '') ? '' : nombreDiaSemana($fecha) . ' ' . $texto;
 }
 
-# "19:00", de un 2026-09-18 19:00:00. Vacio si no hay hora.
+# "19:00", de un 2026-09-18 19:00:00.
 function horaTexto($fecha_hora)
 {
     return (strlen((string)$fecha_hora) >= 16) ? substr($fecha_hora, 11, 5) : '';
 }
 
-# Dias de $desde a $hasta (AAAA-MM-DD). Negativo si $hasta ya paso.
+# Dias de $desde a $hasta (AAAA-MM-DD).
 function diasEntre($desde, $hasta)
 {
     $a = strtotime(substr((string)$desde, 0, 10) . ' 12:00:00');

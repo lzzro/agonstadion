@@ -1,6 +1,5 @@
 <?php
-# El fixture de una liga (metodo del circulo) y la tabla de posiciones,
-# que se calcula de los partidos y no se guarda (RF-18 y RF-22).
+# El fixture de una liga (metodo del circulo) y la tabla de posiciones calculada desde los partidos.
 
 use PHPUnit\Framework\TestCase;
 

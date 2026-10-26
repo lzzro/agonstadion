@@ -1,29 +1,5 @@
 <?php
-# =====================================================================
 # Controlador: alta de usuario
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Recibe por POST el formulario de "crear una cuenta" de
-# public/registro.php. Sigue el camino de la estructura de clase:
-# require_once de los modelos, validar con isset/empty, castear lo
-# numerico, crear el objeto, y volver a incluir la vista con el
-# resultado.
-#
-# La contrasena entra por asignarClave(), que la pasa por
-# password_hash(). En claro no se guarda ni se muestra nunca.
-#
-# La conformidad con los terminos se comprueba aca tambien, no solo con
-# el required del formulario: el navegador se puede saltear.
-#
-# El alta queda registrada en la tabla auditoria, igual que los inicios
-# de sesion. No lleva detalle: con el id de la cuenta recien creada ya
-# se sabe todo lo que hace falta, y el correo esta en la propia fila de
-# usuario.
-#
-# El formulario trae el token de config/csrf.php: sin el, o con uno que
-# no es el de esta sesion, no se da de alta nada. La sesion se abre
-# solo para compararlo; el alta no inicia sesion.
-# =====================================================================
 
 require_once __DIR__ . '/../config/sesion.php';
 abrirSesion();
@@ -45,9 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $errores[] = rechazarCsrf();
 } else {
 
-    # --- lo que llega del formulario ---
-    # Solo textos: un campo mandado como arreglo (nombre[]=x) queda vacio
-    # (sin esto, trim() corta con un error y la pagina responde 500).
     $nombre   = (isset($_POST['nombre']) && is_string($_POST['nombre'])) ? trim($_POST['nombre']) : '';
     $apellido = (isset($_POST['apellido']) && is_string($_POST['apellido'])) ? trim($_POST['apellido']) : '';
     $correo   = (isset($_POST['correo']) && is_string($_POST['correo'])) ? trim($_POST['correo']) : '';
@@ -58,9 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $errores[] = 'Nombre, apellido, correo y contraseña son obligatorios.';
     }
 
-    # Una casilla sin marcar no se envia, asi que alcanza con isset. El
-    # required del formulario no sirve de garantia: el POST puede llegar
-    # de cualquier lado, no solo del formulario.
+    # Una casilla sin marcar no se envia, asi que alcanza con isset.
     if (!isset($_POST['terminos'])) {
         $errores[] = 'Falta la conformidad con los términos.';
     }
@@ -86,12 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     $auditorias->registrar(new Auditoria(
                         null, $usuario, 'usuario', 'alta',
                         $usuario->getIdUsuario(), null, $ip));
-                    # Si la auditoria fallara no se le avisa a quien se
-                    # dio de alta: la cuenta ya quedo abierta y el aviso
-                    # lo confundiria.
 
-                    # Sin el número interno de la cuenta: en pantalla no
-                    # va ningún valor de la base.
+                    # Sin el número interno de la cuenta: en pantalla no va ningún valor de la base.
                     $mensaje = 'La cuenta queda abierta a nombre de '
                              . $usuario->getNombreCompletoVisible() . '.';
                 }

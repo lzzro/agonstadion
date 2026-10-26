@@ -2,7 +2,6 @@
 <!--
   Pruebas unitarias de los modelos con PHPUnit - Stadion (Agon)
   composer install, y despues: vendor/bin/phpunit
-  Ver tests/README.md.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"

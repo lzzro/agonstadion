@@ -9,34 +9,8 @@ require_once $carpeta_app . '/models/PedidoInscripcionRepositorio.php';
 require_once $carpeta_app . '/models/ResultadoRepositorio.php';
 require_once $carpeta_app . '/ligas.php';
 
-# =====================================================================
-# Detalle de una liga - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# torneo.php?id=N muestra la liga N; sin numero, la destacada
-# (TorneoRepositorio::idDestacado: la que tiene un partido en vivo, o la
-# que esta en curso desde hace mas tiempo). Es tambien el destino de
-# "Posiciones" en el menu: torneo.php#posiciones. Todo sale de la base:
-# los equipos, las fechas con sus partidos y resultados, la tabla (con
-# los puntajes y el desempate de la liga) y las reglas.
-#
-# Las cinco pestanas son las de siempre, sin JavaScript (:target):
-# Resumen, la de por defecto, va ultima (ver style.css). Lo que acompana
-# a la vista abierta va dos veces, con data-vista y data-fuera: "Saltar
-# al contenido" y, en la liga destacada, la entrada marcada del menu
-# (Torneos o Posiciones). En otra liga, Posiciones del menu lleva a la
-# destacada, asi que ahi el menu marca siempre Torneos.
-#
-# Con la inscripcion abierta, un capitan con sesion pide lugar para su
-# equipo (formulario a inscripcionController.php, con el token); en una
-# liga individual (fase 3), cada jugador se inscribe solo, con su
-# cuenta (CU-09). La vuelta trae un codigo (?aviso=...) que se traduce
-# aca a su mensaje.
-#
-# Lo que organiza una cuenta de muestra lleva la marca "De muestra".
-# =====================================================================
-
 $torneo = null;
-$todos = array();          # participantes, con las bajas (figuran en lo que jugaron)
+$todos = array();
 $rondas = array();
 $tabla = array();
 $organizados = null;
@@ -83,13 +57,13 @@ if ($torneo === null) {
     http_response_code($sin_base ? 503 : 404);
 }
 
-# --- Lo que se calcula de lo leido ---------------------------------------
+# Lo que se calcula de lo leido
 $en_competencia = array();
 foreach ($todos as $p) {
     if ($p->estaEnCompetencia()) { $en_competencia[(int)$p->getIdParticipante()] = $p; }
 }
 $en_vivo = null;       # el partido en vivo, si hay
-$proximo = null;       # el primero por jugar con dia y hora, de ahora en adelante
+$proximo = null;
 $ahora   = date('Y-m-d H:i:s');   # Montevideo (apps/fechas.php), como la base
 $cerradas = 0;
 $actual = null;        # la primera fecha sin cerrar
@@ -97,10 +71,7 @@ foreach ($rondas as $ronda) {
     if ($ronda->estaCerrada()) { $cerradas++; } elseif ($actual === null) { $actual = $ronda; }
     foreach ($ronda->getEnfrentamientos() as $e) {
         if ($e->estaEnVivo() && $en_vivo === null) { $en_vivo = $e; }
-        # Un programado con la hora ya pasada no es "proximo": su
-        # resultado todavia no esta cargado. Las dos fechas van como
-        # AAAA-MM-DD HH:MM:SS, asi que comparar el texto es comparar
-        # las fechas.
+        # Un programado con la hora ya pasada no es "proximo": su resultado todavia no esta cargado.
         if ($e->getEstado() === 'programado' && $e->getFechaHora() !== null && !$e->esLibre()
             && $e->getFechaHora() >= $ahora
             && ($proximo === null || $e->getFechaHora() < $proximo['partido']->getFechaHora())) {
@@ -114,8 +85,7 @@ $config  = ($torneo === null) ? null : $torneo->getConfiguracion();
 $unidad  = ($torneo === null) ? 'tantos' : $torneo->getDisciplina()->getUnidad();
 $fechas  = count($rondas);
 
-# El aviso de la vuelta de "Pedir lugar": array(es error, texto). Las
-# palabras cambian con el formato: "la liga" o "el torneo".
+# El aviso de la vuelta de "Pedir lugar": array(es error, texto).
 $pal = ($torneo === null) ? array('el' => 'la competencia', 'El' => 'La competencia', 'Un' => 'Una competencia')
                           : palabrasDe($torneo);
 $avisos_lugar = array(
@@ -161,8 +131,7 @@ if ($torneo !== null) {
     }
 }
 
-# Los equipos del capitan de la sesion: cuales pueden pedir lugar, y en
-# que quedo cada uno.
+# Los equipos del capitan de la sesion: cuales pueden pedir lugar, y en que quedo cada uno.
 $puede_pedir = array();
 $situacion = array();
 foreach ($equipos_propios as $equipo) {
@@ -185,10 +154,6 @@ foreach ($equipos_propios as $equipo) {
 }
 $cupo_lleno = ($torneo !== null && count($en_competencia) >= $torneo->getMaxParticipantes());
 
-# Las palabras del formato (fecha o ronda; fixture, llave o primera
-# ronda) y el nombre de la pestana de la tabla: en la eliminacion
-# directa, la pestana Posiciones muestra la llave (mismo ancla, para que
-# el menu siga llevando ahi).
 $w = ($torneo === null) ? null : palabrasDe($torneo);
 $pestana_tabla = ($torneo !== null && $torneo->esEliminacion()) ? 'Llave' : 'Posiciones';
 $campeon = null;
@@ -380,11 +345,6 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
         } elseif (empty($tabla)) { ?>
   <p>La tabla se arma con <?php echo $w['calendario']; ?>.</p>
 <?php   } else {
-          # Cuantos clasifican sale de la configuracion de la liga (0 =
-          # ninguno), nunca de un numero escrito aca. La columna E va solo
-          # en las ligas que admiten empate. G, E y P (.detalle) no se ven
-          # en el telefono: ahi la tabla deja lo que ordena (tantos, Dif y
-          # Pts), ver style.css.
           $clasifican = ($config === null) ? 0 : $config->getClasificanPlayoffs();
           $con_empate = ($config === null) || $config->admiteEmpate();
           $tantos     = mayuscula($unidad); ?>
@@ -452,8 +412,6 @@ $nom = ($torneo === null) ? '' : htmlspecialchars($torneo->getNombre());
           if ($config->esSerie()) {
               $reglas['Series'] = $config->textoSerie();
           }
-          # Una liga sin empates (admite_empate = 0, como las de series al
-          # mejor de un numero impar) no nombra los puntos del empate.
           if ($torneo->esEliminacion()) {
               $reglas['Partidos'] = 'Ningún partido termina empatado: alguien pasa.';
           } elseif ($config->admiteEmpate()) {

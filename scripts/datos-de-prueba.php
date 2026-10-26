@@ -1,52 +1,12 @@
 <?php
-# =====================================================================
-# Datos de prueba - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-#   php scripts/datos-de-prueba.php NOMBRE_DE_LA_BASE
-#
-# Carga en una base de PRUEBA mas de 50 registros por cada parte del
-# sistema, para probarlo con volumen (la consigna de la tercera entrega
-# lo pide para el entorno de Docker):
-#   - 71 cuentas: 60 jugadores, 10 organizadoras y una de administracion
-#   - 60 equipos, cada uno con su capitan y dos integrantes con dorsal
-#   - 54 torneos: 18 ligas por equipos, 18 eliminaciones directas y 18
-#     suizos individuales, en todos los estados: con la inscripcion
-#     abierta, en juego, terminados y cancelados
-#   - sus participantes, rondas, partidos (con dia, hora y lugar) y
-#     resultados, algun walkover y algun partido en vivo
-#   - 420 mediciones de rendimiento fisico (siete por jugador)
-#   - 55 pedidos del rol de organizador (resueltos y pendientes)
-#   - la auditoria del alta de cada cuenta y de cada torneo
-#
-# Todo pasa por los repositorios de la aplicacion (los mismos que usan
-# las pantallas), asi que cumple las mismas reglas: el fixture es el que
-# arma el sistema, cada resultado es valido para su torneo y las tablas
-# salen de los partidos. Los numeros salen de un generador con semilla
-# fija (mt_srand): cada carga da los mismos datos.
-#
-# Al final, todas las cuentas que crea quedan como cuentas de muestra
-# (usuario.de_muestra = 1, sin contrasena): no inician sesion nunca, y el
-# sitio las marca "De muestra" igual que a las de la migracion 005. Los
-# correos son datos-NN@ejemplo.invalid, un dominio que no existe. Para
-# entrar al sitio se crea una cuenta propia desde la pagina de alta y se
-# le da el rol administrador con sql/primer_administrador.sql.
-#
-# RESGUARDOS:
-#   - Corre solo desde la consola (nunca por la web).
-#   - Pide el nombre de la base como argumento, y tiene que ser el mismo
-#     que el de la configuracion: no se corre "sin querer" contra otra.
-#   - Si los datos ya estan cargados, avisa y no hace nada.
-#   - NUNCA en una base con cuentas reales: es para la base de Docker o
-#     la de XAMPP.
-# =====================================================================
+# Carga datos de prueba (mas de 50 registros por parte del sistema). Uso: php scripts/datos-de-prueba.php NOMBRE_DE_LA_BASE
 
 if (php_sapi_name() !== 'cli') {
     http_response_code(404);
     exit;
 }
 
-# La aplicacion: apps/ en el repositorio, stadion_app/ en Docker y en la
-# copia de publicacion.
+# La aplicacion: apps/ en el repositorio, stadion_app/ en Docker y en la copia de publicacion.
 $app = is_dir(__DIR__ . '/../apps') ? __DIR__ . '/../apps' : __DIR__ . '/../stadion_app';
 require_once $app . '/config/database.php';
 require_once $app . '/fechas.php';
@@ -107,7 +67,7 @@ function diaHora($dias, $hora)
     return date('Y-m-d', strtotime(($dias >= 0 ? '+' : '') . $dias . ' days')) . ' ' . $hora;
 }
 
-# --- 1. Cuentas -------------------------------------------------------
+# 1. Cuentas
 echo "Cuentas...\n";
 $nombres = array('Aquiles', 'Héctor', 'Ayax', 'Paris', 'Odiseo', 'Penélope', 'Telémaco', 'Helena', 'Andrómaca', 'Casandra',
                  'Eneas', 'Patroclo', 'Néstor', 'Diomedes', 'Briseida', 'Hécuba', 'Príamo', 'Agamenón', 'Menelao', 'Clitemnestra',
@@ -122,7 +82,6 @@ foreach ($nombres as $i => $nombre) {
     $n = $i + 1;
     $u = new Usuario(null, sprintf('datos-%02d@ejemplo.invalid', $n), null, $nombre, $lugares[$i % count($lugares)]);
     $u->asignarClave('Dp7' . random_int(100000000, 999999999) . random_int(100000000, 999999999));
-    # insertar() le da el rol jugador, como a toda cuenta nueva.
     if (revisar($cuentas->insertar($u), "cuenta $n")) {
         $jugadores[] = $u;
     }
@@ -148,13 +107,13 @@ foreach (array_merge($jugadores, $organizadoras, array($admin)) as $u) {
     $auditorias->registrar(new Auditoria(null, $u, 'usuario', 'alta', $u->getIdUsuario(), 'Carga de datos de prueba', $ip));
 }
 
-# --- 2. Equipos con sus integrantes -----------------------------------
+# 2. Equipos con sus integrantes
 echo "Equipos...\n";
 $colectivos = array('Argonautas', 'Mirmidones', 'Hoplitas', 'Centauros', 'Tritones', 'Amazonas',
                     'Cíclopes', 'Sirenas', 'Grifos', 'Pegasos', 'Minotauros', 'Gorgonas');
 $sedes = array('Argos', 'Tebas', 'Delfos', 'Corinto', 'Rodas');
 $equipos_repo = new EquipoRepositorio($conexion);
-$equipos = array();   # cada uno: array('equipo' => Equipo, 'capitan' => Usuario)
+$equipos = array();
 $cantidad_jugadores = count($jugadores);
 for ($i = 0; $i < 60 && $cantidad_jugadores >= 60; $i++) {
     $capitan = $jugadores[$i];
@@ -172,7 +131,7 @@ for ($i = 0; $i < 60 && $cantidad_jugadores >= 60; $i++) {
     $equipos[] = array('equipo' => $equipo, 'capitan' => $capitan);
 }
 
-# --- 3. Torneos --------------------------------------------------------
+# 3. Torneos
 echo "Torneos...\n";
 $catalogos = new CatalogoRepositorio($conexion);
 $disc = array();
@@ -188,8 +147,6 @@ $pedidos     = new PedidoInscripcionRepositorio($conexion);
 $fixtures    = new FixtureRepositorio($conexion);
 $resultados  = new ResultadoRepositorio($conexion);
 
-# El estado de cada torneo segun su orden dentro del formato: 4 con la
-# inscripcion abierta, 6 en juego, 7 terminados y 1 cancelado.
 function estadoDe($k)
 {
     if ($k < 4)  { return 'inscripcion'; }
@@ -198,8 +155,6 @@ function estadoDe($k)
     return 'cancelado';
 }
 
-# Un marcador valido para la configuracion: una serie al mejor de N, un
-# partido que puede terminar empatado, o uno que siempre tiene ganador.
 function marcador(ConfiguracionTorneo $config, $disciplina)
 {
     if ($config->esSerie()) {
@@ -215,9 +170,6 @@ function marcador(ConfiguracionTorneo $config, $disciplina)
     return array($a, $b);
 }
 
-# Juega una ronda: programa sus partidos (dia, hora y lugar) y, si
-# $jugar, carga todos los resultados (o los primeros $hasta). Devuelve
-# cuantos quedaron jugados.
 function jugarRonda($torneo, $organizadora, $ronda, $dias, $jugar, $hasta = null)
 {
     global $resultados;
@@ -289,9 +241,7 @@ foreach ($formatos as $clave => $f) {
         $id = (int)$torneo->getIdTorneo();
         $auditorias->registrar(new Auditoria(null, $organizadora, 'torneo', 'alta', $id, mb_substr('Carga de datos de prueba · ' . $nombre, 0, 255), $ip));
 
-        # La inscripcion: los equipos piden lugar y la organizadora acepta;
-        # los jugadores se inscriben solos. Con la inscripcion abierta,
-        # queda a medio llenar.
+        # La inscripcion: los equipos piden lugar y la organizadora acepta; los jugadores se inscriben solos.
         $cuantos = ($estado === 'inscripcion') ? max(1, $cupo - 2) : $cupo;
         for ($j = 0; $j < $cuantos; $j++) {
             if ($clave === 'liga') {
@@ -313,13 +263,7 @@ foreach ($formatos as $clave => $f) {
         revisar($torneos->cerrarInscripcion($torneos->buscarPorId($id), $organizadora)['errores'], "cerrar $nombre");
         revisar($fixtures->generar($torneos->buscarPorId($id), $organizadora, false)['errores'], "fixture de $nombre");
 
-        # Las rondas: un terminado se jugo hace unas semanas, una ronda por
-        # semana; uno en juego viene jugando y tiene la ronda en curso con
-        # la mitad de los partidos cargados (y uno en vivo, a veces).
         $torneo = $torneos->buscarPorId($id);
-        # En juego (y el que despues se cancela): una ronda cerrada hace
-        # una semana y la de hoy a medias (una llave de 4 no llega a
-        # terminar).
         $inicio = ($estado === 'finalizado') ? -70 - 3 * $k : -7;
         $semana = 0;
         $vueltas = 0;
@@ -336,8 +280,7 @@ foreach ($formatos as $clave => $f) {
             }
             $dias = $inicio + 7 * $semana;
             if ($estado !== 'finalizado' && $dias >= 0) {
-                # La ronda de esta semana: la mitad jugada, y las que
-                # siguen, programadas.
+                # La ronda de esta semana: la mitad jugada, y las que siguen, programadas.
                 $mitad = intdiv(count($abierta->getEnfrentamientos()), 2);
                 jugarRonda($torneo, $organizadora, $abierta, 0, true, $mitad);
                 if ($k % 2 === 0) {
@@ -364,8 +307,7 @@ foreach ($formatos as $clave => $f) {
             revisar($resultados->cerrarFecha($id, $abierta->getIdRonda(), $organizadora)['errores'], "cerrar una ronda de $nombre");
             $semana++;
         }
-        # Las fechas del torneo: las de sus partidos (el cierre de la
-        # ultima ronda pone la de hoy).
+        # Las fechas del torneo: las de sus partidos (el cierre de la ultima ronda pone la de hoy).
         $conexion->query("UPDATE torneo t SET
               fecha_inicio = (SELECT DATE(MIN(e.fecha_hora)) FROM enfrentamiento e JOIN ronda r USING (id_ronda) WHERE r.id_torneo = t.id_torneo),
               fecha_fin = CASE WHEN t.estado = 'finalizado'
@@ -378,7 +320,7 @@ foreach ($formatos as $clave => $f) {
     }
 }
 
-# --- 4. Mediciones -----------------------------------------------------
+# 4. Mediciones
 echo "Mediciones...\n";
 $mediciones = new MedicionRepositorio($conexion);
 foreach ($jugadores as $i => $jugador) {
@@ -398,11 +340,9 @@ foreach ($jugadores as $i => $jugador) {
     }
 }
 
-# --- 5. Pedidos del rol de organizador ---------------------------------
+# 5. Pedidos del rol de organizador
 echo "Pedidos de rol...\n";
 $roles = new PedidoRolRepositorio($conexion);
-# 55 pedidos (la consigna pide 50 o mas por parte del sistema): 49
-# resueltos, uno de cada tres aprobado, y 6 pendientes.
 for ($i = 5; $i < 60 && $i < count($jugadores); $i++) {
     revisar($roles->crear($jugadores[$i], 'organizador'), 'pedido de rol');
     if ($i < 54) {
@@ -411,13 +351,10 @@ for ($i = 5; $i < 60 && $i < count($jugadores); $i++) {
     }
 }
 
-# --- 6. Cuentas de muestra ----------------------------------------------
-# Todas las cuentas de la carga quedan de muestra y sin contrasena: no
-# inician sesion nunca (ver loginController y la migracion 005).
 $conexion->query("UPDATE usuario SET de_muestra = 1, hash_password = 'cuenta de prueba: no inicia sesion'
                   WHERE correo LIKE 'datos-%@ejemplo.invalid'");
 
-# --- 7. Lo que quedo cargado --------------------------------------------
+# 7. Lo que quedo cargado
 echo "\nLo que quedo cargado:\n";
 $cuentas_sql = "SELECT id_usuario FROM usuario WHERE correo LIKE 'datos-%@ejemplo.invalid'";
 $torneos_sql = "SELECT id_torneo FROM torneo WHERE id_usuario_organizador IN ($cuentas_sql)";

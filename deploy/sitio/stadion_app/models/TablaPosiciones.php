@@ -1,26 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: TablaPosiciones   ->   la tabla calculada desde los partidos
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La tabla de posiciones de una liga, calculada a partir de los partidos
-# jugados: cada resultado suma un partido al local y otro al visitante
-# (PosicionTabla::sumarResultado). Es lo mismo que guarda la tabla
-# tabla_posiciones, pero sacado de la fuente: sirve para comprobar que
-# lo guardado coincide con lo jugado (tests/php/muestra.php) y, desde
-# la fase 3, para volver a calcularla cada vez que se carga o se corrige
-# un resultado (ResultadoRepositorio).
-#
-# Cuenta solo los partidos jugados (estado 'jugado', con su resultado), y
-# quien gana lo dice el ganador guardado, no el marcador: un walkover se
-# gana 0 a 0.
-#
-# En el suizo (fase 3), quedar libre suma como un partido ganado, sin
-# tantos ($libre_suma): ver Suizo.php. En la liga, un libre no suma.
-#
-# El orden lo pone ConfiguracionTorneo::ordenarPosiciones, que conoce
-# los puntajes y el criterio de desempate de la liga.
-# =====================================================================
+# Modelo: TablaPosiciones -> la tabla calculada desde los partidos
 
 require_once __DIR__ . '/PosicionTabla.php';
 require_once __DIR__ . '/ConfiguracionTorneo.php';
@@ -30,7 +9,7 @@ class TablaPosiciones
 {
     #region ATRIBUTOS
     private $configuracion;      # objeto ConfiguracionTorneo
-    private $posiciones;         # arreglo de PosicionTabla, indexado por id de participante
+    private $posiciones;
     private $libre_suma;         # true en el suizo
     #endregion
 
@@ -47,9 +26,7 @@ class TablaPosiciones
         }
     }
 
-    # Suma los partidos jugados de las rondas (objetos Ronda con sus
-    # enfrentamientos y resultados). Un libre no suma nada, y uno que no
-    # esta jugado tampoco, aunque tenga un resultado a medio camino.
+    # Suma los partidos jugados de las rondas (objetos Ronda con sus enfrentamientos y resultados).
     public function sumarRondas($rondas)
     {
         foreach ($rondas as $ronda) {
@@ -95,8 +72,7 @@ class TablaPosiciones
         }
     }
 
-    # Las filas por id de participante, sin ordenar: lo que se guarda en
-    # tabla_posiciones.
+    # Las filas por id de participante, sin ordenar: lo que se guarda en tabla_posiciones.
     public function getPosiciones()
     {
         return $this->posiciones;

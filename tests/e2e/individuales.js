@@ -1,24 +1,4 @@
-// =====================================================================
 // Ligas individuales y cancelar una liga (fase 3) - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/individuales.js
-//
-// Con cuentas nuevas en cada corrida (ver comun.js), mira en la
-// pantalla Y en la base:
-//   1. "Nuevo torneo" pregunta quien compite: equipos o jugadores
-//   2. una liga individual en el panel: "Jugadores anotados", sin el
-//      formulario de anotar equipos (y un POST armado no anota nada)
-//   3. CU-09: cada jugador se inscribe solo desde la pagina de la liga,
-//      sin pedido; una vez por cuenta; hasta el cupo; sin sesion, al
-//      acceso; sin token, 403; la auditoria
-//   4. la liga en juego: fixture, tabla y participantes con los nombres
-//      de las personas; un resultado; el calendario del sitio
-//   5. RF-17, cancelar en vez de borrar: con la casilla, los pedidos
-//      pendientes quedan sin lugar, la liga deja de verse (y su nombre
-//      queda libre), lo jugado queda en la base; otra cuenta no cancela
-//      una liga ajena
-// Deja rastro, como ligas.js.
-// =====================================================================
 'use strict';
 const c = require('./comun');
 const { BASE, sql, texto, azar } = c;
@@ -42,7 +22,7 @@ let nav = null;
   const url_crear = await c.direccionDe(O.p, 'crear.php');
   const url_panel = await c.direccionDe(O.p, 'panel.php');
 
-  // --- 1. Quien compite -----------------------------------------------
+  // 1. Quien compite
   console.log('--- 1. Nuevo torneo: quien compite ---');
   await O.p.goto(`${BASE}/crear.php`);
   t.chk(await O.p.$$eval('input[name="compite"]', l => l.map(e => e.value + (e.checked ? '*' : '')).join(' ')) === 'equipos* jugadores',
@@ -64,7 +44,7 @@ let nav = null;
   t.chk(sql(`SELECT tt.nombre FROM torneo t JOIN tipo_torneo tt USING (id_tipo_torneo) WHERE t.id_torneo = ${id}`) === 'Individual',
         'la liga queda individual');
 
-  // --- 2. El panel ----------------------------------------------------
+  // 2. El panel
   console.log('--- 2. El panel ---');
   await O.p.goto(`${BASE}/panel.php`);
   const tarjeta = await O.p.textContent(`#liga-${id}`);
@@ -76,7 +56,7 @@ let nav = null;
   t.chk(r.cuerpo.includes('En esta competencia compiten jugadores') && sql(`SELECT COUNT(*) FROM participante WHERE id_torneo = ${id}`) === '0',
         'un POST armado para anotar un equipo no anota nada');
 
-  // --- 3. Cada jugador se inscribe solo -------------------------------
+  // 3. Cada jugador se inscribe solo
   console.log('--- 3. Inscripcion de jugadores (CU-09) ---');
   const anon = await nav.newContext();
   const pa = await anon.newPage();
@@ -121,7 +101,7 @@ let nav = null;
   r = await c.postear(J5.ctx, url_insc, { token_csrf: await c.token(J5.p), id_torneo: muestra });
   t.chk(r.destino.includes('aviso=sin-equipo'), 'en una liga por equipos, sin equipo no se pide nada');
 
-  // --- 4. La liga en juego --------------------------------------------
+  // 4. La liga en juego
   console.log('--- 4. La liga en juego ---');
   await c.postear(O.ctx, url_panel, { token_csrf: tko, accion: 'cerrar', id_torneo: String(id) });
   await c.postear(O.ctx, url_panel, { token_csrf: tko, accion: 'fixture', id_torneo: String(id) });
@@ -154,7 +134,7 @@ let nav = null;
         'el calendario del sitio muestra el partido con los nombres de los jugadores');
   await pub.close();
 
-  // --- 5. Cancelar ----------------------------------------------------
+  // 5. Cancelar
   console.log('--- 5. Cancelar una liga (RF-17) ---');
   // Una liga por equipos, con un equipo y un pedido pendiente.
   const cancelable = `Liga Cancelable ${sufijo}`;

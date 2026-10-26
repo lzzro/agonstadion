@@ -1,20 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: PedidoInscripcionRepositorio   ->   tabla "pedido_inscripcion"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acceso a la base para los pedidos de lugar en una liga. Aceptar un
-# pedido es, en una misma transaccion, marcarlo aceptado y agregar el
-# equipo como participante: si una de las dos cosas falla, no queda
-# ninguna. Antes se bloquea la fila del torneo (ver
-# TorneoRepositorio::bloquearYContar) y se cuenta el cupo con el
-# bloqueo puesto: dos aceptaciones a la vez no pasan del cupo.
-#
-# Un solo pendiente por equipo y liga lo garantiza la base
-# (uq_pinsc_pendiente): si ya hay uno, el INSERT falla con 1062.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: PedidoInscripcionRepositorio -> tabla "pedido_inscripcion"
 
 require_once __DIR__ . '/PedidoInscripcion.php';
 require_once __DIR__ . '/TorneoRepositorio.php';
@@ -32,21 +17,13 @@ class PedidoInscripcionRepositorio
         $this->conexion = $conexion;
     }
 
-    # Registra el pedido. Las reglas que no son de la base (que la liga
-    # tenga la inscripcion abierta y lugar, que no sea de muestra, que el
-    # equipo no este ya adentro) se miran aca, en una transaccion y con la
-    # fila del torneo bloqueada (SELECT ... FOR UPDATE): asi un pedido no
-    # se cuela mientras se cierra la inscripcion, que bloquea la misma
-    # fila. Que no haya dos pendientes lo cuida la base.
-    # Devuelve un arreglo de errores, vacio si quedo registrado.
+    # Registra el pedido.
     public function crear(PedidoInscripcion $pedido)
     {
         $errores = $pedido->validar();
         if (!empty($errores)) {
             return $errores;
         }
-        # Las ligas de muestra las organiza una cuenta que no inicia
-        # sesion: un pedido ahi quedaria sin resolver para siempre.
         if ($pedido->getTorneo()->esDeMuestra()) {
             return array('Una liga de muestra no recibe pedidos.');
         }
@@ -117,8 +94,7 @@ class PedidoInscripcionRepositorio
                              'i', array((int)$id_torneo));
     }
 
-    # El ultimo pedido de cada equipo de un capitan en una liga, para que
-    # torneo.php diga en que quedo. Arreglo indexado por id de equipo.
+    # El ultimo pedido de cada equipo de un capitan en una liga, para que torneo.php diga en que quedo.
     public function ultimosDeCapitan($id_torneo, $id_usuario)
     {
         $pedidos = $this->buscar('WHERE pi.id_torneo = ? AND e.id_usuario_capitan = ?
@@ -132,9 +108,7 @@ class PedidoInscripcionRepositorio
         return $ultimos;
     }
 
-    # Acepta ($aceptar = true) o rechaza el pedido. Devuelve un arreglo de
-    # errores, vacio si quedo resuelto. Primero las reglas del dominio
-    # (PedidoInscripcion), despues la base.
+    # Acepta ($aceptar = true) o rechaza el pedido.
     public function resolver(PedidoInscripcion $pedido, Usuario $organizador, $aceptar)
     {
         $motivos = $pedido->motivosParaNoResolver($organizador);
@@ -170,10 +144,6 @@ class PedidoInscripcionRepositorio
         }
 
         $estado = $aceptar ? 'aceptado' : 'rechazado';
-        # GREATEST: la resolucion nunca queda antes del pedido, aunque el
-        # pedido se haya guardado con la hora del servidor (antes de que la
-        # conexion pasara a la de Montevideo, ver config/database.php); si
-        # no, ck_pinsc_fechas frenaria una resolucion legitima.
         $sql = "UPDATE pedido_inscripcion
                    SET estado = ?, fecha_resolucion = GREATEST(NOW(), fecha_pedido), id_usuario_resuelve = ?
                  WHERE id_pedido_inscripcion = ? AND id_torneo = ? AND estado = 'pendiente'";
@@ -231,8 +201,6 @@ class PedidoInscripcionRepositorio
         return $hay;
     }
 
-    # --- Auxiliar ---------------------------------------------------
-    # Una sola consulta para todas las busquedas: cambia el WHERE.
     private function buscar($condicion, $tipos, $valores)
     {
         $sql = 'SELECT pi.id_pedido_inscripcion, pi.estado AS estado_pedido, pi.fecha_pedido,

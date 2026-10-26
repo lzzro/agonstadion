@@ -1,37 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Fixture   ->   tablas "ronda" y "enfrentamiento"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Arma el calendario de una liga: todos contra todos, cada fecha con
-# todos los equipos jugando una vez. Es una clase del dominio: recibe
-# los participantes y devuelve las fechas, sin saber nada de la base
-# (eso es FixtureRepositorio).
-#
-# El metodo del circulo. Se pone a los participantes en una ronda: el
-# primero queda fijo y los demas giran un lugar por fecha, como las
-# agujas de un reloj. En cada fecha se enfrentan el primero con el
-# ultimo, el segundo con el penultimo, y asi hasta el medio. Al girar,
-# cada uno se cruza una sola vez con cada uno de los otros.
-#
-#   con 6 equipos (A fijo):   fecha 1: A-F  B-E  C-D
-#                             fecha 2: A-E  F-D  B-C   (gira B C D E F)
-#                             ...5 fechas en total
-#
-# Con una cantidad impar se agrega un lugar vacio: quien le toca
-# enfrentarlo queda "libre" esa fecha (en la base, un enfrentamiento
-# sin visitante). El libre va siempre ultimo en la fecha.
-#
-# Localia: el fijo es local en las fechas impares y visitante en las
-# pares; en los otros cruces es local el de la mitad de arriba de la
-# ronda. Asi, en una vuelta, ningun equipo es local mas de una vez por
-# encima de otro. De ida y vuelta, la segunda vuelta repite las mismas
-# fechas con la localia al reves.
-#
-# Con los mismos participantes en el mismo orden, el fixture es siempre
-# el mismo: los de la migracion 005 estan inscriptos en el orden que da
-# el fixture de muestra (lo comprueba tests/php/muestra.php).
-# =====================================================================
+# Modelo: Fixture -> tablas "ronda" y "enfrentamiento"
 
 require_once __DIR__ . '/Participante.php';
 
@@ -40,8 +8,7 @@ class Fixture
     #region ATRIBUTOS
     private $participantes;   # arreglo de Participante, en orden de inscripcion
     private $ida_y_vuelta;    # 1 o 0
-    private $fechas;          # arreglo de fechas; cada una, un arreglo de cruces
-                              # array('local' => Participante, 'visitante' => Participante o null)
+    private $fechas;
     #endregion
 
     #region FUNCIONES
@@ -92,7 +59,7 @@ class Fixture
         return $errores;
     }
 
-    # Arma las fechas. Devuelve un arreglo de errores, vacio si se armo.
+    # Arma las fechas.
     public function generar()
     {
         $errores = $this->validar();
@@ -119,9 +86,6 @@ class Fixture
                 $a = $orden[$i];
                 $b = $orden[$n - 1 - $i];
 
-                # El fijo alterna la localia fecha a fecha (la primera
-                # fecha es la 0 aca, la 1 en pantalla); en los demas
-                # cruces es local el de la mitad de arriba.
                 if ($i === 0 && $ronda % 2 === 1) {
                     $local = $b;
                     $visitante = $a;
@@ -151,8 +115,7 @@ class Fixture
             array_unshift($resto, $ultimo);
         }
 
-        # Segunda vuelta: las mismas fechas, con la localia al reves. El
-        # libre sigue siendo libre.
+        # Segunda vuelta: las mismas fechas, con la localia al reves.
         if ($this->ida_y_vuelta === 1) {
             $vuelta = array();
             foreach ($this->fechas as $cruces) {

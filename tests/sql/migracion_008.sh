@@ -1,36 +1,5 @@
 #!/bin/bash
-# =====================================================================
 # La migracion 008, en bases de prueba propias - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   bash tests/sql/migracion_008.sh [socket...]
-#
-# Prueba sql/migraciones/008_modulos.sql (modulo_competencia.habilitado,
-# RF-24) en cada servidor de MariaDB cuyo socket se le pase (sin
-# argumentos, /run/mysqld/mysqld.sock). Crea sus propias bases, con el
-# prefijo t008_ y un sufijo al azar, y las borra al terminar, tambien si
-# algo falla (trap). Nunca toca sgdm. Corre la 008 sin el bloque del
-# permiso de sgdm_app ("[solo servidor propio]").
-#
-# La base de antes de la 008 es el schema.sql del commit 5d8c612 (el
-# ultimo antes de la fase 3) con la 005, la 006 y la 007.
-#
-# Casos:
-#   1. Base de antes: la 008 da en su ultima consulta lo de su cabecera
-#      (columna 1, 3 modulos habilitados, CHECK 38), y la base queda como
-#      una nueva (SHOW CREATE TABLE).
-#   2. La 008 otra vez: no cambia nada.
-#   3. Base nueva (schema.sql de ahora, la 005, la 006 y la 007): lo
-#      mismo, y la 008 no cambia nada. La base de antes con la 008 y las
-#      que siguen (si hay) queda igual que la nueva.
-#   4. Sin la 007: frena en la primera consulta, sin cambiar nada.
-#   5. La restriccion: habilitado solo 0 o 1; un modulo deshabilitado
-#      sigue en el catalogo.
-#   6. El original trae el permiso dentro del bloque "[solo servidor
-#      propio]", sobre una sola columna.
-#
-# Escribe una linea por comprobacion (ok o FALLA) y al final TODO BIEN o
-# cuantas fallaron; sale con 0 o con 1, y con 2 si no puede ni empezar.
-# =====================================================================
 
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -168,8 +137,6 @@ for SOCKET in "${SOCKETS[@]}"; do
     chk 'modulo_competencia queda como en la base nueva (SHOW CREATE TABLE)' \
         iguales "$(estructura "$VIEJA" modulo_competencia)" "$(estructura "$NUEVA" modulo_competencia)" \
         || diff <(estructura "$VIEJA" modulo_competencia) <(estructura "$NUEVA" modulo_competencia) | detalle
-    # La base de antes con esta migracion y las que siguen queda igual
-    # que una nueva (las que siguen pueden cambiar tablas que ya estaban).
     VUELTA=$BASE
     crear_base aldia
     cargar "$BASE" "$TMP/schema_viejo.sql" && cargar "$BASE" "$TMP/005.sql" && cargar "$BASE" "$TMP/006.sql" && cargar "$BASE" "$TMP/007.sql" && cargar "$BASE" "$TMP/008.sql"

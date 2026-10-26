@@ -1,15 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Disciplina   ->   tabla "disciplina" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Catalogo: Esports, Ajedrez, Tenis de mesa, Futbol, Cartas y Futbol 5
-# (con sus tildes en la base desde la migracion 005).
-#
-# getUnidad() dice como se llaman los tantos de un marcador en esa
-# disciplina, para las pestanas de la liga: "+9 de diferencia de mapas",
-# "goles a favor".
-# =====================================================================
+# Modelo: Disciplina -> tabla "disciplina" de sql/schema.sql
 
 class Disciplina
 {
@@ -28,8 +18,6 @@ class Disciplina
 
     public function getIdDisciplina() { return $this->id_disciplina; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdDisciplina($id_disciplina)
     {
         $this->id_disciplina = (int)$id_disciplina;

@@ -1,20 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Enfrentamiento   ->   tabla "enfrentamiento" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Composicion: contiene dos objetos Participante (local y visitante) y,
-# si ya se jugo, un objeto Resultado.
-#
-# El visitante puede quedar en null: es el caso del "libre" (bye),
-# cuando la cantidad de participantes es impar. En la tabla la clave
-# foranea del visitante admite NULL justamente por eso.
-#
-# Desde la fase 3, el organizador lo programa (dia, hora y lugar), lo
-# marca en vivo mientras se juega y le carga el resultado, que lo deja
-# jugado. Un resultado se puede corregir mientras la fecha no se
-# cierra: asignarResultado() reemplaza al anterior.
-# =====================================================================
+# Modelo: Enfrentamiento -> tabla "enfrentamiento" de sql/schema.sql
 
 require_once __DIR__ . '/Participante.php';
 require_once __DIR__ . '/Resultado.php';
@@ -50,8 +35,6 @@ class Enfrentamiento
 
     public function getIdEnfrentamiento() { return $this->id_enfrentamiento; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdEnfrentamiento($id_enfrentamiento)
     {
         $this->id_enfrentamiento = (int)$id_enfrentamiento;
@@ -90,9 +73,6 @@ class Enfrentamiento
         return $this->local->getNombreVisible() . ' vs ' . $this->visitante->getNombreVisible();
     }
 
-    # El resultado tal como esta guardado, al leerlo de la base: ya paso
-    # las restricciones de la tabla, y el estado del enfrentamiento es el
-    # de la base. Para uno nuevo, asignarResultado().
     public function cargarResultado(Resultado $resultado)
     {
         $this->resultado = $resultado;
@@ -136,10 +116,7 @@ class Enfrentamiento
         return $errores;
     }
 
-    # El dia, la hora y el lugar. La fecha y hora llegan como
-    # AAAA-MM-DD HH:MM (lo que manda el campo del formulario) o null, si
-    # todavia no se sabe; el lugar, hasta 80 caracteres, o vacio. Un
-    # partido jugado no se reprograma.
+    # El dia, la hora y el lugar.
     public function programar($fecha_hora, $lugar)
     {
         $errores = array();
@@ -164,8 +141,7 @@ class Enfrentamiento
         return $errores;
     }
 
-    # AAAA-MM-DD HH:MM, una fecha que existe (no el 31 de junio) y una
-    # hora del dia.
+    # AAAA-MM-DD HH:MM, una fecha que existe (no el 31 de junio) y una hora del dia.
     public static function fechaHoraValida($texto)
     {
         if (!is_string($texto) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(:00)?$/', $texto, $p)) {
@@ -176,9 +152,7 @@ class Enfrentamiento
             && (int)$p[4] <= 23 && (int)$p[5] <= 59;
     }
 
-    # Marca el partido en vivo mientras se juega, o lo vuelve a
-    # programado. Solo entre esos dos estados: un jugado ya tiene su
-    # resultado.
+    # Marca el partido en vivo mientras se juega, o lo vuelve a programado.
     public function cambiarEnVivo($en_vivo)
     {
         if ($this->esLibre()) {

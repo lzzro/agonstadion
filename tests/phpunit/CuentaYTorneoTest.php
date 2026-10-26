@@ -1,6 +1,5 @@
 <?php
-# Las cuentas (RF-01, RF-02) y las reglas de un torneo que cruzan su
-# formato con su configuracion (RF-14, RF-17).
+# Las cuentas (RF-01, RF-02) y las reglas de un torneo que cruzan su formato con su configuracion (RF-14, RF-17).
 
 use PHPUnit\Framework\TestCase;
 
@@ -16,9 +15,6 @@ final class CuentaYTorneoTest extends TestCase
         $this->assertNotEmpty($u->asignarClave('corta'));
     }
 
-    # La politica de contrasenas (Ciberseguridad, tercera entrega): una
-    # mayuscula, una minuscula y un numero, y nada del nombre, el
-    # apellido ni el correo. Una clave rechazada no cambia el hash.
     public function testLaClaveCumpleLaPolitica(): void
     {
         $u = new Usuario(null, 'teseo@ejemplo.invalid', null, 'Ariadna', 'Minos');

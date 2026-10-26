@@ -1,28 +1,11 @@
 #!/bin/bash
-# monitoreo-bd.sh
-# Agón - Stadion - Administración de Sistemas Operativos - Tercera entrega
-# Consultas y monitoreo de la base de datos sgdm (MariaDB 10.11), con menú.
-#
-#   bash scripts/monitoreo-bd.sh          el menú
-#   bash scripts/monitoreo-bd.sh --csv    una lectura en metricas/bd.csv, sin
-#                                         preguntar nada (para cron)
-#
-# Entra con sgdm_consulta, la cuenta de la base que SOLO PUEDE LEER (el DCL de
-# sql/schema.sql le da SELECT y nada más): mirar la base no puede cambiarla.
-# Su contraseña va en scripts/consultas.local.cnf, que el .gitignore excluye,
-# y se le pasa al cliente con --defaults-extra-file, igual que en respaldo.sh:
-# lo que va en la línea de comandos lo ve cualquiera con "ps aux".
-# El paso a paso, en docs/servidor.md.
+# Consultas y monitoreo de la base sgdm con la cuenta sgdm_consulta, que solo lee. Con --csv, una lectura para cron.
 
-
-# Rutas: se deducen de dónde está el script, así anda desde cualquier carpeta
-# (cron no arranca en la carpeta del proyecto).
 carpeta_script="$(cd "$(dirname "$0")" && pwd)"
 raiz="$(cd "$carpeta_script/.." && pwd)"
 credenciales="$carpeta_script/consultas.local.cnf"
 csv="$raiz/metricas/bd.csv"
 base="sgdm"
-
 
 # Comprobaciones antes de mostrar nada
 comprobar(){
@@ -43,9 +26,6 @@ if [ "$permisos" != "600" ]; then
 fi
 }
 
-# La hora de Montevideo, la misma que usa el sitio (apps/config/database.php):
-# la auditoría se guarda con esa hora, y "las últimas 24 horas" se cuentan
-# desde ahí.
 zona="SET time_zone = '-03:00';"
 
 # Una consulta, mostrada como tabla
@@ -63,9 +43,7 @@ echo
 read -r -p "Presione Enter para volver al menú..."
 }
 
-
-# 1. El servidor de base de datos: si está andando, versión, tiempo encendido
-#    y conexiones. Lo de GLOBAL_STATUS lo puede leer cualquier cuenta.
+# 1. El servidor de base de datos: si está andando, versión, tiempo encendido y conexiones.
 estado_servidor(){
 clear
 echo "===== ESTADO DEL SERVIDOR DE BASE DE DATOS ====="
@@ -96,7 +74,6 @@ UNION ALL SELECT 'Conexiones rechazadas (clave mal o sin permiso)', VARIABLE_VAL
 pausa
 }
 
-
 # 2. Cuánto ocupa la base, tabla por tabla, de la más grande a la más chica
 tamano_tablas(){
 clear
@@ -116,9 +93,7 @@ SELECT COUNT(*) AS Tablas,
 pausa
 }
 
-
-# 3. Cantidad exacta de registros de cada tabla. La de la opción 2 es una
-#    estimación de InnoDB; esta cuenta fila por fila (COUNT).
+# 3. Cantidad exacta de registros de cada tabla.
 registros_por_tabla(){
 clear
 echo "===== REGISTROS POR TABLA ====="
@@ -135,9 +110,7 @@ consulta "$sql;"
 pausa
 }
 
-
-# 4. Lo que pasa en el sistema: cuentas, torneos, partidos, pedidos y
-#    mediciones
+# 4. Lo que pasa en el sistema: cuentas, torneos, partidos, pedidos y mediciones
 actividad(){
 clear
 echo "===== ACTIVIDAD DEL SISTEMA ====="
@@ -167,10 +140,7 @@ SELECT (SELECT COUNT(*) FROM pedido_rol WHERE estado = 'pendiente') AS 'Pedidos 
 pausa
 }
 
-
-# 5. Seguridad: inicios de sesión fallidos y últimos movimientos del
-#    registro de auditoría. Muchos fallos seguidos desde una misma dirección
-#    son un intento de adivinar contraseñas.
+# 5. Seguridad: inicios de sesión fallidos y últimos movimientos del registro de auditoría.
 seguridad(){
 clear
 echo "===== SEGURIDAD (últimas 24 horas) ====="
@@ -198,9 +168,6 @@ SELECT a.fecha_hora AS Fecha, a.accion AS Acción, a.tabla_afectada AS Tabla,
 pausa
 }
 
-
-# 6. Comprobar las tablas: CHECK TABLE revisa que los datos y los índices de
-#    cada una estén sanos (después de un corte de luz, por ejemplo)
 comprobar_tablas(){
 clear
 echo "===== COMPROBACIÓN DE LAS TABLAS ====="
@@ -213,22 +180,19 @@ do
     fi
     lista="$lista\`$tabla\`"
 done
-# Un renglón por tabla: "sgdm.usuario: OK". Si alguna no da OK, el mensaje
-# de MariaDB dice qué tiene.
+# Un renglón por tabla: "sgdm.usuario: OK".
 valor "CHECK TABLE $lista;" | awk -F'\t' '$3 == "status" || $3 == "error" { print $1 ": " $4 }'
 malas=$(valor "CHECK TABLE $lista;" | awk -F'\t' '$3 == "status" && $4 != "OK" || $3 == "error"' | wc -l)
 echo
 if [ "$malas" -eq 0 ]; then
     echo "Todas las tablas están sanas."
 else
-    echo "ATENCIÓN: $malas tabla(s) con problemas. Restaurar desde el último respaldo (docs/respaldos-cron.md)."
+    echo "ATENCIÓN: $malas tabla(s) con problemas. Restaurar desde el último respaldo (manual de administrador, sección 5)."
 fi
 pausa
 }
 
-
-# 7. Una lectura en metricas/bd.csv. Es lo que corre cron cada 5 minutos
-#    (con --csv), y Grafana lo lee igual que metricas/metricas.csv.
+# 7. Una lectura en metricas/bd.csv.
 guardar_lectura(){
 mkdir -p "$(dirname "$csv")" || exit 6
 if [ ! -f "$csv" ]; then
@@ -247,8 +211,6 @@ SELECT CONCAT_WS(',',
   (SELECT COUNT(*) FROM torneo WHERE estado = 'en_curso'),
   (SELECT COUNT(*) FROM enfrentamiento WHERE estado = 'en_vivo'),
   (SELECT COUNT(*) FROM auditoria WHERE accion = 'login_error' AND fecha_hora >= NOW() - INTERVAL 1 HOUR))" 2>&1)
-# Si la base no contesta, se anota la hora con las columnas vacías: un hueco
-# en el gráfico dice más que una línea que se corta sin aviso.
 if echo "$linea" | grep -Eq "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]{8}(,[0-9]+){10}$"; then
     echo "$linea" >> "$csv"
 else
@@ -257,7 +219,6 @@ else
     return 7
 fi
 }
-
 
 # Sin menú, para cron: una lectura y listo
 if [ "${1:-}" = "--csv" ]; then
@@ -268,7 +229,6 @@ elif [ -n "${1:-}" ]; then
     echo "Uso: $0 [--csv]"
     exit 2
 fi
-
 
 # Menú principal: se repite hasta que se elige 0
 comprobar

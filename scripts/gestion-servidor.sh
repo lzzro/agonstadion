@@ -1,32 +1,15 @@
 #!/bin/bash
-# gestion-servidor.sh
-# Agón - Stadion - Administración de Sistemas Operativos - Tercera entrega
-# Script general de gestión del servidor (AlmaLinux 8.10), con menú: servicios,
-# recursos, sesiones, registros, respaldos, actualizaciones e informe. Desde acá
-# se abren también los otros tres scripts del servidor (usuarios, seguridad y
-# base de datos).
-#
-# Lo ejecuta agonadmin, el usuario con sudo:  bash scripts/gestion-servidor.sh
-# Igual que en gestion_usuarios.sh (primera entrega), cada comando que cambia el
-# sistema lleva sudo, y cada cambio queda anotado en el registro.
-# El paso a paso, en docs/servidor.md.
-
+# Script general del servidor de Stadion (menú): servicios, recursos, registros, respaldos y actualizaciones.
 
 carpeta_script="$(cd "$(dirname "$0")" && pwd)"
 raiz="$(cd "$carpeta_script/.." && pwd)"
-# El registro de los cambios y los informes van en /var/log/stadion, fuera
-# del proyecto (agonadmin no escribe en /var/www/stadion). Con sudo.
 carpeta_log="/var/log/stadion"
 log="$carpeta_log/servidor.log"
 
-# El usuario de servicio de la primera entrega: corre las tareas
-# programadas (respaldos y métricas) y es el dueño de las claves de la base
-# y de los respaldos. Lo que usa esas claves se corre como él.
 usuario_tareas="respaldo"
 
 # Los servicios de los que depende el sitio, y los de la seguridad
 servicios="httpd mariadb crond sshd firewalld fail2ban"
-
 
 anotar(){
 sudo mkdir -p "$carpeta_log"
@@ -44,9 +27,7 @@ read -r -p "$1 (s/n): " respuesta
 [ "$respuesta" == "s" ]
 }
 
-
-# 1. El estado de cada servicio: activo, detenido, y si arranca solo al
-#    prender la máquina
+# 1. El estado de cada servicio: activo, detenido, y si arranca solo al prender la máquina
 estado_servicios(){
 clear
 echo "===== ESTADO DE LOS SERVICIOS ====="
@@ -61,7 +42,6 @@ echo
 echo "Sitio: $(curl -s -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null) en http://localhost/ (200 es que anda)"
 pausa
 }
-
 
 # 2. Iniciar, detener o reiniciar un servicio de la lista
 manejar_servicio(){
@@ -88,8 +68,6 @@ esac
 if [ "$s" == "sshd" ] && [ "$accion" == "stop" ]; then
     echo "ATENCIÓN: sin sshd nadie más entra por SSH (esta sesión sigue abierta)."
 fi
-# Apache: antes de reiniciarlo se revisa la configuración, para no dejar el
-# sitio caído por un error de escritura
 if [ "$s" == "httpd" ] && [ "$accion" != "stop" ]; then
     if ! sudo apachectl configtest; then
         echo "La configuración de Apache tiene un error: no se reinicia."
@@ -104,7 +82,6 @@ if confirmar "¿$texto $s?"; then
 fi
 pausa
 }
-
 
 # 3. Recursos: disco, memoria, carga y los procesos que más consumen
 recursos(){
@@ -127,7 +104,6 @@ du -sh "$raiz"/backups "$raiz"/metricas "$raiz"/public/subidas 2>/dev/null
 pausa
 }
 
-
 # 4. Quién está conectado, los últimos inicios de sesión y los fallidos
 sesiones(){
 clear
@@ -143,9 +119,7 @@ sudo lastb -n 10 2>/dev/null | head -10
 pausa
 }
 
-
-# 5. Los registros: los últimos renglones de Apache, MariaDB, el respaldo y
-#    este mismo registro
+# 5. Los registros: los últimos renglones de Apache, MariaDB, el respaldo y este mismo registro
 registros(){
 clear
 echo "===== REGISTROS ====="
@@ -166,9 +140,6 @@ esac
 pausa
 }
 
-
-# 6. Los respaldos: hacer uno ahora, ver los que hay y comprobar el último
-#    (su hash y su firma digital)
 respaldos(){
 clear
 echo "===== RESPALDOS ====="
@@ -200,7 +171,6 @@ esac
 pausa
 }
 
-
 # 7. Actualizaciones: ver las pendientes y aplicar las de seguridad
 actualizaciones(){
 clear
@@ -220,9 +190,7 @@ fi
 pausa
 }
 
-
-# 8. Un informe con todo lo anterior, en un archivo con la fecha, para
-#    guardar o mandar
+# 8. Un informe con todo lo anterior, en un archivo con la fecha, para guardar o mandar
 informe(){
 clear
 archivo="$carpeta_log/informe_$(date +%Y-%m-%d_%H%M).txt"
@@ -266,10 +234,7 @@ anotar "INFORME" "$archivo"
 pausa
 }
 
-
-# 9, 10 y 11: los otros scripts del servidor. El segundo dato dice con qué
-# usuario se corre (el monitoreo de la base, como respaldo: es el dueño de
-# consultas.local.cnf).
+# 9, 10 y 11: los otros scripts del servidor.
 abrir(){
 if [ -f "$carpeta_script/$1" ]; then
     if [ -n "${2:-}" ]; then
@@ -286,7 +251,6 @@ else
     sleep 2
 fi
 }
-
 
 # Menú principal: se repite hasta que se elige 0
 opcion=""

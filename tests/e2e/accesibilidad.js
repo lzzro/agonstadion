@@ -1,71 +1,4 @@
-// =====================================================================
 // Accesibilidad de todas las vistas, con axe-core - Stadion (Agon)
-// ---------------------------------------------------------------------
-//   node tests/e2e/accesibilidad.js
-//
-// Contra la copia de publicacion (deploy/sitio):
-//   STADION_URL=http://127.0.0.1:8096 \
-//   STADION_MYSQL="mysql --socket=/srv/m114/run/mysqld.sock sgdm" \
-//   node tests/e2e/accesibilidad.js
-//
-// Pasa axe-core (el de NODE_PATH, junto a playwright-core; ver
-// tests/README.md) por cada vista, con las reglas de WCAG 2.2 A y AA y
-// las buenas practicas (etiquetas wcag2a, wcag2aa, wcag21a, wcag21aa,
-// wcag22aa y best-practice), en 390 px (el telefono) y en 1024 px, de
-// dia y de noche. En cada una de esas cuatro vueltas mira:
-//   - el modo: de noche, <html data-theme="noche">, que pone tema.js
-//     a partir de la preferencia guardada (la prueba la guarda antes de
-//     abrir la pagina, como si se hubiera tocado el interruptor); de
-//     dia, sin el atributo
-//   - que la vista sea la que se quiere revisar (el titulo, la pestana
-//     abierta, el formulario...), para no revisar otra sin darse cuenta
-//   - ninguna violacion de axe; cada una sale con su regla, su selector
-//     y la vista, y al final van todas juntas. Lo que axe deja "sin
-//     decidir" (incomplete, casi siempre contraste sobre texto oculto o
-//     dentro de un SVG) no es una falla: se cuenta al final, por regla
-//   - que la pagina no se desplace de costado (scrollWidth del
-//     documento <= clientWidth); si se desplaza, nombra lo que se sale
-//   - que el primer Tab sea "Saltar al contenido", y que su destino se
-//     vea. Con ancla (torneo.php#reglas, el perfil en #mis-torneos) el
-//     navegador arranca el recorrido del teclado en el destino del
-//     ancla, que es lo que corresponde: para medir desde arriba, antes
-//     del Tab el foco vuelve al principio del documento (como al
-//     entrar a la pagina desde la barra de direcciones), y el Tab tiene
-//     que caer en la copia de "Saltar al contenido" de la vista abierta
-//
-// Las vistas:
-//   sin sesion    inicio, torneos, torneo (sin ancla y sus cuatro
-//                 pestanas por ancla), una liga con la inscripcion
-//                 abierta, un torneo que no existe (404), calendario (la
-//                 semana por defecto y ?semana=), llave, acceso y alta;
-//                 y al final la liga de la prueba, con su fixture
-//   organizador   el formulario de liga nueva, el mismo devuelto por el
-//                 servidor con un error (un nombre que ya usa otra liga
-//                 vigente: el navegador lo deja pasar), el panel vacio,
-//                 el panel con una liga con la inscripcion abierta (4
-//                 equipos anotados y un pedido pendiente de un capitan)
-//                 y con la inscripcion cerrada y el fixture armado (con
-//                 la casilla de rehacer); "Fechas y resultados" de esa
-//                 liga: la fecha en juego, con un resultado cargado y
-//                 otro partido en vivo y programado, una fecha por
-//                 jugar, y devuelta con un error (fase 3); el panel con
-//                 una liga individual y su casilla de cancelar; una
-//                 eliminacion directa: su llave en torneo.php y en
-//                 llave.php, y sus rondas y resultados; los reportes
-//   administrador la administracion, y devuelta con un error
-//   jugador       el perfil en Mis torneos con su equipo armado (y
-//                 despues con el equipo jugando la liga), el perfil con
-//                 el aviso del rol de organizador (?aviso=organizador
-//                 #roles), y la liga con la inscripcion abierta con el
-//                 formulario "Pedir lugar"; una liga individual con
-//                 "Inscribirse"; el perfil en Rendimiento con mediciones
-//                 (graficos, comparacion, formularios y tabla), y devuelto
-//                 con un error de una medicion
-//
-// Las cuentas se crean en cada corrida (ver comun.js): correo de
-// @ejemplo.invalid y contrasena al azar, solo en memoria. Otras pruebas
-// pueden estar agregando ligas a la misma base: nada se cuenta fijo.
-// =====================================================================
 'use strict';
 const axe = require('axe-core');
 const c = require('./comun');
@@ -82,9 +15,7 @@ const sin_decidir = new Map(); // regla => casos
 
 const idDe = nombre => parseInt(sql(`SELECT id_torneo FROM torneo WHERE nombre = ${texto(nombre)} ORDER BY id_torneo LIMIT 1`), 10);
 
-// Un contexto de navegador para un modo: sin sesion, o con la sesion
-// de la cuenta. De noche, la preferencia queda guardada antes de abrir
-// cualquier pagina (tema.js la lee en el <head>).
+// Un contexto de navegador para un modo: sin sesion, o con la sesion de la cuenta.
 async function contexto(nav, modo, cuenta) {
   let ctx;
   if (cuenta) {
@@ -100,13 +31,6 @@ async function contexto(nav, modo, cuenta) {
   return ctx;
 }
 
-// --- Lo que se mide dentro de la pagina ---------------------------------
-// Corren en el navegador (p.evaluate): no pueden usar nada de afuera.
-
-// El ancho del documento y, si se sale, lo que lo empuja: los elementos
-// que pasan el borde derecho sin un padre que los recorte o los
-// desplace (una .tabla-scroll se desplaza adentro, y esta bien), solo
-// los de mas afuera.
 function medirDesborde() {
   const raiz = document.documentElement;
   const cw = raiz.clientWidth, sw = raiz.scrollWidth;
@@ -134,8 +58,7 @@ function medirDesborde() {
   return { cw, sw, culpables: culpables.slice(0, 6) };
 }
 
-// El foco al principio del documento: el cuerpo lo recibe un instante
-// y deja de ser enfocable. El Tab siguiente sale desde ahi.
+// El foco al principio del documento: el cuerpo lo recibe un instante y deja de ser enfocable.
 function alPrincipio() {
   const b = document.body;
   b.setAttribute('tabindex', '-1');
@@ -160,11 +83,6 @@ const vistasAbiertas = p => p.evaluate(() => {
 const hay = async (p, selector) => (await p.$(selector)) !== null;
 const textoDe = async (p, selector) => { const e = await p.$(selector); return e ? (await e.textContent()).replace(/\s+/g, ' ').trim() : ''; };
 
-// --- Una vista, en los dos anchos y los dos modos -----------------------
-//   ctxs    { dia, noche }: los contextos (sin sesion, o con la cuenta)
-//   v.vista el nombre que sale en cada renglon
-//   v.abrir (p) => la respuesta de la pagina (un goto, o un envio)
-//   v.que   lo que dice que es la vista buscada, y v.es (p, r) lo mira
 async function revisar(t, ctxs, v) {
   console.log(`--- ${v.vista} ---`);
   for (const modo of MODOS) {
@@ -230,7 +148,7 @@ let nav = null;
   t.chk(S > 0 && sql(`SELECT estado FROM torneo WHERE id_torneo = ${S}`) === 'inscripcion',
         `la Liga Interna Club Sur esta en la base, con la inscripcion abierta (${S})`);
 
-  // --- 1. Sin sesion ------------------------------------------------------
+  // 1. Sin sesion
   console.log('===== 1. Sin sesion =====');
   const anon = { dia: await contexto(nav, 'dia'), noche: await contexto(nav, 'noche') };
   const ir = url => p => p.goto(`${BASE}/${url}`);
@@ -269,7 +187,7 @@ let nav = null;
   ];
   for (const v of publicas) await revisar(t, anon, v);
 
-  // --- 2. Las cuentas -------------------------------------------------------
+  // 2. Las cuentas
   console.log('===== 2. Organizador =====');
   const org = await c.cuentaNueva(nav, 'Ofelia', 'Accesible');
   const jug = await c.cuentaNueva(nav, 'Jacinto', 'Capitán');
@@ -283,8 +201,6 @@ let nav = null;
   await revisar(t, orgs, { vista: 'crear.php (liga nueva)', abrir: ir('crear.php'), que: 'el formulario "Nuevo torneo", sin avisos',
     es: async p => (await p.title()) === 'Nuevo torneo · Stadion' && await hay(p, 'main form input[name="nombre"]') && !(await hay(p, '[role="alert"]')) });
 
-  // El formulario devuelto con un error del servidor: todo lo que el
-  // navegador acepta, pero el nombre es el de otra liga vigente.
   await revisar(t, orgs, { vista: 'crear.php devuelto con errores', que: 'titulo "Aviso ·", el error al lado del nombre y el campo con aria-invalid',
     abrir: async p => {
       await p.goto(`${BASE}/crear.php`);
@@ -324,7 +240,7 @@ let nav = null;
     que: 'la liga de la prueba, con "Iniciar sesión para pedir lugar"',
     es: async p => (await textoDe(p, 'h1')) === liga && (await textoDe(p, '.pedir-lugar a')) === 'Iniciar sesión para pedir lugar' });
 
-  // --- 3. El jugador arma su equipo -------------------------------------------
+  // 3. El jugador arma su equipo
   console.log('===== 3. Jugador =====');
   const equipo = `Los Contrastes ${sufijo}`;
   const perfil = await c.direccionDe(J.p, 'perfil.php');
@@ -356,7 +272,7 @@ let nav = null;
   t.chk(sql(`SELECT COUNT(*) FROM pedido_inscripcion pi JOIN equipo e USING (id_equipo)
              WHERE pi.id_torneo = ${id} AND e.nombre = ${texto(equipo)} AND pi.estado = 'pendiente'`) === '1', 'el capitan pide lugar: un pedido pendiente');
 
-  // --- 4. El panel con la liga ----------------------------------------------------
+  // 4. El panel con la liga
   console.log('===== 4. Panel con la liga =====');
   await revisar(t, orgs, { vista: 'panel (inscripcion abierta, un pedido)', abrir: ir('panel.php'),
     que: '4 de 8 equipos, "Anotar equipo", el pedido con Aceptar y Rechazar, y "Cerrar la inscripción"',
@@ -364,8 +280,6 @@ let nav = null;
                    && await hay(p, `#liga-${id} button[aria-label="Aceptar el pedido de ${equipo}"]`)
                    && await hay(p, `#liga-${id} form.accion-liga input[value="cerrar"]`) });
 
-  // Se acepta el pedido (asi el equipo del jugador juega la liga), se
-  // cierra la inscripcion y se arma el fixture.
   await O.p.goto(`${BASE}/panel.php`);
   await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id} button[aria-label="Aceptar el pedido de ${equipo}"]`)]);
   await O.p.goto(`${BASE}/panel.php`);
@@ -384,7 +298,7 @@ let nav = null;
     es: async p => await hay(p, `#liga-${id} input[type="checkbox"][name="confirmo"]`) && !(await hay(p, `#liga-${id} form.anotar-equipo`))
                    && (await textoDe(p, `#liga-${id}`)).includes('5 fechas armadas') });
 
-  // --- 5. Despues del fixture -------------------------------------------------------
+  // 5. Despues del fixture
   console.log('===== 5. La liga en curso =====');
   await revisar(t, jugs, { vista: 'perfil#mis-torneos (equipo en una liga)', abrir: p => p.goto(`${perfil}#mis-torneos`),
     que: 'Mis torneos con la liga en la tabla, y el equipo',
@@ -394,7 +308,7 @@ let nav = null;
     que: 'el fixture de la liga de la prueba, con el equipo libre de cada fecha',
     es: async p => (await vistasAbiertas(p)) === 'calendario' && (await textoDe(p, '#calendario')).includes('queda libre') });
 
-  // --- 6. Fechas y resultados (fase 3) ----------------------------------------------
+  // 6. Fechas y resultados (fase 3)
   console.log('===== 6. Fechas y resultados =====');
   await O.p.goto(`${BASE}/panel.php`);
   await Promise.all([O.p.waitForNavigation(), O.p.click(`#liga-${id} a.btn-primario`)]);
@@ -433,7 +347,7 @@ let nav = null;
     },
     es: async p => (await p.title()).startsWith('Aviso · Fechas y resultados') && (await textoDe(p, '[role="alert"]')).includes('80 caracteres') });
 
-  // --- 7. Una liga individual (fase 3) ------------------------------------------------
+  // 7. Una liga individual (fase 3)
   console.log('===== 7. Liga individual =====');
   const individual = `Liga Individual Accesible ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);
@@ -451,7 +365,7 @@ let nav = null;
     es: async p => (await textoDe(p, `#liga-${id_ind}`)).includes('Jugadores anotados') && !(await hay(p, `#liga-${id_ind} form.anotar-equipo`))
                    && await hay(p, `#liga-${id_ind} form.cancelar-liga input[type="checkbox"]`) });
 
-  // --- 8. Una eliminacion directa (fase 3) ---------------------------------------------
+  // 8. Una eliminacion directa (fase 3)
   console.log('===== 8. Eliminacion directa =====');
   const copa = `Copa Accesible ${sufijo}`;
   await O.p.goto(`${BASE}/crear.php`);
@@ -484,7 +398,7 @@ let nav = null;
     que: 'los cuartos, con los pases libres y "Cerrar la ronda" apagado',
     es: async p => (await textoDe(p, '#fecha h2')) === 'Cuartos de final' && (await textoDe(p, '#fecha')).includes('Pase libre') });
 
-  // --- 9. Rendimiento fisico (RF-29) ---------------------------------------------------
+  // 9. Rendimiento fisico (RF-29)
   console.log('===== 9. Rendimiento fisico =====');
   sql(`INSERT INTO medicion (id_usuario, prueba, distancia_cm, tiempo_s, masa_kg, fecha) VALUES
        (${jug.id}, 'reaccion', 14.2, NULL, NULL, '2026-09-01'), (${jug.id}, 'reaccion', 11.1, NULL, NULL, '2026-09-15'),
@@ -494,8 +408,6 @@ let nav = null;
     que: 'los indicadores, dos graficos, la comparacion, los formularios y la tabla de mediciones',
     es: async p => (await vistasAbiertas(p)) === 'rendimiento' && (await p.$$('#rendimiento svg.grafico')).length === 2
                    && (await p.$$('#cargar-medicion form.medicion')).length === 3 && (await p.$$('#mis-mediciones tbody tr')).length === 6 });
-  // Devuelto con un error del servidor: el formulario sin la validacion
-  // del navegador (como uno que no la tiene), con una regla de 31 cm.
   await revisar(t, jugs, { vista: 'perfil#rendimiento devuelto con un error', que: 'titulo "Aviso ·", el error al lado del formulario y los campos con aria-invalid',
     abrir: async p => {
       await p.goto(`${perfil}#rendimiento`);
@@ -510,7 +422,7 @@ let nav = null;
                    && await hay(p, 'input[name="distancia"][aria-invalid="true"][aria-describedby="error-medicion-reaccion"]') });
   t.chk(sql(`SELECT COUNT(*) FROM medicion WHERE id_usuario = ${jug.id}`) === '6', 'el formulario con errores no guarda nada');
 
-  // --- 10. Reportes y administracion (tercera entrega) -------------------------------
+  // 10. Reportes y administracion
   console.log('===== 10. Reportes y administracion =====');
   await O.p.goto(`${BASE}/panel.php`);
   const url_reportes = await O.p.$eval('main a.btn:has-text("Reportes")', a => a.href);
@@ -537,13 +449,11 @@ let nav = null;
     es: async p => (await p.title()).startsWith('Aviso ·') && (await textoDe(p, '[role="alert"]')).includes('Dar de baja una cuenta pide marcar la confirmación.') });
   t.chk(sql(`SELECT activo FROM usuario WHERE id_usuario = ${org.id}`) === '1', 'sin la casilla, la cuenta sigue activa');
 
-  // --- Resumen ------------------------------------------------------------------------
+  // Resumen
   console.log('===== Resumen =====');
   if (violaciones.length === 0) {
     console.log('  Violaciones de axe: ninguna.');
   } else {
-    // Agrupadas por regla y selector, sin el numero de orden de los
-    // renglones (:nth-child): el mismo elemento repetido es un caso.
     const grupos = new Map();
     for (const x of violaciones) {
       const k = `${x.regla} (${x.impacto}) · ${x.selector.replace(/:nth-child\(\d+\)/g, ':nth-child(…)')}`;

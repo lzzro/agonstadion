@@ -1,15 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: PosicionRepositorio   ->   tabla "tabla_posiciones"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Lee la tabla de posiciones guardada de una liga. La tabla solo guarda
-# los contadores (ganados, empatados, perdidos, a favor, en contra):
-# los puntos, la diferencia y el puesto se calculan al mostrarla, con
-# los puntajes y el desempate de la liga (ver schema.sql, seccion 8).
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: PosicionRepositorio -> tabla "tabla_posiciones"
 
 require_once __DIR__ . '/PosicionTabla.php';
 require_once __DIR__ . '/ConfiguracionTorneo.php';
@@ -27,10 +17,6 @@ class PosicionRepositorio
         $this->conexion = $conexion;
     }
 
-    # Las filas de la liga, ya ordenadas. $participantes es el arreglo de
-    # ParticipanteRepositorio::listarDeTorneo: las filas usan esos mismos
-    # objetos. Solo cuentan los participantes que estan en el arreglo.
-    # null si la consulta no se puede hacer.
     public function tablaDe($id_torneo, $participantes, ConfiguracionTorneo $configuracion)
     {
         $sql = 'SELECT tp.id_participante, tp.ganados, tp.empatados, tp.perdidos,

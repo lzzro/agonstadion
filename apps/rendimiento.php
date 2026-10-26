@@ -1,23 +1,9 @@
 <?php
-# =====================================================================
 # Vista parcial: rendimiento fisico (RF-29)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Lo que dibuja la pestana Rendimiento del perfil con las mediciones de
-# la base: el grafico de la evolucion de un indicador, en SVG y sin
-# JavaScript (el mismo estilo del grafico de la maqueta: .grafico,
-# .reja, .trazo, .punto, .rotulo), y el nombre corto de una persona
-# para la comparacion ("H. Alejandría").
-#
-# Cada numero del grafico va escrito (los rotulos de los ejes, el primer
-# y el ultimo valor, y un <title> por punto), y el SVG lleva en
-# aria-label lo que muestra, para quien no lo ve.
-# =====================================================================
 
 require_once __DIR__ . '/models/Medicion.php';
 require_once __DIR__ . '/fechas.php';
 
-# "H. Alejandría": la inicial del nombre y el apellido, para mostrar.
 function nombreCorto(Usuario $usuario)
 {
     $nombre = $usuario->getNombreVisible();
@@ -30,8 +16,6 @@ function diaMes($fecha)
     return substr($fecha, 8, 2) . '/' . substr($fecha, 5, 2);
 }
 
-# El grafico de la evolucion de una prueba. $mediciones: las de esa
-# prueba, de la mas vieja a la mas nueva (al menos dos).
 function graficoEvolucion($mediciones, $prueba)
 {
     $datos   = Medicion::pruebas();
@@ -43,8 +27,6 @@ function graficoEvolucion($mediciones, $prueba)
     }
     $n = count($valores);
 
-    # Los ejes: de un poco menos que el minimo a un poco mas que el
-    # maximo, con cuatro lineas de reja a pasos redondos.
     $minimo = min($valores);
     $maximo = max($valores);
     if ($maximo - $minimo < 1e-9) {
@@ -95,11 +77,6 @@ function graficoEvolucion($mediciones, $prueba)
         $svg .= '  <circle class="punto" cx="' . round($x($i), 1) . '" cy="' . round($y($valores[$i]), 1) . '" r="4"><title>'
               . diaMes($mediciones[$i]->getFecha()) . ': ' . $texto($valores[$i]) . ' ' . $corta . '</title></circle>' . "\n";
     }
-    # El primer y el ultimo valor escritos, del lado contrario al tramo
-    # que llega a su punto (asi la linea no los tapa), y las fechas abajo:
-    # todas si son pocas, si no la primera y la ultima. En el telefono los
-    # dos valores no se dibujan (style.css): estan en las tarjetas y en la
-    # tabla de mediciones.
     foreach (array(0 => 1, $n - 1 => $n - 2) as $i => $vecino) {
         $yy    = $y($valores[$i]);
         $abajo_del_punto = ($y($valores[$vecino]) < $yy);
@@ -115,9 +92,7 @@ function graficoEvolucion($mediciones, $prueba)
     return $svg . '</svg>' . "\n";
 }
 
-# El dato crudo de una medicion, en pocas palabras y en HTML: "15,0 cm",
-# "2,30 s · 68,0 kg". Cada dato en su <span class="dato">, que no se
-# parte: en el telefono el renglon se corta solo entre los dos.
+# El dato crudo de una medicion, en pocas palabras y en HTML: "15,0 cm", "2,30 s · 68,0 kg".
 function datoCrudo(Medicion $m)
 {
     if ($m->getPrueba() === 'reaccion') {

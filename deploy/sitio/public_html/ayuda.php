@@ -1,14 +1,7 @@
 <?php
 require __DIR__ . '/../stadion_app/config/pagina.php';
 
-# =====================================================================
-# Ayuda - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Pagina fija (tercera entrega): las preguntas mas comunes por rol,
-# sacadas del manual de usuario. No lee de la base. Los nombres de los
-# botones y las pestanas son los de la pantalla: si cambia uno, cambia
-# aca tambien. El menu no marca ninguna entrada.
-# =====================================================================
+# Pagina fija: las preguntas mas comunes por rol, sacadas del manual de usuario.
 ?>
 <!DOCTYPE html>
 <html lang="es">

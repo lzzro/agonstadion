@@ -5,9 +5,7 @@ if (isset($_SESSION['id_usuario'])) {
     header('Location: ' . $ruta_perfil);
     exit;
 }
-# El token del formulario (ver apps/config/csrf.php). Abre una sesion
-# sin nadie adentro: login y registro son las unicas paginas que la
-# abren antes de entrar, porque su formulario tambien lo lleva.
+# El token del formulario (ver apps/config/csrf.php).
 tokenCsrf();
 ?>
 <!DOCTYPE html>

@@ -1,35 +1,5 @@
 <?php
-# =====================================================================
-# Controlador: crear un torneo (una liga, una eliminacion directa o un
-# suizo)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Fase 2 del motor de torneos. Muestra el formulario de una liga nueva
-# (GET) y la guarda (POST). Reemplaza a la maqueta de crear.php, cuyo
-# "Continuar" no guardaba nada.
-#
-# Es solo para cuentas con el rol organizador, y eso se comprueba ACA,
-# en cada pedido, con la cuenta de la sesion leida de la base:
-#   sin sesion vigente   a la pagina de acceso, como el perfil
-#   sin el rol, al abrir el formulario: al perfil, a la tarjeta de los
-#                        roles, donde se pide el de organizador, con un
-#                        aviso que lo explica
-#   sin el rol, con un POST armado a mano: 403, sin guardar nada
-#
-# El organizador de la liga es siempre la cuenta de la sesion, nunca un
-# id que venga del formulario. La liga nace con la inscripcion abierta.
-#
-# Todo se valida aca, en el servidor, campo por campo, aunque el
-# formulario ya traiga sus minimos y maximos: el navegador se puede
-# saltear. Cada error va al lado de su campo, y el titulo de la pagina
-# empieza con "Aviso ·". Despues validan el modelo (Torneo y
-# ConfiguracionTorneo) y la base, con sus CHECK.
-#
-# Con la liga creada, queda la fila en la auditoria y se va al panel
-# (redireccion despues del POST: recargar la pagina no crea otra liga).
-#
-# El formulario trae el token de config/csrf.php.
-# =====================================================================
+# Controlador: crear un torneo (una liga, una eliminacion directa o un suizo)
 
 require_once __DIR__ . '/../config/sesion.php';
 require_once __DIR__ . '/../config/csrf.php';
@@ -45,15 +15,12 @@ require_once __DIR__ . '/../models/AuditoriaRepositorio.php';
 require_once __DIR__ . '/../fechas.php';
 require_once __DIR__ . '/../models/Suizo.php';
 
-# Direcciones. Si quien llama no las dejo preparadas, vale la
-# instalacion local. Ver apps/index.php.
+# Direcciones.
 if (!isset($ruta_publica)) { $ruta_publica = '../../public'; }
 if (!isset($ruta_perfil))  { $ruta_perfil  = 'perfilController.php'; }
 if (!isset($ruta_crear))   { $ruta_crear   = 'crearController.php'; }
 if (!isset($ruta_panel))   { $ruta_panel   = 'panelController.php'; }
 
-# Los formatos (fase 3): la clave del formulario, el nombre del modulo en
-# el catalogo y lo que dice la opcion.
 function formatosDeTorneo()
 {
     return array(
@@ -63,9 +30,6 @@ function formatosDeTorneo()
     );
 }
 
-# Las opciones de "Partidos", con lo que dice cada una en el formulario.
-# 'empate' y 'unico' son un partido unico (con o sin empate); los
-# numeros, una serie al mejor de ese numero.
 function formatosDePartido()
 {
     return array(
@@ -85,7 +49,7 @@ $mensaje = '';
 $errores = array();
 $errores_campo = array();   # campo => mensaje, para mostrarlo al lado
 
-# --- 1. Sin sesion vigente, al acceso --------------------------------
+# 1. Sin sesion vigente, al acceso
 if (!sesionVigente()) {
     header('Location: ' . $ruta_publica . '/login.php');
     exit;
@@ -93,7 +57,7 @@ if (!sesionVigente()) {
 
 $id_usuario = (int)$_SESSION['id_usuario'];
 
-# --- 2. Conexion, cuenta y rol ---------------------------------------
+# 2. Conexion, cuenta y rol
 $conexion = conectarBD();
 if ($conexion === null) {
     $errores[] = $error_bd;
@@ -131,10 +95,6 @@ if ($disciplinas === null) {
     $disciplinas = array();
 }
 
-# Los formatos habilitados (RF-24): la administracion puede deshabilitar
-# un modulo de competencia, y entonces "Nuevo torneo" no lo ofrece. Si
-# el catalogo no se puede leer, se ofrecen los tres (crearLiga lo vuelve
-# a mirar con el modulo leido de la base).
 $modulos = $catalogos->modulos();
 $formatos_habilitados = array();
 foreach (formatosDeTorneo() as $clave => $f) {
@@ -143,8 +103,6 @@ foreach (formatosDeTorneo() as $clave => $f) {
     }
 }
 
-# Lo que muestra el formulario: lo que llego, o los valores de una liga
-# nueva (los mismos DEFAULT de configuracion_torneo).
 $valores = array(
     'formato'    => empty($formatos_habilitados) ? 'liga' : $formatos_habilitados[0],
     'rondas'     => '',
@@ -163,7 +121,7 @@ $valores = array(
     'clasifican' => '0'
 );
 
-# --- 3. Guardar ------------------------------------------------------
+# 3. Guardar
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!csrfValido()) {
@@ -174,8 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $valores[$campo] = (isset($_POST[$campo]) && is_string($_POST[$campo])) ? trim($_POST[$campo]) : '';
         }
 
-        # Cada campo, con su mensaje. Los numeros se castean con (int)
-        # recien despues de ver que son numeros enteros.
+        # Cada campo, con su mensaje.
         if ($valores['nombre'] === '') {
             $errores_campo['nombre'] = 'El nombre es obligatorio.';
         } elseif (mb_strlen($valores['nombre']) < 4 || mb_strlen($valores['nombre']) > 80) {
@@ -187,9 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errores_campo['disciplina'] = 'Falta elegir el juego o deporte.';
         }
 
-        # El formato (fase 3), y lo que pide cada uno: la eliminacion
-        # directa no admite empate, y solo la liga va de ida y vuelta. El
-        # suizo pide sus rondas (vacio: segun los inscriptos).
         $formatos = formatosDeTorneo();
         if (!isset($formatos[$valores['formato']])) {
             $errores_campo['formato'] = 'Falta elegir el formato.';
@@ -208,8 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        # Quien compite (fase 3): equipos, o jugadores en una liga
-        # individual, donde cada uno se anota con su cuenta (CU-09).
         if ($valores['compite'] !== 'equipos' && $valores['compite'] !== 'jugadores') {
             $errores_campo['compite'] = 'Falta elegir si compiten equipos o jugadores.';
         }
@@ -222,9 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errores_campo['vueltas'] = 'Falta elegir una vuelta o ida y vuelta.';
         }
 
-        # Como se juega cada partido (fase 3): un partido unico que admite
-        # empate, uno que siempre tiene ganador, o una serie al mejor de
-        # 3, 5 o 7, que nunca termina empatada (ck_config_serie_empate).
         if (!array_key_exists($valores['partido'], formatosDePartido())) {
             $errores_campo['partido'] = 'Falta elegir cómo se juega cada partido.';
         }
@@ -238,8 +187,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!ctype_digit($valores['derrota']) || (int)$valores['derrota'] > 10) {
             $errores_campo['derrota'] = 'La derrota vale de 0 a 10 puntos.';
         }
-        # La misma regla que ck_config_pts: la victoria vale al menos lo
-        # que el empate, y el empate al menos lo que la derrota.
         if (!isset($errores_campo['victoria']) && !isset($errores_campo['empate'])
             && (int)$valores['empate'] > (int)$valores['victoria']) {
             $errores_campo['empate'] = 'El empate no vale más que la victoria.';
@@ -258,8 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errores_campo['sede'] = 'La sede lleva hasta 80 caracteres.';
         }
 
-        # Cuantos clasifican a playoffs (RF-14), solo en la liga. Sin el
-        # campo, ninguno.
+        # Cuantos clasifican a playoffs (RF-14), solo en la liga.
         if ($valores['clasifican'] === '') {
             $valores['clasifican'] = '0';
         }
@@ -274,8 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($valores['inicio'] !== '' && !Torneo::fechaValida($valores['inicio'])) {
             $errores_campo['inicio'] = 'La fecha de inicio no es una fecha válida.';
         } elseif ($valores['inicio'] !== '' && $valores['inicio'] < $hoy) {
-            # Las dos van como AAAA-MM-DD: comparar el texto es comparar
-            # las fechas.
+            # Las dos van como AAAA-MM-DD: comparar el texto es comparar las fechas.
             $errores_campo['inicio'] = 'La fecha de inicio va de hoy en adelante.';
         }
 
@@ -316,8 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
 
-                # El nombre repetido es un error del campo nombre; lo
-                # demas va arriba.
+                # El nombre repetido es un error del campo nombre; lo demas va arriba.
                 foreach ($resultado as $error) {
                     if (strpos($error, 'nombre') !== false) {
                         $errores_campo['nombre'] = $error;

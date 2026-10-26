@@ -1,47 +1,6 @@
--- =====================================================================
--- SGDM - Stadion (Agon) - Lucas Martiarena
--- Migracion 003: pedidos de rol
--- ---------------------------------------------------------------------
--- Para las bases creadas con el schema.sql anterior a los pedidos de rol
--- (como la del XAMPP local). Una base nueva no la necesita:
--- sql/schema.sql ya trae todo esto.
---
--- Que agrega:
---   - La tabla pedido_rol: una cuenta pide un rol (hoy, organizador) y
---     un administrador lo aprueba o lo rechaza. Un solo pedido pendiente
---     por cuenta y por rol, y nadie resuelve su propio pedido: las dos
---     cosas las garantiza la base, no solo el codigo. El porque de cada
---     restriccion esta comentado en schema.sql, sobre la tabla.
---   - Tres acciones nuevas en el registro de auditoria: pedido_rol,
---     aprobacion y rechazo. Para eso se reemplaza ck_audit_accion por
---     otro con la lista completa.
---   - El permiso de sgdm_app sobre la tabla nueva (INSERT y UPDATE, sin
---     DELETE), SOLO en XAMPP: ver el ultimo bloque.
---
--- Como se corre, a mano, una vez en cada base (igual que la 001 y la 002):
---   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm
---      en XAMPP). Sin USE, a proposito.
---   2. Pestana SQL (o Import), pegar o subir este archivo, y Go.
---   3. Con la cuenta con la que se administra la base (root en XAMPP
---      o en la VM).
---
--- Que esperar:
---   - En XAMPP corre entero.
---   - Con una cuenta sin permisos de administracion, el ultimo bloque
---     (GRANT) da un error de permisos. Todo lo anterior al GRANT ya quedo
---     hecho: el permiso se da despues, con la cuenta de administracion.
---   - Si se corre dos veces, el CREATE TABLE avisa "Table 'pedido_rol'
---     already exists" y no cambia nada.
---
--- La tabla lleva su codificacion escrita (utf8mb4), igual que todas las
--- de schema.sql: asi queda en utf8mb4 aunque la base este en latin1. En
--- una base donde esta migracion ya corrio antes de ese agregado, la
--- tabla quedo con la codificacion de la base; la 004 la convierte junto
--- con las demas.
---
--- Necesita MariaDB 10.2 o superior, igual que schema.sql (los CHECK y las
--- columnas calculadas).
--- =====================================================================
+-- Migracion 003: pedidos de rol (tabla pedido_rol y tres acciones nuevas en la auditoria).
+-- Para bases creadas antes de los pedidos de rol; schema.sql ya los trae.
+-- El GRANT del final se corre con la cuenta de administracion de la base.
 
 CREATE TABLE pedido_rol (
   id_pedido_rol       INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -77,9 +36,4 @@ ALTER TABLE auditoria ADD CONSTRAINT ck_audit_accion
 
 SHOW CREATE TABLE pedido_rol;
 
--- ---------------------------------------------------------------------
--- Con la cuenta de administracion de la base (ver arriba).
--- sgdm_app no tiene DELETE sobre esta tabla: un pedido no se borra, se
--- resuelve.
--- ---------------------------------------------------------------------
 GRANT INSERT, UPDATE ON pedido_rol TO 'sgdm_app'@'localhost';

@@ -1,13 +1,8 @@
 #!/bin/bash
-# gestion_usuarios.sh
-# Agón - Stadion - Administración de Sistemas Operativos - Primera entrega
-# Menú para gestionar los usuarios y los grupos del servidor (AlmaLinux 8.10).
-# Lo ejecuta agonadmin, que es el usuario con sudo:  bash gestion_usuarios.sh
-# Igual que en los scripts de clase, cada comando que cambia el sistema lleva sudo.
+# Menú para gestionar usuarios y grupos del servidor.
 
 # Archivo donde queda anotado cada cambio (como el Logs.txt del script de clase)
 log="gestion_usuarios.log"
-
 
 # 1. Crear un usuario, con un grupo nuevo o con uno que ya existe
 crear_usuario(){
@@ -89,7 +84,6 @@ fi
 sleep 2
 }
 
-
 # 2. Eliminar un usuario y su carpeta personal, pidiendo confirmación
 eliminar_usuario(){
 clear
@@ -118,16 +112,12 @@ fi
 sleep 2
 }
 
-
-# 3. Listar los usuarios que tienen su carpeta personal en /home
-#    (los del sistema, como apache o mysql, tienen su carpeta en otro lado)
 listar_usuarios(){
 clear
 echo "Usuarios con carpeta personal en /home:"
 grep /home /etc/passwd | cut -d":" -f1
 read -p "Presione Enter para volver al menú..." x
 }
-
 
 # 4. Cambiar la contraseña de un usuario
 cambiar_contrasena(){
@@ -144,7 +134,6 @@ else
 fi
 sleep 2
 }
-
 
 # 5. Bloquear o desbloquear la cuenta de un usuario
 bloquear_usuario(){
@@ -172,7 +161,6 @@ fi
 sleep 2
 }
 
-
 # 6. Crear un grupo
 crear_grupo(){
 clear
@@ -189,7 +177,6 @@ else
 fi
 sleep 2
 }
-
 
 # 7. Agregar un usuario a un grupo, sin sacarlo de los que ya tiene (-aG)
 agregar_a_grupo(){
@@ -214,16 +201,12 @@ fi
 sleep 2
 }
 
-
-# 8. Listar los grupos: el campo 1 es el nombre y el 4, los usuarios que
-#    tienen ese grupo como secundario (por ejemplo stadion:apache,respaldo)
 listar_grupos(){
 clear
 echo "Grupos (nombre:integrantes):"
 cut -d":" -f1,4 /etc/group
 read -p "Presione Enter para volver al menú..." x
 }
-
 
 # Menú principal: se repite hasta que se elige 0
 opcion=""

@@ -1,24 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: EquipoRepositorio   ->   tablas "equipo" e "integrante_equipo"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Acceso a la base para los equipos:
-#   - un jugador arma su equipo desde el perfil: queda de capitan y de
-#     primer integrante, las dos filas en una transaccion;
-#   - los equipos que capitanea una cuenta, para pedir lugar en una liga;
-#   - buscar un equipo por su nombre, para el panel del organizador;
-#   - los integrantes con su dorsal (RF-12): el capitan suma una cuenta
-#     por su correo, le cambia el dorsal o la da de baja (logica: la
-#     fila queda, con activo = 0 y sin dorsal, asi el numero queda libre).
-#     Solo el capitan, comprobado con la fila del equipo bloqueada.
-#
-# El nombre de un equipo es unico en toda la base (uq_equipo_nom), y el
-# cotejo de la tabla no distingue mayusculas ni tildes: "Los Pumas" y
-# "los pumas" son el mismo nombre.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: EquipoRepositorio -> tablas "equipo" e "integrante_equipo"
 
 require_once __DIR__ . '/Equipo.php';
 require_once __DIR__ . '/Usuario.php';
@@ -37,8 +18,6 @@ class EquipoRepositorio
     }
 
     # Guarda el equipo con su capitan, que queda ademas como integrante.
-    # Devuelve un arreglo de errores, vacio si quedo creado; el id queda
-    # en el objeto.
     public function crearConCapitan(Equipo $equipo)
     {
         $errores = $equipo->validar();
@@ -91,8 +70,7 @@ class EquipoRepositorio
         return array();
     }
 
-    # Los equipos activos que capitanea una cuenta, por nombre. null si
-    # la consulta no se puede hacer.
+    # Los equipos activos que capitanea una cuenta, por nombre. null si la consulta no se puede hacer.
     public function listarDeCapitan(Usuario $capitan)
     {
         $sql = 'SELECT id_equipo, nombre, ciudad, activo, fecha_alta
@@ -116,10 +94,6 @@ class EquipoRepositorio
         return $equipos;
     }
 
-    # --- Integrantes (RF-12) -------------------------------------------
-    # Los integrantes activos de un equipo, cada uno con su cuenta (solo
-    # el nombre) y su dorsal: primero el capitan, despues por dorsal y por
-    # apellido. null si la consulta no se puede hacer.
     public function integrantesDe(Equipo $equipo)
     {
         $sql = 'SELECT ie.id_usuario, ie.dorsal, ie.activo, ie.fecha_alta, u.nombre, u.apellido
@@ -145,9 +119,6 @@ class EquipoRepositorio
         return $lista;
     }
 
-    # Los equipos activos que una cuenta integra sin ser su capitan, cada
-    # uno como array('equipo' => Equipo, 'dorsal' => numero o null).
-    # null si la consulta no se puede hacer.
     public function listarDeIntegrante(Usuario $usuario)
     {
         $sql = 'SELECT e.id_equipo, e.nombre, e.ciudad, e.activo, e.fecha_alta, ie.dorsal,
@@ -178,10 +149,7 @@ class EquipoRepositorio
         return $lista;
     }
 
-    # Suma a un equipo la cuenta de ese correo, con su dorsal (o sin
-    # dorsal: null). Solo el capitan. Una cuenta que ya integro el equipo
-    # y quedo de baja vuelve. Devuelve array('errores' => [...], 'nombre'
-    # => el nombre de la persona sumada).
+    # Suma a un equipo la cuenta de ese correo, con su dorsal (o sin dorsal: null).
     public function sumarIntegrante($id_equipo, Usuario $capitan, $correo, $dorsal)
     {
         $nuevo = new IntegranteEquipo(new Usuario(null, $correo, null, null, null), $dorsal);
@@ -195,8 +163,7 @@ class EquipoRepositorio
             $this->conexion->rollback();
             return array('errores' => array($error), 'nombre' => null);
         }
-        # La cuenta: activa y que no sea de muestra. Un correo que no
-        # es de nadie y uno de una cuenta de baja dan el mismo aviso.
+        # La cuenta: activa y que no sea de muestra.
         $sentencia = $this->conexion->prepare('SELECT id_usuario, nombre, apellido FROM usuario
                                                WHERE correo = ? AND activo = 1 AND de_muestra = 0');
         if ($sentencia === false) {
@@ -249,8 +216,7 @@ class EquipoRepositorio
         return array('errores' => array(), 'nombre' => $nombre);
     }
 
-    # Cambia el dorsal de un integrante activo (tambien el del capitan).
-    # null lo deja sin dorsal. Devuelve un arreglo de errores.
+    # Cambia el dorsal de un integrante activo (tambien el del capitan). null lo deja sin dorsal.
     public function cambiarDorsal($id_equipo, Usuario $capitan, $id_usuario, $dorsal)
     {
         $nuevo = new IntegranteEquipo(new Usuario($id_usuario, null, null, null, null), $dorsal);
@@ -278,8 +244,7 @@ class EquipoRepositorio
         return array();
     }
 
-    # La baja de un integrante: queda la fila, con activo = 0 y sin
-    # dorsal. El capitan no se da de baja de su propio equipo.
+    # La baja de un integrante: queda la fila, con activo = 0 y sin dorsal.
     public function bajaIntegrante($id_equipo, Usuario $capitan, $id_usuario)
     {
         $this->conexion->begin_transaction();
@@ -311,8 +276,6 @@ class EquipoRepositorio
         return array();
     }
 
-    # Bloquea la fila del equipo (FOR UPDATE) y mira que sea un equipo
-    # activo capitaneado por esa cuenta. null si lo es; si no, el aviso.
     private function bloquearComoCapitan($id_equipo, Usuario $capitan)
     {
         $sentencia = $this->conexion->prepare('SELECT id_usuario_capitan, activo FROM equipo WHERE id_equipo = ? FOR UPDATE');
@@ -378,8 +341,7 @@ class EquipoRepositorio
         return $bien;
     }
 
-    # El equipo con ese nombre (sin mirar mayusculas ni tildes), con su
-    # capitan si tiene, o null.
+    # El equipo con ese nombre (sin mirar mayusculas ni tildes), con su capitan si tiene, o null.
     public function buscarPorNombre($nombre)
     {
         $sql = 'SELECT e.id_equipo, e.nombre, e.ciudad, e.activo, e.fecha_alta,

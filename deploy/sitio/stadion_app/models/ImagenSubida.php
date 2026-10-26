@@ -1,33 +1,5 @@
 <?php
-# =====================================================================
 # Modelo: ImagenSubida
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Una imagen que llega por formulario (foto de perfil o portada). Decide
-# si se acepta y, si se acepta, la guarda con un nombre nuevo.
-#
-# Por que cada precaucion:
-#   - El tipo se averigua mirando el contenido con finfo, no por la
-#     extension ni por el tipo que declara el navegador: los dos los
-#     escribe quien sube el archivo y los dos se pueden falsear. Un
-#     "foto.jpg" que por dentro es PHP se rechaza.
-#   - Ademas getimagesize() tiene que poder leerla como imagen y dar el
-#     mismo tipo. Si no, no es una imagen de verdad.
-#   - Solo JPG, PNG y WEBP. No GIF (no hace falta) ni SVG, que es texto
-#     y puede llevar scripts adentro.
-#   - Hasta 2 MB: sobra para una foto de perfil o una portada, y no deja
-#     llenar el disco del servidor con archivos enormes.
-#   - Hasta 4000 pixeles de lado: una camara de telefono saca menos que
-#     eso, y una imagen mas grande es sospechosa o un error.
-#   - El nombre lo pone el sistema: 32 caracteres al azar mas la
-#     extension que corresponde al tipo detectado. El nombre original
-#     nunca se usa, ni para guardar ni para mostrar: podria traer
-#     "../", espacios, o terminar en .php.
-#
-# La carpeta donde se guarda, ademas, no ejecuta nada (ver el .htaccess
-# de public/subidas/). Son dos defensas independientes: si una fallara,
-# queda la otra.
-# =====================================================================
 
 class ImagenSubida
 {
@@ -61,10 +33,7 @@ class ImagenSubida
         return array('image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp');
     }
 
-    # Si un nombre tiene exactamente la forma de los que genera el
-    # sistema. Se usa antes de borrar o mostrar un archivo, aunque el
-    # nombre venga de la base: la base tiene el mismo control
-    # (ck_usuario_foto), pero no cuesta nada mirar dos veces.
+    # Si un nombre tiene exactamente la forma de los que genera el sistema.
     public static function nombreValido($nombre)
     {
         return is_string($nombre)
@@ -83,8 +52,6 @@ class ImagenSubida
             return $errores;
         }
 
-        # El tamano lo corta el propio PHP antes de llegar aca si pasa el
-        # limite de su configuracion; se avisa igual que el limite propio.
         if ($this->archivo['error'] === UPLOAD_ERR_INI_SIZE
             || $this->archivo['error'] === UPLOAD_ERR_FORM_SIZE) {
             $errores[] = $aviso_tamano;
@@ -132,7 +99,6 @@ class ImagenSubida
     }
 
     # Guarda la imagen ya validada en $carpeta con un nombre nuevo.
-    # Devuelve ese nombre, o null si no se pudo guardar.
     public function guardarEn($carpeta)
     {
         if ($this->tipo === null || !is_dir($carpeta) || !is_writable($carpeta)) {
@@ -146,8 +112,7 @@ class ImagenSubida
         if (!move_uploaded_file($this->archivo['tmp_name'], $destino)) {
             return null;
         }
-        # Lectura para todos, escritura solo para el dueno. Nadie la
-        # ejecuta: una imagen no tiene por que.
+        # Lectura para todos, escritura solo para el dueno.
         @chmod($destino, 0644);
         return $nombre;
     }

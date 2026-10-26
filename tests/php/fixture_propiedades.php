@@ -1,20 +1,5 @@
 <?php
-# =====================================================================
 # El fixture (metodo del circulo), sin base - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   php tests/php/fixture_propiedades.php
-#
-# Para cada cantidad de equipos de una liga (4 a 32), de una vuelta y de
-# ida y vuelta, comprueba lo que pide la fase 2:
-#   - cada equipo juega contra cada otro exactamente una vez por vuelta;
-#   - nadie juega dos veces en la misma fecha (y todos aparecen en todas);
-#   - con una cantidad impar, uno queda libre en cada fecha, al final;
-#   - la cantidad de fechas es la que dice ConfiguracionTorneo;
-#   - en una vuelta, la localia esta repartida (nadie es local mas de
-#     una vez por encima de otro);
-#   - la vuelta repite la ida, fecha por fecha, con la localia al reves;
-#   - con los mismos equipos en el mismo orden, sale el mismo fixture.
-# =====================================================================
 
 require __DIR__ . '/comun.php';
 require_once $APLICACION . '/models/Fixture.php';

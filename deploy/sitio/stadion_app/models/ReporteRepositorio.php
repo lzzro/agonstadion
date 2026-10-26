@@ -1,19 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: ReporteRepositorio   ->   los numeros de los reportes (RF-28)
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Lo que cuentan los reportes de cada torneo, ademas de lo que ya trae
-# TorneoRepositorio (inscriptos, fechas, resultados): los partidos (sin
-# los libres ni los anulados), los jugados, los walkovers, los empates y
-# los tantos de los partidos con marcador. Una sola consulta, agrupada
-# por torneo (GROUP BY), para todos los torneos del reporte.
-#
-# Nada de esto se guarda: sale cada vez de los partidos, igual que la
-# tabla de posiciones.
-#
-# Siempre con sentencias preparadas.
-# =====================================================================
+# Modelo: ReporteRepositorio -> los numeros de los reportes (RF-28)
 
 class ReporteRepositorio
 {
@@ -28,10 +14,6 @@ class ReporteRepositorio
         $this->conexion = $conexion;
     }
 
-    # Los numeros de esos torneos: id de torneo => array('partidos',
-    # 'jugados', 'walkovers', 'empates', 'con_marcador', 'tantos'), todos
-    # enteros. Un torneo sin fixture no aparece (vale todo 0). null si la
-    # consulta no se puede hacer.
     public function partidosDe($ids_torneo)
     {
         $ids = array();

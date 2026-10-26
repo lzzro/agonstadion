@@ -1,12 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Ronda   ->   tabla "ronda" de sql/schema.sql
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Composicion: contiene un arreglo de objetos Enfrentamiento. El id del
-# torneo no es atributo de la clase, porque la ronda vive dentro del
-# objeto Torneo que la contiene.
-# =====================================================================
+# Modelo: Ronda -> tabla "ronda" de sql/schema.sql
 
 require_once __DIR__ . '/Enfrentamiento.php';
 
@@ -38,8 +31,6 @@ class Ronda
 
     public function getIdRonda()         { return $this->id_ronda; }
 
-    # Unico setter de la clase: sirve para guardar el id que genera
-    # el AUTO_INCREMENT de la tabla despues de un INSERT.
     public function setIdRonda($id_ronda)
     {
         $this->id_ronda = (int)$id_ronda;
@@ -94,9 +85,6 @@ class Ronda
         return array('Quedan enfrentamientos sin resultado en esta ronda.');
     }
 
-    # Un enfrentamiento tal como esta guardado, al leer la ronda de la
-    # base: sin volver a validarlo (un equipo dado de baja despues sigue
-    # figurando en lo que jugo). Para uno nuevo, agregarEnfrentamiento().
     public function cargarEnfrentamiento(Enfrentamiento $enfrentamiento)
     {
         $this->enfrentamientos[] = $enfrentamiento;

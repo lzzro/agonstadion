@@ -1,41 +1,5 @@
 #!/bin/bash
-# =====================================================================
 # La migracion 006, en bases de prueba propias - Stadion (Agon)
-# ---------------------------------------------------------------------
-#   bash tests/sql/migracion_006.sh [socket...]
-#
-# Prueba sql/migraciones/006_resultados.sql en cada servidor de MariaDB
-# cuyo socket se le pase (sin argumentos, el de la maquina de prueba:
-# /run/mysqld/mysqld.sock). Crea sus propias bases, con el prefijo t006_
-# y un sufijo al azar, y las borra al terminar, tambien si algo falla
-# (trap). Nunca toca sgdm. Entra por el socket con la cuenta del sistema
-# que la corre (root en la maquina de prueba), la que administra la base.
-#
-# Necesita el historial de git: el esquema de antes de la 006 sale del
-# commit 5d8c612 (el ultimo antes de la fase 3), sin los bloques
-# "[solo servidor propio]", con el mismo awk de scripts/armar-deploy.sh.
-# La 005 y la 006 se corren sin esos bloques.
-#
-# Casos:
-#   1. Base vieja (esquema de antes y la 005): la 006 da en su ultima
-#      consulta los numeros de su cabecera (serie 3, empates 0, CHECK
-#      35), y configuracion_torneo y auditoria quedan como en una base
-#      nueva (SHOW CREATE TABLE).
-#   2. La misma base, la 006 otra vez: no cambia nada.
-#   3. Base nueva (schema.sql de ahora, la 005 y la 006): el mismo
-#      resultado. El schema.sql de ahora ya trae lo de las migraciones
-#      que siguen (la 007, la 008...), con sus CHECK: la base vieja con
-#      la 006 y esas migraciones queda igual que la nueva.
-#   4. Sin la 005: frena en la primera consulta, sin cambiar nada.
-#   5. Una base donde la Valorant de muestra volvio a admitir empates:
-#      la 006 no le pone la serie (serie vacia), y no frena.
-#   6. Las restricciones nuevas: al mejor de 4 y una serie con empate
-#      no entran; las acciones nuevas de la auditoria si, y una
-#      inventada no.
-#
-# Escribe una linea por comprobacion (ok o FALLA) y al final TODO BIEN o
-# cuantas fallaron; sale con 0 o con 1, y con 2 si no puede ni empezar.
-# =====================================================================
 
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -168,8 +132,6 @@ for SOCKET in "${SOCKETS[@]}"; do
     chk 'configuracion_torneo y auditoria quedan como en la base nueva (SHOW CREATE TABLE)' \
         iguales "$(estructura "$VIEJA" configuracion_torneo auditoria)" "$(estructura "$NUEVA" configuracion_torneo auditoria)" \
         || diff <(estructura "$VIEJA" configuracion_torneo auditoria) <(estructura "$NUEVA" configuracion_torneo auditoria) | detalle
-    # La base de antes con esta migracion y las que siguen queda igual
-    # que una nueva (las que siguen pueden cambiar tablas que ya estaban).
     VUELTA=$BASE
     crear_base aldia
     cargar "$BASE" "$TMP/schema_viejo.sql" && cargar "$BASE" "$TMP/005.sql" && cargar "$BASE" "$TMP/006.sql"

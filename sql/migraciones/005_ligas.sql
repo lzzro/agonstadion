@@ -1,142 +1,16 @@
--- =====================================================================
--- SGDM - Stadion (Agon) - Lucas Martiarena
--- Migracion 005: ligas (fase 2 del motor de torneos) y datos de muestra
--- ---------------------------------------------------------------------
--- Dos partes en un mismo archivo:
---
--- ESTRUCTURA (lo que necesita la aplicacion para crear ligas, inscribir
--- equipos y armar el fixture). Una base creada con el schema.sql de
--- ahora ya la trae, y en ella esta parte no cambia nada:
---   - usuario.de_muestra: marca las cuentas de muestra. Una cuenta de
---     muestra no inicia sesion nunca (ver "Cuentas de muestra", abajo).
---   - torneo.fecha_inicio pasa a ser opcional: una liga se crea con la
---     inscripcion abierta y la fecha de inicio puede quedar a definir.
---   - torneo.nombre_vigente (columna calculada) con su UNIQUE: dos
---     torneos vigentes (en preparacion, inscripcion o en curso) no
---     comparten nombre, tengan fecha o no.
---   - configuracion_torneo.criterio_desempate: 'diferencia' (diferencia
---     de tantos y despues tantos a favor) o 'favor' (al reves).
---   - La tabla pedido_inscripcion: un capitan pide lugar para su equipo
---     en una liga con la inscripcion abierta, y quien la organiza lo
---     acepta o lo rechaza. Un solo pedido pendiente por equipo y liga,
---     garantizado por la base (igual que en pedido_rol).
---   - Cuatro acciones nuevas en la auditoria: inscripcion, solicitud,
---     cierre y fixture. Se reemplaza ck_audit_accion por la lista entera.
---   - El catalogo con sus tildes ('Futbol' pasa a 'Fútbol', 'Eliminacion
---     directa' a 'Eliminación directa') y una disciplina mas, 'Fútbol 5'
---     (la de la Liga Barrial del Cerro).
---   - El permiso de sgdm_app sobre la tabla nueva, solo en un servidor
---     propio (bloque "[solo servidor propio]").
---
--- DATOS DE MUESTRA: las tres ligas que muestran las paginas publicas,
--- con su historial entero (cada partido jugado con su marcador), para
--- que torneos.php, torneo.php y calendario.php lean todo de la base:
---   - Liga Valorant · Otoño (Comunidad Vórtice): 12 equipos, una
---     vuelta (11 fechas), 7 jugadas y la 8 en curso. Series al mejor de
---     3 mapas: todas con ganador (2-0 o 2-1), ningun empate.
---   - Liga Barrial del Cerro (Centro Juvenil Cerro): 10 equipos, 9
---     fechas, 3 jugadas y la 4 en curso.
---   - Liga Interna Club Sur (Club Sur): inscripcion abierta, 9 de 12.
--- La tabla de posiciones se calcula aca mismo a partir de los partidos
--- (no se escribe a mano). La de la Valorant tiene el mismo orden y las
--- mismas diferencias de mapas que la maqueta de torneo.php; los puntos
--- cambian donde la maqueta tenia empates, que una serie al mejor de 3 no
--- puede tener.
---
--- ORDEN, en una base que viene de antes:
---   1. las que falten de la 001 a la 004
---   2. esta, la 005
--- Frena sin cambiar nada si falta la 003 o la 004 (ver "Que esperar").
--- En una base nueva, creada con sql/schema.sql: solo esta, que ahi
--- carga los datos de muestra (la estructura ya esta).
---
--- ANTES DE CORRERLA: un respaldo. En phpMyAdmin, con la base elegida,
--- Export -> Quick -> SQL -> Go. Hay cuentas reales adentro.
---
--- Como se corre, a mano, una vez en cada base (igual que las otras):
---   1. En phpMyAdmin, elegir la base en la lista de la izquierda (sgdm
---      en XAMPP). Sin USE, a proposito: en otra instalacion la base
---      puede llamarse distinto.
---   2. Pestana SQL (o Import), pegar o subir este archivo, y Go.
---   3. Con la cuenta con la que se administra la base (root en XAMPP
---      o en la VM). sgdm_app no alcanza: no puede
---      cambiar la estructura.
---
--- Que esperar:
---   - Si falta la 003, la primera consulta da "Table ... pedido_rol
---     doesn't exist". Si falta la 004, frena con "CONSTRAINT
---     ck_005_falta_la_004 failed". En los dos casos no se cambio nada:
---     correr la que falta y despues esta.
---   - Si la 005 ya se corrio, frena con "CONSTRAINT
---     ck_005_ya_esta_aplicada failed", sin cambiar nada: correrla dos
---     veces no duplica nada. La consulta del final (paso 6) se puede
---     correr sola, cuantas veces haga falta, para ver el resultado.
---   - Si ya hay un equipo o una cuenta con alguno de los nombres o
---     correos de muestra, o dos torneos vigentes con el mismo nombre
---     (el UNIQUE nuevo no se podria crear), frena con "CONSTRAINT
---     ck_005_nombres_libres failed", tambien sin cambiar nada. La
---     consulta 2c lista cuales.
---   - La ultima consulta tiene que mostrar, en una base que no tenia
---     torneos ni equipos:
---         cuentas_de_muestra   3
---         claves_usables       0
---         ligas_de_muestra     3
---         estados              en_curso / inscripcion / en_curso
---         equipos              31
---         partidos             111
---         jugados              57
---         en_vivo              1
---         filas_tabla          22
---         puntero              Titanes CS · 18 pts · +9
---         octavo               Liceo 3 · 9 pts · -3
---         tablas               18
---         restricciones_check  33
---         claves_foraneas      29
---         indices_unicos       16
---     Los cuatro ultimos son los de una base nueva creada con schema.sql.
---     Si alguno difiere, NO seguir: avisar.
--- -------------------------------------------------------------------
--- Cuentas de muestra
--- -------------------------------------------------------------------
--- Las tres organizadoras de muestra (Comunidad Vórtice, Club Sur y
--- Centro Juvenil Cerro) tienen correos de @ejemplo.invalid, un dominio
--- que no existe ni puede existir, y una "contrasena" que no es un hash:
--- password_verify() no la acepta con ninguna clave. Ademas llevan
--- de_muestra = 1, y el inicio de sesion rechaza esas cuentas antes de
--- mirar la clave. Son dos cerrojos independientes.
--- -------------------------------------------------------------------
--- Por que el fixture de muestra es el que arma la aplicacion
--- -------------------------------------------------------------------
--- Los equipos se inscriben en el orden de las posiciones del metodo del
--- circulo (apps/models/Fixture.php): con esos equipos en ese orden, el
--- fixture que genera la aplicacion es exactamente el de abajo. Lo
--- comprueba tests/php/muestra.php.
---
--- Necesita MariaDB 10.2 o superior. Probada en MariaDB 10.11 (la de la
--- VM) y 11.4, sobre una base migrada desde el esquema
--- anterior, sobre una base nueva y corriendola dos veces.
--- =====================================================================
+-- Migracion 005: lo que necesitan las ligas y las tres ligas de muestra.
+-- Necesita la 003 y la 004. Frena sin cambiar nada si falta alguna o si ya se aplico.
+-- Al final tiene que mostrar 3 ligas de muestra, 31 equipos, 111 partidos y 57 jugados.
 
--- El archivo esta en UTF-8 (lleva tildes y el punto medio de
--- "Valorant · Otoño"), y asi lo tiene que leer el servidor.
 SET NAMES utf8mb4;
 
--- La hora de Montevideo (UTC-3), la misma que usa la aplicacion (ver
--- apps/config/database.php): la fila de la auditoria que deja la carga
--- lleva la hora de aca y no la del servidor, que puede estar en UTC.
--- Vale solo para esta conexion.
+-- La hora de Montevideo, solo para esta conexion.
 SET time_zone = '-03:00';
 
-
--- ---------------------------------------------------------------------
--- 1. Lo que tiene que estar antes. Nada de esto cambia la base.
--- ---------------------------------------------------------------------
--- 1a. La 003: si falta pedido_rol, esto da error y frena.
+-- 1. Lo que tiene que estar antes.
 SELECT COUNT(*) AS pedidos_de_rol FROM pedido_rol;
 
--- 1b. La 004: las tablas en utf8mb4. La tabla temporal solo acepta un 0
---     (lo mismo que en la 004): con cualquier otro numero, el INSERT
---     falla y el archivo deja de correr.
+-- 1b. La 004: las tablas en utf8mb4.
 CREATE TEMPORARY TABLE control_005_004 (
   tablas_en_otra_codificacion INT NOT NULL,
   CONSTRAINT ck_005_falta_la_004 CHECK (tablas_en_otra_codificacion = 0)
@@ -147,11 +21,7 @@ SELECT COUNT(*) FROM information_schema.TABLES
    AND TABLE_COLLATION <> 'utf8mb4_unicode_ci';
 DROP TEMPORARY TABLE control_005_004;
 
-
--- ---------------------------------------------------------------------
 -- 2. Que la 005 no este aplicada, y que los nombres esten libres.
--- ---------------------------------------------------------------------
--- 2a. Ya aplicada: estan las ligas de muestra.
 CREATE TEMPORARY TABLE control_005_aplicada (
   ya_estan INT NOT NULL,
   CONSTRAINT ck_005_ya_esta_aplicada CHECK (ya_estan = 0)
@@ -161,8 +31,7 @@ SELECT COUNT(*) FROM torneo
  WHERE nombre IN ('Liga Valorant · Otoño', 'Liga Barrial del Cerro', 'Liga Interna Club Sur');
 DROP TEMPORARY TABLE control_005_aplicada;
 
--- 2b. Los 31 equipos de muestra. La tabla queda hasta el final: la
---     usan la comprobacion 2c y la carga de los datos (paso 5).
+-- 2b. Los 31 equipos de muestra.
 CREATE TEMPORARY TABLE carga_005_equipo (
   nombre VARCHAR(40) NOT NULL,
   ciudad VARCHAR(40) NULL,
@@ -201,9 +70,7 @@ INSERT INTO carga_005_equipo (nombre, ciudad, alta) VALUES
   ('Sur Femenino', 'Montevideo', '2026-09-10 10:00:00'),
   ('Sur Mixto', 'Montevideo', '2026-09-10 10:00:00');
 
--- 2c. Los nombres de equipo y los correos de muestra que ya esten
---     ocupados. Lo normal: ninguna fila. Se puede correr sola (junto con
---     el CREATE y el INSERT de carga_005_equipo, de arriba): solo mira.
+-- 2c. Los nombres de equipo y los correos de muestra que ya esten ocupados.
 SELECT 'equipo' AS ocupado, e.nombre AS valor
   FROM equipo e JOIN carga_005_equipo c ON c.nombre = e.nombre
 UNION ALL
@@ -229,11 +96,7 @@ SELECT (SELECT COUNT(*) FROM equipo e JOIN carga_005_equipo c ON c.nombre = e.no
                                GROUP BY nombre HAVING COUNT(*) > 1) repetidos);
 DROP TEMPORARY TABLE control_005_nombres;
 
-
--- ---------------------------------------------------------------------
--- 3. Estructura. Cada sentencia se puede repetir: si lo que agrega ya
---    esta, no hace nada. El porque de cada cosa esta en schema.sql.
--- ---------------------------------------------------------------------
+-- 3. Estructura.
 ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS de_muestra TINYINT(1) NOT NULL DEFAULT 0 AFTER foto_portada;
 ALTER TABLE usuario
@@ -280,9 +143,7 @@ CREATE TABLE IF NOT EXISTS pedido_inscripcion (
   CONSTRAINT ck_pinsc_fechas       CHECK (fecha_resolucion IS NULL OR fecha_resolucion >= fecha_pedido)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- La lista de acciones de la auditoria, entera. Entre las dos sentencias
--- la tabla queda un instante sin la restriccion; nada escribe en ella
--- mientras corre la migracion.
+-- La lista de acciones de la auditoria, entera.
 ALTER TABLE auditoria DROP CONSTRAINT IF EXISTS ck_audit_accion;
 ALTER TABLE auditoria
   ADD CONSTRAINT ck_audit_accion CHECK (accion IN ('alta', 'baja', 'modificacion',
@@ -290,37 +151,20 @@ ALTER TABLE auditoria
                                                    'pedido_rol', 'aprobacion', 'rechazo',
                                                    'inscripcion', 'solicitud', 'cierre', 'fixture'));
 
--- El catalogo, con sus tildes. utf8mb4_unicode_ci compara sin mirar las
--- tildes, asi que el WHERE encuentra el nombre este como este, y la
--- segunda vez escribe lo mismo que ya hay.
 UPDATE disciplina         SET nombre = 'Fútbol'              WHERE nombre = 'Futbol';
 UPDATE modulo_competencia SET nombre = 'Eliminación directa' WHERE nombre = 'Eliminacion directa';
 INSERT INTO disciplina (nombre)
 SELECT 'Fútbol 5' FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM disciplina WHERE nombre = 'Fútbol 5');
 
-
--- ---------------------------------------------------------------------
--- 4. El permiso de sgdm_app sobre la tabla nueva: lo mismo que sobre
---    pedido_rol, INSERT y UPDATE sin DELETE (un pedido se resuelve, no
---    se borra). Pide la cuenta de administracion de la base.
--- ---------------------------------------------------------------------
 -- [solo servidor propio] desde aca
 GRANT INSERT, UPDATE ON pedido_inscripcion TO 'sgdm_app'@'localhost';
 -- [solo servidor propio] hasta aca
 
-
--- ---------------------------------------------------------------------
--- 5. Los datos de muestra, todo o nada. Si una sentencia falla, el
---    archivo deja de correr, la transaccion no llega al COMMIT y, al
---    cerrarse la conexion, se deshace entera: no queda nada a medias.
--- ---------------------------------------------------------------------
+-- 5. Los datos de muestra, todo o nada.
 START TRANSACTION;
 
--- Las tres cuentas organizadoras. La "contrasena" empieza con "!", que
--- no es el comienzo de ningun hash que produzca password_hash():
--- password_verify() da falso con cualquier clave. Sin alias, para no
--- ocupar ninguno que pueda querer una cuenta real.
+-- Las tres cuentas organizadoras.
 INSERT INTO usuario (correo, hash_password, nombre, apellido, alias, presentacion,
                      activo, fecha_alta, de_muestra) VALUES
   ('vortice@ejemplo.invalid', '!cuenta-de-muestra:sin-clave', 'Comunidad',      'Vórtice', NULL,
@@ -337,8 +181,7 @@ SELECT u.id_usuario, r.id_rol, u.fecha_alta
  WHERE u.de_muestra = 1
    AND u.correo IN ('vortice@ejemplo.invalid', 'clubsur@ejemplo.invalid', 'cerro@ejemplo.invalid');
 
--- Las tres ligas. Las fechas de fin son las de la ultima fecha del
--- fixture; la Liga Interna todavia no lo tiene.
+-- Las tres ligas.
 INSERT INTO torneo (nombre, id_disciplina, id_tipo_torneo, id_modulo, id_usuario_organizador,
                     fecha_inicio, fecha_fin, max_participantes, sede, estado, fecha_creacion)
 SELECT 'Liga Valorant · Otoño', d.id_disciplina, tt.id_tipo_torneo, m.id_modulo, u.id_usuario,
@@ -363,12 +206,7 @@ SELECT 'Liga Interna Club Sur', d.id_disciplina, tt.id_tipo_torneo, m.id_modulo,
  WHERE d.nombre = 'Fútbol' AND tt.nombre = 'Por equipos' AND m.nombre = 'Liga'
    AND u.correo = 'clubsur@ejemplo.invalid';
 
--- Su configuracion: 3/1/0 en las tres, una vuelta, desempate por
--- diferencia y despues a favor. La Valorant clasifica a 4 a playoffs y
--- no admite empates (admite_empate = 0): sus series son al mejor de 3
--- mapas, y una serie al mejor de un numero impar siempre tiene ganador.
--- Los puntos por empate quedan en 1, como en las otras, pero ningun
--- partido suyo termina empatado.
+-- Su configuracion: 3/1/0 en las tres, una vuelta, desempate por diferencia y despues a favor.
 INSERT INTO configuracion_torneo (id_torneo, puntos_victoria, puntos_empate, puntos_derrota,
                                   admite_empate, clasifican_playoffs, ida_y_vuelta,
                                   criterio_desempate, rondas_previstas, reglas)
@@ -388,14 +226,10 @@ INSERT INTO configuracion_torneo (id_torneo, puntos_victoria, puntos_empate, pun
 SELECT id_torneo, 3, 1, 0, 1, 0, 0, 'diferencia', NULL, NULL
   FROM torneo WHERE nombre = 'Liga Interna Club Sur';
 
--- Los equipos: 12 de la Liga Valorant, 10 de la Liga Barrial y 9 de la
--- Liga Interna. Sin capitan: son de muestra, sin cuentas detras.
+-- Los equipos: 12 de la Liga Valorant, 10 de la Liga Barrial y 9 de la Liga Interna.
 INSERT INTO equipo (nombre, ciudad, fecha_alta)
 SELECT nombre, ciudad, alta FROM carga_005_equipo;
 
--- Inscripciones, en el orden de las posiciones del metodo del circulo:
--- con estos equipos en este orden, apps/models/Fixture.php arma
--- exactamente el fixture de abajo.
 CREATE TEMPORARY TABLE carga_005_inscripcion (orden SMALLINT, torneo VARCHAR(80), equipo VARCHAR(40), fecha DATETIME)
   ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT INTO carga_005_inscripcion VALUES
@@ -467,8 +301,6 @@ SELECT t.id_torneo, c.numero, CONCAT('Fecha ', c.numero), c.inicio, c.fin, c.est
   JOIN torneo t ON t.nombre = c.torneo
  ORDER BY t.id_torneo, c.numero;
 
--- Enfrentamientos, con el marcador de los que ya se jugaron (en la
--- Valorant, mapas ganados; en la Barrial, goles).
 CREATE TEMPORARY TABLE carga_005_partido (torneo VARCHAR(80), ronda TINYINT UNSIGNED, numero TINYINT UNSIGNED,
   local VARCHAR(40), visitante VARCHAR(40), fecha_hora DATETIME, estado VARCHAR(12),
   puntaje_local SMALLINT, puntaje_visitante SMALLINT)
@@ -597,8 +429,7 @@ SELECT r.id_ronda, c.numero, pl.id_participante, pv.id_participante, c.fecha_hor
   JOIN participante pv ON pv.id_torneo = t.id_torneo AND pv.id_equipo = ev.id_equipo
  ORDER BY r.id_ronda, c.numero;
 
--- Resultados de los jugados. El ganador sale del marcador; en un
--- empate queda en NULL. Los carga la cuenta organizadora de cada liga.
+-- Resultados de los jugados.
 INSERT INTO resultado (id_enfrentamiento, puntaje_local, puntaje_visitante,
                        id_participante_ganador, walkover, id_usuario_carga, fecha_carga)
 SELECT en.id_enfrentamiento, c.puntaje_local, c.puntaje_visitante,
@@ -612,10 +443,6 @@ SELECT en.id_enfrentamiento, c.puntaje_local, c.puntaje_visitante,
   JOIN enfrentamiento en ON en.id_ronda = r.id_ronda AND en.numero = c.numero
  WHERE c.puntaje_local IS NOT NULL;
 
--- La tabla de posiciones, calculada a partir de los resultados de arriba:
--- cada partido cuenta una vez para el local y otra para el visitante.
--- Solo guarda los contadores; puntos, diferencia y puesto se calculan al
--- consultarla (ver schema.sql, seccion 8).
 INSERT INTO tabla_posiciones (id_participante, ganados, empatados, perdidos,
                               favor, contra, fecha_actualizacion)
 SELECT pa.id_participante,
@@ -638,8 +465,7 @@ SELECT pa.id_participante,
  WHERE t.nombre IN ('Liga Valorant · Otoño', 'Liga Barrial del Cerro')
  GROUP BY pa.id_participante;
 
--- Una fila en la auditoria, sin cuenta: la carga no la hace nadie desde
--- la aplicacion.
+-- Una fila en la auditoria, sin cuenta: la carga no la hace nadie desde la aplicacion.
 INSERT INTO auditoria (id_usuario, tabla_afectada, id_registro, accion, detalle)
 VALUES (NULL, 'torneo', NULL, 'alta',
         '3 cuentas, 3 ligas, 31 equipos');
@@ -651,11 +477,7 @@ DROP TEMPORARY TABLE carga_005_inscripcion;
 DROP TEMPORARY TABLE carga_005_ronda;
 DROP TEMPORARY TABLE carga_005_partido;
 
-
--- ---------------------------------------------------------------------
--- 6. El resultado. Tiene que dar los numeros de la cabecera. Se puede
---    correr sola, cuantas veces haga falta: solo mira.
--- ---------------------------------------------------------------------
+-- 6. El resultado.
 SELECT
     (SELECT COUNT(*) FROM usuario WHERE de_muestra = 1)                  AS cuentas_de_muestra,
     (SELECT COUNT(*) FROM usuario

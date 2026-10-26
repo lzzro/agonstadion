@@ -2,14 +2,7 @@
 require __DIR__ . '/../stadion_app/config/pagina.php';
 require_once $carpeta_app . '/config/contacto.php';
 
-# =====================================================================
-# Contacto - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Pagina fija (tercera entrega): el correo de Agon. No hay formulario,
-# porque el sitio no manda correos: el enlace abre el programa de
-# correo de quien lo toca. El correo sale de config/contacto.php.
-# El menu no marca ninguna entrada.
-# =====================================================================
+# Pagina fija: el correo de Agon.
 ?>
 <!DOCTYPE html>
 <html lang="es">

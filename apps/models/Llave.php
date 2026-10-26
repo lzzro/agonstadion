@@ -1,32 +1,5 @@
 <?php
-# =====================================================================
-# Modelo: Llave   ->   tablas "ronda" y "enfrentamiento"
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# Arma la llave de una eliminacion directa (RF-19): quien pierde queda
-# afuera y quien gana pasa a la ronda siguiente, hasta la final. Es una
-# clase del dominio, como Fixture: recibe los participantes y devuelve
-# los cruces, sin saber nada de la base (la guardan FixtureRepositorio
-# y, ronda a ronda, ResultadoRepositorio).
-#
-# El tamano de la llave es la potencia de 2 que alcanza a todos (con 6,
-# una llave de 8). Los lugares que sobran son pases libres (bye): el
-# que le toca uno pasa a la segunda ronda sin jugar. En la base, un
-# libre es un enfrentamiento sin visitante, como en la liga.
-#
-# La siembra: cada participante tiene su numero (1, 2, 3...) por orden
-# de inscripcion, y los numeros se ubican en la llave de forma que el 1
-# y el 2 solo puedan cruzarse en la final, el 1 y el 3 en la semifinal,
-# y asi. Para una llave de 8 el orden es 1-8, 4-5, 2-7, 3-6. Se arma
-# duplicando: de (1) sale (1, 2); de (1, 2) sale (1, 4, 2, 3); de ahi
-# (1, 8, 4, 5, 2, 7, 3, 6). Cada numero n se aparea con (tamano + 1 - n).
-# Los numeros que pasan la cantidad de inscriptos son los libres, y por
-# la siembra les tocan a los primeros: nunca hay dos libres juntos.
-#
-# Las rondas siguientes se arman al cerrar cada una, con los ganadores
-# en el orden de los cruces: el del cruce 1 con el del 2, el del 3 con
-# el del 4. Asi la llave dibujada coincide con lo que se juega.
-# =====================================================================
+# Modelo: Llave -> tablas "ronda" y "enfrentamiento"
 
 require_once __DIR__ . '/Participante.php';
 require_once __DIR__ . '/Enfrentamiento.php';
@@ -34,8 +7,8 @@ require_once __DIR__ . '/Enfrentamiento.php';
 class Llave
 {
     #region ATRIBUTOS
-    private $participantes;   # arreglo de Participante, en orden de inscripcion (la siembra)
-    private $cruces;          # la primera ronda: array('local' => Participante, 'visitante' => Participante o null)
+    private $participantes;
+    private $cruces;
     #endregion
 
     #region FUNCIONES
@@ -58,8 +31,7 @@ class Llave
         return $tamano;
     }
 
-    # Cuantas rondas tiene la llave: con 8 lugares, 3 (cuartos, semi y
-    # final).
+    # Cuantas rondas tiene la llave: con 8 lugares, 3 (cuartos, semi y final).
     public static function cantidadRondas($cantidad)
     {
         $rondas = 0;
@@ -85,8 +57,7 @@ class Llave
         return $orden;
     }
 
-    # El nombre de una ronda por los cruces que tiene: 1 es la final, 2
-    # la semifinal, 4 los cuartos...
+    # El nombre de una ronda por los cruces que tiene: 1 es la final, 2 la semifinal, 4 los cuartos...
     public static function nombreRonda($cruces)
     {
         $nombres = array(1 => 'Final', 2 => 'Semifinal', 4 => 'Cuartos de final',
@@ -113,8 +84,7 @@ class Llave
         return $errores;
     }
 
-    # Arma la primera ronda. Devuelve un arreglo de errores, vacio si se
-    # armo.
+    # Arma la primera ronda.
     public function generar()
     {
         $errores = $this->validar();
@@ -127,8 +97,7 @@ class Llave
         for ($i = 0; $i < count($orden); $i = $i + 2) {
             $a = $orden[$i];
             $b = $orden[$i + 1];
-            # Por la siembra, $a es siempre el numero mas chico del par, y
-            # nunca pasa la cantidad de inscriptos.
+            # Por la siembra, $a es siempre el numero mas chico del par, y nunca pasa la cantidad de inscriptos.
             $this->cruces[] = array(
                 'local'     => $this->participantes[$a - 1],
                 'visitante' => ($b <= $cantidad) ? $this->participantes[$b - 1] : null
@@ -137,9 +106,7 @@ class Llave
         return array();
     }
 
-    # La ronda que sigue, con los ganadores en el orden de los cruces de
-    # la anterior. Un numero impar de ganadores no puede pasar en una
-    # llave bien armada: devuelve un arreglo vacio.
+    # La ronda que sigue, con los ganadores en el orden de los cruces de la anterior.
     public static function siguienteRonda($ganadores)
     {
         $ganadores = array_values($ganadores);
@@ -153,8 +120,7 @@ class Llave
         return $cruces;
     }
 
-    # Quien pasa de un enfrentamiento: el libre, o el ganador de su
-    # resultado. null si todavia no se sabe.
+    # Quien pasa de un enfrentamiento: el libre, o el ganador de su resultado. null si todavia no se sabe.
     public static function quienPasa(Enfrentamiento $enfrentamiento)
     {
         if ($enfrentamiento->esLibre()) {

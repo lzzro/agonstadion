@@ -1,51 +1,5 @@
 <?php
-# =====================================================================
 # Vista de administracion
-# Proyecto SGDM - Stadion (Agon) - Lucas Martiarena
-# ---------------------------------------------------------------------
-# La incluye adminController.php, y solo despues de comprobar que la
-# cuenta de la sesion tiene el rol administrador. Recibe:
-#   $administrador  la cuenta de la sesion (Usuario, con roles)
-#   $pendientes     pedidos de rol pendientes (arreglo de PedidoRol)
-#   $lista          cuentas con roles y ultimo acceso, o null si no se
-#                   pudo leer (ver UsuarioRepositorio::listarConRoles)
-#   $registro       las filas de la pagina del registro de auditoria
-#                   (arreglo de Auditoria), o null si no se pudo leer
-#   $filtro, $pagina, $paginas, $total_registro   el filtro por accion
-#                   y la pagina del registro
-#   $modulos        los modulos de competencia (CatalogoRepositorio), o
-#                   null si no se pudieron leer
-#   $mensaje, $errores
-#   $ruta_publica, $ruta_perfil, $ruta_admin, $ruta_reportes   direcciones
-#
-# Reemplaza a la maqueta public/admin.html. Lo que habia ahi:
-#   (Las tres organizadoras de muestra de la migracion 005 figuran con
-#   la marca "De muestra" en vez de su estado: no inician sesion nunca.)
-#   Usuarios administrativos   REAL: todas las cuentas de la base, con
-#                              sus roles. Desde la tercera entrega, con
-#                              la baja logica y la vuelta (RF-11) y el
-#                              rol administrador para dar o quitar. Las
-#                              cuentas inventadas de la maqueta
-#                              (Comunidad Vortice, Club Sur...) no estan.
-#   Registro de auditoria      REAL: de a paginas de 30, con un filtro
-#                              por accion (un formulario GET: no cambia
-#                              nada en la base).
-#   Modulos del sistema        REAL desde la tercera entrega (RF-24, la
-#                              migracion 008): los tres modulos de
-#                              competencia, cada uno habilitado o no.
-#                              Las filas de la maqueta que no son un
-#                              modulo de la base (Consulta publica,
-#                              Registro, Exportacion CSV) no estan.
-#   Ultimo respaldo            FUERA: el sitio no ve los respaldos, que
-#                              hace un script del servidor.
-# Y se suma lo nuevo: los pedidos de rol pendientes.
-#
-# Tiene su propio menu, como tenia la maqueta: enlaces a cada seccion
-# de la misma pagina. Ninguno lleva la marca "activo", porque no hay
-# vistas que cambien: es una sola pagina que se recorre.
-#
-# Todo lo que viene de la base se imprime con htmlspecialchars.
-# =====================================================================
 
 if (!isset($mensaje)) { $mensaje = ''; }
 if (!isset($errores)) { $errores = array(); }
@@ -86,8 +40,7 @@ function cantidadTexto($cantidad, $singular, $plural)
     return $cantidad . ' ' . (((int)$cantidad === 1) ? $singular : $plural);
 }
 
-# Como se nombra cada accion de la auditoria en pantalla: en
-# sustantivos, como pide la voz del sitio.
+# Como se nombra cada accion de la auditoria en pantalla: en sustantivos, como pide la voz del sitio.
 $acciones = array(
     'alta'         => 'Alta de cuenta',
     'baja'         => 'Baja de cuenta',
@@ -108,9 +61,6 @@ $acciones = array(
     'cancelacion'  => 'Cancelación de torneo',
     'medicion'     => 'Carga de medición'
 );
-# Las que se nombran distinto segun la tabla: el alta de una liga o de
-# un equipo no es el alta de una cuenta, y aprobar o rechazar un pedido
-# de inscripcion no es lo mismo que uno de rol.
 $acciones_por_tabla = array(
     'alta|torneo'                    => 'Alta de torneo',
     'alta|equipo'                    => 'Alta de equipo',
@@ -186,15 +136,10 @@ if (is_array($lista)) {
 <?php if (empty($pendientes)) { ?>
   <p>Ningún pedido en revisión.</p>
 <?php } else { ?>
-<?php   # Un renglon por pedido, no una tabla: en el telefono una tabla se
-        # desplaza a lo ancho y los botones quedarian fuera de la vista. ?>
   <div class="pedidos">
 <?php   foreach ($pendientes as $pedido) {
           $quien = $pedido->getUsuario();
           $propio = ((int)$quien->getIdUsuario() === (int)$administrador->getIdUsuario());
-          # Los botones dicen de quien es el pedido: con varios pedidos en
-          # la lista, un lector de pantalla que recorre solo los botones
-          # oiria "Aprobar, Aprobar, Aprobar".
           $de_quien = htmlspecialchars($quien->getNombreCompletoVisible()); ?>
     <div class="pedido">
       <span class="pedido-texto"><strong><?php echo htmlspecialchars($quien->getNombreCompletoVisible()); ?></strong><span class="pedido-dato"><?php echo htmlspecialchars($quien->getCorreo()); ?> · <?php echo htmlspecialchars($pedido->getRol()->getNombre()); ?> · <span class="fecha"><?php echo htmlspecialchars(fechaRegistro($pedido->getFechaPedido())); ?></span></span></span>
@@ -227,9 +172,6 @@ if (is_array($lista)) {
 <?php if ($lista === null) { ?>
   <p>La lista de cuentas no se puede leer por ahora.</p>
 <?php } else { ?>
-<?php   # Un renglon por cuenta, como los pedidos: con los botones de cada
-        # una, una tabla se desplazaria a lo ancho y los dejaria fuera de
-        # la vista en el telefono. ?>
   <div class="pedidos cuentas-lista">
 <?php   foreach ($lista as $cuenta) {
           $u = $cuenta['usuario'];
@@ -341,8 +283,6 @@ if (is_array($lista)) {
           } else {
               $que = isset($acciones[$fila->getAccion()]) ? $acciones[$fila->getAccion()] : $fila->getAccion();
           }
-          # Las cargas de imagen traen su propio nombre en el detalle
-          # ("Carga de foto de perfil"); el resto lo suma al lado.
           if ($fila->getAccion() === 'modificacion' && !empty($fila->getDetalle())) {
               $que = $fila->getDetalle();
           } elseif (!empty($fila->getDetalle())) {

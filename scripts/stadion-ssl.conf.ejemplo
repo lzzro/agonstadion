@@ -1,15 +1,5 @@
-# =====================================================================
-# Stadion por HTTPS en la VM (AlmaLinux 8.10, Apache con mod_ssl)
-# ---------------------------------------------------------------------
-# Lo copia scripts/seguridad-servidor.sh (opcion 10, "Certificado SSL")
-# a /etc/httpd/conf.d/stadion-ssl.conf, cambiando RAIZ_DEL_PROYECTO
-# (por ejemplo /var/www/stadion) y NOMBRE_DEL_SITIO (stadion.local).
-# Es el mismo sitio del puerto 80 (docs/configuracion-apache.md), en el
-# 443 y cifrado.
-#
-# El certificado es propio (la VM no tiene un dominio publico): el
-# navegador avisa la primera vez.
-# =====================================================================
+# Stadion por HTTPS en la VM. Lo copia seguridad-servidor.sh (opcion 10) a /etc/httpd/conf.d/,
+# cambiando RAIZ_DEL_PROYECTO y NOMBRE_DEL_SITIO.
 
 <VirtualHost *:443>
     ServerName NOMBRE_DEL_SITIO
@@ -27,9 +17,6 @@
         Require all granted
     </Directory>
 
-    # Los controladores viven fuera de public/: el .htaccess no les llega,
-    # asi que las cabeceras de seguridad van aca (las mismas que manda
-    # public/.htaccess).
     Alias /apps/controllers "RAIZ_DEL_PROYECTO/apps/controllers"
     <Directory "RAIZ_DEL_PROYECTO/apps/controllers">
         Options -Indexes
